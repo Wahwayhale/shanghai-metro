@@ -6,12 +6,13 @@
   "scripts": {
     "build": "node build2.js",
     "smoke": "node tests/smoke.js",
-    "test": "node tests/smoke.js && node tests/regress_modules.js && node tests/golden.js",
+    "test": "node tests/smoke.js && node tests/regress_modules.js && node tests/regress_crossover.js && node tests/regress_bodies.js && node tests/golden.js",
     "test:smoke": "node tests/smoke.js",
     "test:modules": "node tests/regress_modules.js",
     "test:golden": "node tests/golden.js",
     "golden:update": "node tests/golden.js --update",
-    "test:crossover": "node tests/regress_crossover.js"
+    "test:crossover": "node tests/regress_crossover.js",
+    "test:bodies": "node tests/regress_bodies.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.0.0"

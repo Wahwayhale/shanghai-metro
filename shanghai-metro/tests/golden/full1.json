@@ -3,49 +3,49 @@
   "results": [
     {
       "zh": "外环路",
-      "err": 0.134,
+      "err": 0.1504,
       "stopScore": 100,
-      "arrT": 110.18,
-      "depDelay": -5.42
+      "arrT": 110.08,
+      "depDelay": -5.74
     },
     {
       "zh": "莲花路",
-      "err": 0.173,
+      "err": 0.1651,
       "stopScore": 100,
-      "arrT": 232.04,
-      "depDelay": -3.56
+      "arrT": 231.4,
+      "depDelay": -4.42
     },
     {
       "zh": "锦江乐园",
-      "err": 0.141,
+      "err": 0.1604,
       "stopScore": 100,
-      "arrT": 351.02,
-      "depDelay": -64.58
+      "arrT": 350.2,
+      "depDelay": -65.62
     },
     {
       "zh": "上海南站",
-      "err": 0.1404,
+      "err": 0.1553,
       "stopScore": 100,
-      "arrT": 479.46,
-      "depDelay": -116.14
+      "arrT": 478.44,
+      "depDelay": -117.38
     },
     {
       "zh": "漕宝路",
-      "err": 0.138,
+      "err": 0.153,
       "stopScore": 100,
-      "arrT": 593.5,
-      "depDelay": -182.1
+      "arrT": 592.32,
+      "depDelay": -183.5
     },
     {
       "zh": "上海体育馆",
-      "err": 0.1429,
+      "err": 0.1542,
       "stopScore": 100,
-      "arrT": 894.08,
+      "arrT": 892.66,
       "depDelay": 0
     }
   ],
-  "maxErr": 0.173,
+  "maxErr": 0.1651,
   "avgStopScore": 100,
-  "energy": 127.035,
-  "vMax": 77.59
+  "energy": 126.861,
+  "vMax": 77.6
 }

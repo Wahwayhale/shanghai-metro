@@ -3,49 +3,49 @@
   "results": [
     {
       "zh": "浦东大道",
-      "err": 0.185,
+      "err": 0.1559,
       "stopScore": 100,
-      "arrT": 87.58,
-      "depDelay": -0.061
+      "arrT": 86.9,
+      "depDelay": -0.961
     },
     {
       "zh": "杨树浦路",
-      "err": 0.217,
+      "err": 0.194,
       "stopScore": 100,
-      "arrT": 200.6,
-      "depDelay": 18.401
+      "arrT": 198.9,
+      "depDelay": 16.501
     },
     {
       "zh": "大连路",
-      "err": 0.1305,
+      "err": 0.1603,
       "stopScore": 100,
-      "arrT": 294.62,
-      "depDelay": 35.071
+      "arrT": 292.88,
+      "depDelay": 33.111
     },
     {
       "zh": "临平路",
-      "err": 0.1345,
+      "err": 0.1652,
       "stopScore": 100,
-      "arrT": 419.12,
-      "depDelay": 53.413
+      "arrT": 417.42,
+      "depDelay": 51.493
     },
     {
       "zh": "海伦路",
-      "err": 0.1406,
+      "err": 0.1535,
       "stopScore": 100,
-      "arrT": 548.92,
-      "depDelay": 71.15
+      "arrT": 547.04,
+      "depDelay": 69.05
     },
     {
       "zh": "宝山路",
-      "err": 0.138,
+      "err": 0.162,
       "stopScore": 100,
-      "arrT": 746.44,
+      "arrT": 744.5,
       "depDelay": 0
     }
   ],
-  "maxErr": 0.217,
+  "maxErr": 0.194,
   "avgStopScore": 100,
-  "energy": 111.503,
-  "vMax": 77.59
+  "energy": 111.723,
+  "vMax": 77.6
 }

@@ -3,42 +3,42 @@
   "results": [
     {
       "zh": "华夏中路",
-      "err": 0.154,
+      "err": 0.1492,
       "stopScore": 100,
-      "arrT": 186.76,
-      "depDelay": -110.84
+      "arrT": 186.36,
+      "depDelay": -111.46
     },
     {
       "zh": "罗山路",
-      "err": 0.156,
+      "err": 0.1638,
       "stopScore": 100,
-      "arrT": 397.84,
-      "depDelay": -139.76
+      "arrT": 397.2,
+      "depDelay": -140.62
     },
     {
       "zh": "周浦东",
-      "err": 0.1604,
+      "err": 0.1516,
       "stopScore": 100,
-      "arrT": 560.86,
-      "depDelay": -396.74
+      "arrT": 559.7,
+      "depDelay": -398.12
     },
     {
       "zh": "鹤沙航城",
-      "err": 0.1579,
+      "err": 0.1634,
       "stopScore": 100,
-      "arrT": 697.74,
-      "depDelay": -619.86
+      "arrT": 696.3,
+      "depDelay": -621.52
     },
     {
       "zh": "航头东",
-      "err": 0.1444,
+      "err": 0.1503,
       "stopScore": 100,
-      "arrT": 837.16,
+      "arrT": 835.36,
       "depDelay": 0
     }
   ],
-  "maxErr": 0.1604,
+  "maxErr": 0.1638,
   "avgStopScore": 100,
-  "energy": 232.569,
-  "vMax": 117.57
+  "energy": 232.676,
+  "vMax": 117.58
 }

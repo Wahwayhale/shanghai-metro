@@ -115,11 +115,36 @@ function physics(dt) {
   a -= Math.sign(v || 0) * res;
   a -= 9.81 * path.gradeAt(G.s);
 
-  const nv = v + a * dt;
-  if (nv < 0 && brake > 0.01) { G.v = 0; }
-  else if (nv < 0) { G.v = Math.max(0, nv); }
-  else G.v = nv;
-  if (G.v < 0.02 && brake > 0.02) G.v = 0;
+  /* ---- 多质点车钩：车头加速度由车链解算，后车通过车钩反作用于车头 ----
+     这才是真的多质点：车头不再由单质点公式直接积分，而是取车链第 0 节车的
+     加速度（含后车传来的车钩力）。后果是真实的：
+       · 起步时后车拖住车头，实际加速度略低于指令
+       · 制动时后车顶上来，车头减速被"推"得快一点
+       · 停站时车钩回弹会造成微小的纵向摆动 → 停站误差与金样基线必然变化 */
+  let aHead = a;
+  if (train && train.chain && train.chain.n > 1) {
+    const ch = train.chain;
+    if (!ch.inited || Math.abs(ch.s[0] - G.s) > 2.0) {
+      ch.reset(G.s, G.v, 1);
+    } else {
+      ch.s[0] = G.s;
+      ch.v[0] = G.v;
+    }
+    const vNew = ch.step(a, dt, { grade: path.gradeAt(G.s), dir: 1 });
+    /* 车头实际加速度 = 车链解出来的，而不是单质点公式的 a */
+    aHead = dt > 1e-6 ? (vNew - v) / dt : a;
+    train.chainOffsets = ch.offsets();
+    train.chainCoupler = ch.summary();
+    G.coupler = train.chainCoupler;
+    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死 */
+    G.v = vNew;
+  } else {
+    const nv = v + a * dt;
+    if (nv < 0 && brake > 0.01) { G.v = 0; }
+    else if (nv < 0) { G.v = Math.max(0, nv); }
+    else G.v = nv;
+    if (G.v < 0.02 && brake > 0.02) G.v = 0;
+  }
 
   // 停车保持（坡道防溜）
   if (G.v < 0.06 && traction < 0.01 && brake < 0.01) G.v = 0;

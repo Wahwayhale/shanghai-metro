@@ -184,6 +184,19 @@ function updateHUD(force = false) {
   }
   $('hudDoorL').classList.toggle('open', G.doorT > 0.1);
   $('hudDoorR').classList.toggle('open', false);
+  /* 车钩力：多质点动力学的外部可观测指标。
+     拉伸为正（起动时后车拖曳），压缩为负（制动时后车顶上来）。 */
+  const cpEl = $('hudCoupler');
+  if (cpEl) {
+    if (G.coupler && (Math.abs(G.coupler.tension) > 2 || Math.abs(G.coupler.compression) > 2)) {
+      const v = Math.abs(G.coupler.compression) > G.coupler.tension ? G.coupler.compression : G.coupler.tension;
+      cpEl.textContent = `${v > 0 ? '拉' : '压'} ${Math.abs(Math.round(v))} kN`;
+      cpEl.style.color = Math.abs(v) > 120 ? '#ff6b5a' : Math.abs(v) > 60 ? '#ffb020' : '#7f939f';
+    } else {
+      cpEl.textContent = '—';
+      cpEl.style.color = '';
+    }
+  }
   const ebB = $('ebBanner'); if (ebB) ebB.classList.toggle('on', G.eb);
   const ab = $('atoBtn'); if (ab) ab.classList.toggle('on', G.ato);
   const progress = clamp(1 - dist / Math.max(1, st.stopS - (G.targetIdx > 0 ? path.stations[G.targetIdx - 1].stopS : 0)), 0, 1);

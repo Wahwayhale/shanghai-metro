@@ -298,8 +298,13 @@ class Train {
     this.doorSets = [];
     this.doorT = 0;
     this.doorSide = 1;          // 岛式站台在本地 +X 侧，即司机视角左侧
-    this.carLag = new Array(this.carCount).fill(0);  // 车钩间隙视觉量
+    this.carLag = new Array(this.carCount).fill(0);  // 车钩间隙视觉量（旧的正弦近似）
     this._lastV = 0;
+    /* 多质点车链：玩家列车才跑真实车钩动力学，AI 车仍用轻量视觉近似 */
+    this.chain = (this.isPlayer && typeof BodyChain === 'function')
+      ? new BodyChain(Object.assign({}, BODY, { n: this.carCount }))
+      : null;
+    this.chainOffsets = null;
 
     for (let i = 0; i < this.carCount; i++) {
       const car = this.buildCar(i, i === 0, opts);
@@ -869,16 +874,21 @@ class Train {
     if (dt > 0) {
       const acc = (v - this._lastV) / dt;
       this._lastV = v;
-      for (let i = 1; i < this.carCount; i++) {
-        const target = clamp(acc * 0.025 * i, -0.08, 0.08);
-        this.carLag[i] += (target - this.carLag[i]) * Math.min(1, dt * 5);
+      /* 有真实车链时不再用正弦近似；偏移由 BodyChain 解出 */
+      if (!this.chain) {
+        for (let i = 1; i < this.carCount; i++) {
+          const target = clamp(acc * 0.025 * i, -0.08, 0.08);
+          this.carLag[i] += (target - this.carLag[i]) * Math.min(1, dt * 5);
+        }
       }
     } else {
       this._lastV = v;
     }
+    const offs = this.chainOffsets;
     for (let i = 0; i < this.cars.length; i++) {
       const dir = this.dir;
-      const lag = this.carLag[i] || 0;
+      /* 车链偏移（m）折算成里程差；无车链时退回旧的正弦 carLag */
+      const lag = offs && offs[i] != null ? offs[i] : (this.carLag[i] || 0);
       const cs = dir > 0
         ? s - 11.4 - i * CAR_PITCH - lag
         : s + 11.4 + i * CAR_PITCH + lag;
