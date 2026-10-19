@@ -385,7 +385,11 @@ function buildStation(route, line, st, idx, theme) {
         map: texAd((idx + Math.abs(z)) % 4), roughness: 0.6,
         emissive: 0xffffff, emissiveMap: texAd((idx + Math.abs(z)) % 4), emissiveIntensity: 0.62
       });
-      pplane(g, 4.2, 2.1, ad, side * (SIDE - 0.08), 3.0, z, side > 0 ? -PI / 2 : PI / 2);
+      /* 灯箱：原来只有一张贴在墙上的平面，没有厚度也没有边框，
+         远看像直接印在墙上。这里补一个略大的深色箱体当背板与边框，
+         画面仍然贴在箱体表面，于是有了 8 cm 的出挑。 */
+      pbox(g, 0.16, 2.34, 4.44, MAT.darkMetal, side * (SIDE - 0.16), 3.0, z);
+      pplane(g, 4.2, 2.1, ad, side * (SIDE - 0.085), 3.0, z, side > 0 ? -PI / 2 : PI / 2);
     }
   }
   // 高架站：雨棚檐口站名

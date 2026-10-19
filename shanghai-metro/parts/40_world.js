@@ -459,8 +459,8 @@ function buildViaduct(route, group) {
     const spanStep = 26;
     const s0 = route.S[run.a], s1 = route.S[run.b];
     const cnt = Math.max(1, Math.floor((s1 - s0) / spanStep));
-    const pierGeo = new THREE.BoxGeometry(1.9, 1, 1.9);
-    const capGeo = new THREE.BoxGeometry(9.6, 1.1, 1.6);
+    const pierGeo = new THREE.CylinderGeometry(0.95, 1.08, 1, 16);   // 圆台桥墩
+    const capGeo = new RoundedBoxGeometry(9.6, 1.1, 1.6, 2, 0.16);   // 盖梁倒圆
     const pierMat = MAT.concrete;
     const piers = new THREE.InstancedMesh(pierGeo, pierMat, cnt);
     const caps = new THREE.InstancedMesh(capGeo, pierMat, cnt);
