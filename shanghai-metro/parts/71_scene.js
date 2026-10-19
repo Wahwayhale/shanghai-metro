@@ -2,15 +2,39 @@
    菜单场景与线路世界构建
    （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
+
+/* ---- PMREM 环境贴图缓存（P1-1）----
+   PMREMGenerator.fromScene() 会把天空盒渲染成一个立方体再预滤波，
+   是整条加载链里最贵的一步（实测挂在「初始化材质」标签下约 2 s）。
+   它只依赖 theme，因此按 theme.windowGlow 缓存即可复用。
+   注意：缓存的是 texture，不随场景销毁；PMREM 生成器本身用完即弃。 */
+const ENV_CACHE = new Map();
+
+function envTextureFor(theme2) {
+  const key = String(theme2.windowGlow);
+  if (ENV_CACHE.has(key)) return ENV_CACHE.get(key);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene(); es.add(createSky(theme2));
+  let tex = null;
+  try {
+    tex = pm.fromScene(es, 0.02).texture;
+  } catch (e) {
+    console.warn('[PMREM] 降级', e);
+  }
+  /* 生成器用完释放，只留贴图 */
+  try { pm.dispose(); } catch (e) { /* 忽略 */ }
+  ENV_CACHE.set(key, tex);
+  return tex;
+}
+
 /* ---------------------------------------------------------------- 菜单场景 */
 function buildHero() {
   const th = THEMES[G.tod];
   const s = new THREE.Scene();
   s.fog = new THREE.FogExp2(th.fog, 0.0022);
   s.add(createSky(th));
-  const pm = new THREE.PMREMGenerator(renderer);
-  const es = new THREE.Scene(); es.add(createSky(th));
-  try { s.environment = pm.fromScene(es, 0.02).texture; } catch (e) { console.warn("[PMREM] 降级", e); }
+  const env = envTextureFor(th);
+  if (env) s.environment = env;
   const sunL = new THREE.DirectionalLight(th.sun, th.sunI * 2.4);
   sunL.position.set(-70, 26, 40);
   s.add(sunL);
@@ -106,11 +130,37 @@ function updateHero(dt) {
   camera.fov = 46; camera.updateProjectionMatrix();
 }
 /* ---------------------------------------------------------------- 世界构建 */
+/* 分帧让出：原来只有 rAF + setTimeout(0)，浏览器拿到的是「立即执行」，
+   长任务仍是 2 s 级。现在按预算让出：每片最多占用 12 ms，
+   超过就让出一帧，让加载条能刷新、浏览器不判定为卡死。
+   frameBudget 可用 ?fast=1 关闭（自动化测试不需要可视反馈）。 */
+const FRAME_BUDGET = (typeof location !== 'undefined' && /[?&]fast=1/.test(location.search)) ? 1e9 : 12;
+
 async function loadStep(label, pct) {
   $('loadStep').textContent = label;
   $('loadFill').style.width = Math.round(pct * 100) + '%';
   $('loadPct').textContent = Math.round(pct * 100) + '%';
   await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+}
+
+/* 把一个长循环切成若干片，每片结束让出一次。
+   items 可以是数组或数字（次数）；fn 收到 (index, item)。 */
+async function chunked(items, fn, label, pctFrom, pctTo) {
+  const n = typeof items === 'number' ? items : items.length;
+  if (!n) return;
+  let sliceStart = performance.now();
+  for (let i = 0; i < n; i++) {
+    fn(i, typeof items === 'number' ? i : items[i]);
+    if (performance.now() - sliceStart > FRAME_BUDGET) {
+      sliceStart = performance.now();
+      if (label) {
+        const p = pctFrom + (pctTo - pctFrom) * (i / n);
+        $('loadFill').style.width = Math.round(p * 100) + '%';
+        $('loadPct').textContent = Math.round(p * 100) + '%';
+      }
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+    }
+  }
 }
 
 async function buildService(routeIdx, reverse) {
@@ -141,9 +191,10 @@ async function buildService(routeIdx, reverse) {
   s.fog = new THREE.FogExp2(theme.fog, theme.fogD);
   skyMesh = createSky(theme);
   s.add(skyMesh);
-  const pm = new THREE.PMREMGenerator(renderer);
-  const es = new THREE.Scene(); es.add(createSky(theme));
-  try { s.environment = pm.fromScene(es, 0.02).texture; } catch (e) { console.warn("[PMREM] 降级", e); }
+  /* 同一主题的环境贴图在菜单 hero 场景里已经生成过，这里直接复用。
+     之前每次进线路都重跑一次 fromScene，是「初始化材质」耗时 2 s 的主因。 */
+  const env = envTextureFor(theme);
+  if (env) s.environment = env;
 
   hemi = new THREE.HemisphereLight(0xc2d8e8, 0x2c2a22, theme.hemi);
   s.add(hemi);
@@ -188,15 +239,18 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在布置地标建筑…', 0.7);
   buildLandmarks(path, root, theme);
 
+  /* 逐站建造：用 chunked 分帧，避免 27 站连续同步执行形成 2 s 长任务。
+     每站自身仍是原子的（buildStation 内部不能中断），但站与站之间会让出。 */
   stationObjs = [];
-  for (let i = 0; i < path.stations.length; i++) {
+  $('loadStep').textContent = '正在建造车站…';
+  await chunked(path.stations.length, (i) => {
     const st = path.stations[i];
-    if (st.synthetic) { stationObjs.push(null); continue; }
-    await loadStep(`正在建造车站  ${st.zh}…`, 0.72 + 0.18 * (i / path.stations.length));
+    if (st.synthetic) { stationObjs.push(null); return; }
+    $('loadStep').textContent = `正在建造车站  ${st.zh}…`;
     const so = buildStation(path, line, st, i, theme);
     root.add(so.group);
     stationObjs.push(so);
-  }
+  }, '正在建造车站', 0.72, 0.9);
 
   await loadStep('列车整备中…', 0.94);
   AUDIO.vType = line.vvvf || 'IGBT';

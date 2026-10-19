@@ -41,7 +41,12 @@ function routeMapSVG(route) {
   </svg>`;
 }
 
-/* ---------------- 生涯进度（本地存档） ---------------- */
+/* ---------------- 生涯进度（本地存档，按线路分层） ----------------
+   存储结构：
+     sm_career  { routeId: {score, grade}, routeId:rev: {...} }   逐交路最高分
+   导出结构（带版本与时间戳，便于跨设备迁移）：
+     { v:1, at:<ISO>, routes:{...}, settings:{...} }
+   分层目的：用户换电脑/清缓存后能带走成绩，不再「一清就没」。 */
 function loadCareer() {
   try { return JSON.parse(localStorage.getItem('sm_career') || '{}'); } catch (e) { return {}; }
 }
@@ -49,6 +54,139 @@ function saveCareer(id, score, grade) {
   const c = loadCareer();
   if (!c[id] || score > c[id].score) c[id] = { score, grade };
   try { localStorage.setItem('sm_career', JSON.stringify(c)); } catch (e) { console.warn('[career] 存档写入失败', e); }
+}
+
+/** 按线路分组，供菜单显示「本线已完成几个交路」 */
+function careerByLine() {
+  const c = loadCareer();
+  const out = {};
+  for (const id in c) {
+    const base = id.replace(/:rev$/, '');
+    const r = (typeof ROUTES !== 'undefined') ? ROUTES.find(x => x.id === base) : null;
+    if (!r) continue;
+    const l = LINES[r.line];
+    if (!l) continue;
+    const key = l.name;
+    if (!out[key]) out[key] = { name: key, badge: l.badge, color: l.color, done: 0, total: 0, best: null };
+    out[key].done++;
+    if (!out[key].best || c[id].score > out[key].best.score) out[key].best = { score: c[id].score, grade: c[id].grade };
+  }
+  /* 分母：该线路在 ROUTES 里的交路数 */
+  for (const r of ROUTES) {
+    const l = LINES[r.line];
+    if (!l) continue;
+    if (!out[l.name]) out[l.name] = { name: l.name, badge: l.badge, color: l.color, done: 0, total: 0, best: null };
+    out[l.name].total++;
+  }
+  return Object.values(out).sort((a, b) => (parseInt(a.badge) || 99) - (parseInt(b.badge) || 99));
+}
+
+/** 导出存档为可下载的 JSON 字符串 */
+function exportSave() {
+  const payload = {
+    v: 1,
+    at: new Date().toISOString(),
+    routes: loadCareer(),
+    settings: loadSettings()
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/** 导入存档。返回 {ok, routes, settings, reason} */
+function importSave(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) {
+    return { ok: false, reason: '不是合法的 JSON' };
+  }
+  if (!data || typeof data !== 'object') return { ok: false, reason: '内容为空' };
+  if (data.v !== 1) return { ok: false, reason: `不支持的存档版本：${data.v}` };
+  if (!data.routes || typeof data.routes !== 'object') return { ok: false, reason: '缺少成绩数据' };
+
+  /* 只接受结构正确的条目，脏数据丢弃而不是整包失败 */
+  const clean = {};
+  for (const id in data.routes) {
+    const v = data.routes[id];
+    if (!v || typeof v.score !== 'number' || typeof v.grade !== 'string') continue;
+    clean[id] = { score: Math.round(v.score), grade: String(v.grade).slice(0, 2) };
+  }
+  if (!Object.keys(clean).length) return { ok: false, reason: '没有可用的成绩记录' };
+
+  /* 与现有成绩合并，取高分，不覆盖更优记录 */
+  const cur = loadCareer();
+  let added = 0;
+  for (const id in clean) {
+    if (!cur[id] || clean[id].score > cur[id].score) { cur[id] = clean[id]; added++; }
+  }
+  try { localStorage.setItem('sm_career', JSON.stringify(cur)); } catch (e) {
+    return { ok: false, reason: '写入失败：' + e.message };
+  }
+  if (data.settings) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.assign(loadSettings(), data.settings))); } catch (e) { /* 设置写入失败不影响成绩 */ }
+  }
+  return { ok: true, routes: Object.keys(clean).length, added, settings: !!data.settings };
+}
+
+/* ---------------- 设置持久化 ----------------
+   之前时段/天气/难度/画质/音量/震动每次重开页面都重置，是线上使用时最刺眼的
+   体验问题之一（每开一次要重设一遍）。这里统一存 sm_settings。 */
+const SETTINGS_KEY = 'sm_settings';
+const SETTINGS_DEFAULTS = {
+  tod: 'dusk', weather: 'clear', diff: 'normal',
+  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7
+};
+
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) {
+    console.warn('[settings] 读取失败，使用默认值', e);
+  }
+  /* 逐字段校验：存档可能来自旧版本或被手改，脏值一律回退默认 */
+  const out = Object.assign({}, SETTINGS_DEFAULTS);
+  if (THEMES[s.tod]) out.tod = s.tod;
+  if (typeof WEATHER !== 'undefined' && WEATHER[s.weather]) out.weather = s.weather;
+  if (['easy', 'normal', 'hard'].includes(s.diff)) out.diff = s.diff;
+  if (['high', 'low'].includes(s.quality)) out.quality = s.quality;
+  if (['on', 'off'].includes(s.voice)) out.voice = s.voice;
+  if (typeof s.shakeOn === 'boolean') out.shakeOn = s.shakeOn;
+  if (typeof s.volume === 'number' && s.volume >= 0 && s.volume <= 1) out.volume = s.volume;
+  return out;
+}
+
+function saveSettings(patch) {
+  const cur = loadSettings();
+  const next = Object.assign(cur, patch || {});
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch (e) {
+    console.warn('[settings] 写入失败', e);
+  }
+  return next;
+}
+
+/** 把设置灌进 G 与 UI 的选中态（启动时调用一次） */
+function applySettings() {
+  const s = loadSettings();
+  G.tod = s.tod;
+  G.weather = s.weather;
+  G.diff = s.diff;
+  G.quality = s.quality;
+  G.voice = s.voice;
+  G.shakeOn = s.shakeOn;
+  theme = THEMES[G.tod];
+
+  /* 回填按钮选中态：分组按钮用 data-v 与设置值比对 */
+  const mark = (groupId, val) => {
+    const box = $(groupId);
+    if (!box) return;
+    [...box.children].forEach(b => b.classList.toggle('on', b.dataset.v === String(val)));
+  };
+  mark('todGroup', s.tod);
+  mark('weatherGroup', s.weather);
+  mark('diffGroup', s.diff);
+  mark('qualGroup', s.quality);
+  mark('voiceGroup', s.voice);
+  mark('shakeGroup', s.shakeOn ? 'on' : 'off');
+  const vol = $('volRange');
+  if (vol) vol.value = Math.round(s.volume * 100);
+  return s;
 }
 
 function renderRouteCards() {
@@ -109,6 +247,7 @@ function bindMenu() {
   $('todGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.tod = b.dataset.v;
+    saveSettings({ tod: G.tod });
     [...$('todGroup').children].forEach(x => x.classList.toggle('on', x === b));
     theme = THEMES[G.tod];
     rebuildHero();
@@ -116,6 +255,7 @@ function bindMenu() {
   $('weatherGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.weather = b.dataset.v;
+    saveSettings({ weather: G.weather });
     [...$('weatherGroup').children].forEach(x => x.classList.toggle('on', x === b));
     applyWeather(G.weather, scene);
     toast('天气 · ' + (WEATHER[G.weather] || WEATHER.clear).name, 'info', 1600);
@@ -129,11 +269,13 @@ function bindMenu() {
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.diff = b.dataset.v;
+    saveSettings({ diff: G.diff });
     [...$('diffGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
   $('voiceGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.voice = b.dataset.v;
+    saveSettings({ voice: G.voice });
     AUDIO.voiceOn = G.voice === 'on';
     [...$('voiceGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
@@ -185,17 +327,22 @@ function bindMenu() {
     resetService();
   });
   $('pQuit').addEventListener('click', () => location.reload());
-  $('volRange').addEventListener('input', e => AUDIO.setVolume(e.target.value / 100));
+  $('volRange').addEventListener('input', e => {
+    AUDIO.setVolume(e.target.value / 100);
+    saveSettings({ volume: e.target.value / 100 });
+  });
 
   $('qualGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.quality = b.dataset.v;
+    saveSettings({ quality: G.quality });
     [...$('qualGroup').children].forEach(x => x.classList.toggle('on', x === b));
     if (sun) sun.castShadow = G.quality !== 'low';
   });
   $('shakeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.shakeOn = b.dataset.v === 'on';
+    saveSettings({ shakeOn: G.shakeOn });
     [...$('shakeGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
   $('resAgain').addEventListener('click', () => {
@@ -207,6 +354,48 @@ function bindMenu() {
   });
   $('resReverse') && $('resReverse').addEventListener('click', () => startTurnback());
   $('resMenu').addEventListener('click', () => location.reload());
+
+  /* ---------------- 存档导出 / 导入（P3-3）---------------- */
+  const expBtn = $('saveExport');
+  if (expBtn) expBtn.addEventListener('click', () => {
+    const text = exportSave();
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.href = url;
+    a.download = `地铁驾驶存档-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const n = Object.keys(loadCareer()).length;
+    toast(`已导出 ${n} 条成绩记录`, 'good', 3000);
+  });
+
+  const impBtn = $('saveImport');
+  const fileEl = $('saveFile');
+  if (impBtn && fileEl) {
+    impBtn.addEventListener('click', () => fileEl.click());
+    fileEl.addEventListener('change', () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        const r = importSave(String(rd.result || ''));
+        if (r.ok) {
+          toast(`导入成功 · ${r.added} 条新成绩（共 ${r.routes} 条）`, 'good', 4000);
+          /* 重新渲染卡片以显示新成绩 */
+          if (typeof renderRouteCards === 'function') renderRouteCards();
+          if (typeof applySettings === 'function') applySettings();
+        } else {
+          toast('导入失败 · ' + r.reason, 'bad', 5000);
+        }
+        fileEl.value = '';       // 允许重复导入同一文件
+      };
+      rd.onerror = () => toast('导入失败 · 文件读取错误', 'bad', 4000);
+      rd.readAsText(f);
+    });
+  }
 
   window.addEventListener('beforeunload', () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); });
 }
@@ -225,14 +414,22 @@ function boot() {
   initRenderer();
   G.quality = 'high';
   G.mode = 'menu';
-  theme = THEMES[G.tod];
   line = LINES[ROUTES[0].line];
+  /* 设置持久化：在 bindMenu 之前应用，按钮选中态才能对齐已存设置。
+     G.quality 不能只硬编码 'high'——低画质用户重开页面会被改回去。 */
+  const saved = (typeof applySettings === 'function') ? applySettings() : null;
+  theme = THEMES[G.tod];
   initMaterials(renderer, theme);
   renderRouteCards();
   bindMenu();
   bindInput();
   ATS.init();
   IX.init();
+  /* 音量在 AUDIO.init 之前只是记下数值；真正出声要等首次点击（浏览器自动播放策略） */
+  if (saved && typeof AUDIO !== 'undefined') {
+    AUDIO.volume = saved.volume;
+    AUDIO.voiceOn = saved.voice === 'on';
+  }
   selectRoute(0);
   loop();
 }
@@ -268,6 +465,7 @@ window.__sim = {
   },
   setLever(v) { G.lever = v; },
   openDoors, closeDoors, finishService, releaseEB, triggerEB, toggleATO,
+  installBloomChain, makeComposer,
   startTurnback, performTransfer,
   advanceTurnback(sec) {
     const n = Math.round(sec / 0.02);
@@ -275,5 +473,10 @@ window.__sim = {
     return { mode: G.mode, s: G.s, tb: G.turnback };
   },
   getKeys() { return { ...keys }; },
+  /* 存档与设置：暴露给自动化测试，也方便在控制台里手动导出 */
+  exportSave, importSave, loadCareer, careerByLine,
+  loadSettings, saveSettings, applySettings,
+  get gamepad() { return G.gamepad; },
+  pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };

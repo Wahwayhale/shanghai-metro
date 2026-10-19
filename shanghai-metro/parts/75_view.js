@@ -127,6 +127,63 @@ function bindInput() {
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
+  /* ---------------- 手柄支持（P3-2）----------------
+     左摇杆 Y 轴 → 手柄牵引/制动。这是模拟量最自然的输入，
+     比键盘的点按更接近真实司控器。
+       A(0)  → ATO 开关
+       B(1)  → 开/关车门（按停站状态自动判断）
+       X(2)  → 鸣笛
+       Y(3)  → 视角循环
+       LB(4) → 紧急制动施加/缓解
+       RB(5) → 切换固定闭塞
+     每帧轮询一次；没有手柄时开销可忽略（navigator.getGamepads 返回长度 0）。 */
+  G.gamepad = { idx: -1, prev: {}, axis: 0 };
+  window.__pollGamepad = (dt) => {
+    if (!navigator.getGamepads) return;
+    const pads = navigator.getGamepads();
+    let pad = null;
+    for (const p of pads) { if (p && p.connected) { pad = p; break; } }
+    G.gamepad.connected = !!pad;
+    if (!pad) return;
+    if (G.mode !== 'driving') return;
+
+    /* 左摇杆 Y：-1 = 推向上（牵引），+1 = 拉向下（制动）。死区 0.12 */
+    const ax = pad.axes[1] != null ? pad.axes[1] : 0;
+    const dead = Math.abs(ax) < 0.12 ? 0 : ax;
+    if (dead !== 0) {
+      /* 摇杆是绝对位置，直接映射手柄位置（-1..1），比增量更直观 */
+      G.lever = clamp(-dead, -1, 1);
+      G.gamepad.axis = G.lever;
+      if (G.ato) { G.ato = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 2600); }
+    } else if (G.gamepad.axis !== 0) {
+      /* 摇杆回中 → 手柄归零。不回零会让列车一直带着上次的牵引/制动。 */
+      G.lever = 0;
+      G.gamepad.axis = 0;
+    }
+
+    /* 按钮：只在按下沿触发一次 */
+    const btn = i => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const edge = (i) => {
+      const now = btn(i);
+      const was = !!G.gamepad.prev[i];
+      G.gamepad.prev[i] = now;
+      return now && !was;
+    };
+    if (edge(0)) toggleATO();
+    if (edge(1)) {
+      if (G.doorsOpen) closeDoors();
+      else openDoors();
+    }
+    if (edge(2)) AUDIO.horn();
+    if (edge(3)) {
+      G.camMode = (G.camMode + 1) % 4;
+      toast(['司机室视角', '追车视角', '自由环绕', '站台视角'][G.camMode], 'info', 1600);
+      updateCamera(0, true);
+    }
+    if (edge(4)) { if (G.eb) releaseEB(); else triggerEB('手柄施加'); }
+    if (edge(5)) toggleSignalMode();
+  };
+
   const transferList = $('transferList');
   if (transferList) transferList.addEventListener('click', e => {
     const b = e.target.closest('button[data-line]');

@@ -263,32 +263,36 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
 function texStationSign(station, line, dirTo) {
   const key = 'sign_' + line.id + '_' + station.zh;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  const W = 1536, H = 384;
+  /* 1536×384 对一块吊挂站名牌是过度采样：它在场景里约 4.4 m 宽，
+     按 1080p 屏幕与 45° 视角折算 768×192 已足够清晰。
+     每站省 4 倍像素 = 27 站累计省下大量 canvas 光栅化时间（P1-1）。 */
+  const W = 768, H = 192;
+  const S = W / 1536;                    // 统一缩放系数，保持排版比例
   const [c, x] = cv2d(W, H);
   x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 26, W, 26);
+  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 13, W, 13);
   // 线路色块（共线段用双色）
-  x.fillStyle = line.color; x.fillRect(0, 0, 210, H);
-  if (line.color2) { x.fillStyle = line.color2; x.fillRect(105, 0, 105, H); }
-  x.fillStyle = '#fff'; x.font = '800 132px "Microsoft YaHei",sans-serif';
-  x.textAlign = 'center'; x.fillText(line.badge, 105, 208);
-  x.font = '600 34px "Microsoft YaHei",sans-serif';
-  x.fillText(line.name, 105, 282);
+  x.fillStyle = line.color; x.fillRect(0, 0, 105, H);
+  if (line.color2) { x.fillStyle = line.color2; x.fillRect(52, 0, 53, H); }
+  x.fillStyle = '#fff'; x.font = `800 ${Math.round(132 * S)}px "Microsoft YaHei",sans-serif`;
+  x.textAlign = 'center'; x.fillText(line.badge, 52, 104);
+  x.font = `600 ${Math.round(34 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillText(line.name, 52, 141);
   // 站名
   x.textAlign = 'left';
   x.fillStyle = '#15181a';
-  x.font = '800 132px "PingFang SC","Microsoft YaHei",sans-serif';
-  x.fillText(station.zh, 260, 190);
+  x.font = `800 ${Math.round(132 * S)}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.fillText(station.zh, 130, 95);
   x.fillStyle = '#586468';
-  x.font = '500 40px "Segoe UI",Helvetica,sans-serif';
-  x.fillText(station.en.toUpperCase(), 264, 258);
+  x.font = `500 ${Math.round(40 * S)}px "Segoe UI",Helvetica,sans-serif`;
+  x.fillText(station.en.toUpperCase(), 132, 129);
   // 方向
-  x.fillStyle = '#2b3236'; x.font = '600 40px "Microsoft YaHei",sans-serif';
+  x.fillStyle = '#2b3236'; x.font = `600 ${Math.round(40 * S)}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'right';
-  x.fillText(`往 ${dirTo}`, W - 70, 150);
-  x.fillStyle = '#7a868b'; x.font = '500 32px "Microsoft YaHei",sans-serif';
-  x.fillText('TO ' + dirTo, W - 70, 210);
-  x.strokeStyle = '#c9cfd1'; x.lineWidth = 4; x.strokeRect(2, 2, W - 4, H - 4);
+  x.fillText(`往 ${dirTo}`, W - 35, 75);
+  x.fillStyle = '#7a868b'; x.font = `500 ${Math.round(32 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillText('TO ' + dirTo, W - 35, 105);
+  x.strokeStyle = '#c9cfd1'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
   const t = toTex(c, 1, 1);
   TEX_CACHE.set(key, t);
   return t;

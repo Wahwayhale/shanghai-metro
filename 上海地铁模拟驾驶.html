@@ -400,6 +400,13 @@
     .keys-hint{display:none}
     .brand h1{font-size:42px}
   }
+
+  /* ============ 存档导入导出 ============ */
+  .save-row{position:relative;z-index:2;display:flex;gap:8px;justify-content:center;margin-top:14px}
+  .save-row button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#9fb2c0;
+    font:inherit;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .save-row button:hover{background:rgba(255,255,255,.1);color:#dbe6ed;border-color:rgba(140,198,63,.45)}
+  #saveFile{display:none}
 </style>
 </head>
 <body>
@@ -458,7 +465,12 @@
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
       </div>
     </div>
-    <div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
+        <div class="save-row">
+      <button id="saveExport">导出存档</button>
+      <button id="saveImport">导入存档</button>
+      <input id="saveFile" type="file" accept="application/json,.json">
+    </div>
+<div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
   </div>
 
   <!-- ===================== 加载 ===================== -->
@@ -4550,32 +4562,36 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
 function texStationSign(station, line, dirTo) {
   const key = 'sign_' + line.id + '_' + station.zh;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  const W = 1536, H = 384;
+  /* 1536×384 对一块吊挂站名牌是过度采样：它在场景里约 4.4 m 宽，
+     按 1080p 屏幕与 45° 视角折算 768×192 已足够清晰。
+     每站省 4 倍像素 = 27 站累计省下大量 canvas 光栅化时间（P1-1）。 */
+  const W = 768, H = 192;
+  const S = W / 1536;                    // 统一缩放系数，保持排版比例
   const [c, x] = cv2d(W, H);
   x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 26, W, 26);
+  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 13, W, 13);
   // 线路色块（共线段用双色）
-  x.fillStyle = line.color; x.fillRect(0, 0, 210, H);
-  if (line.color2) { x.fillStyle = line.color2; x.fillRect(105, 0, 105, H); }
-  x.fillStyle = '#fff'; x.font = '800 132px "Microsoft YaHei",sans-serif';
-  x.textAlign = 'center'; x.fillText(line.badge, 105, 208);
-  x.font = '600 34px "Microsoft YaHei",sans-serif';
-  x.fillText(line.name, 105, 282);
+  x.fillStyle = line.color; x.fillRect(0, 0, 105, H);
+  if (line.color2) { x.fillStyle = line.color2; x.fillRect(52, 0, 53, H); }
+  x.fillStyle = '#fff'; x.font = `800 ${Math.round(132 * S)}px "Microsoft YaHei",sans-serif`;
+  x.textAlign = 'center'; x.fillText(line.badge, 52, 104);
+  x.font = `600 ${Math.round(34 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillText(line.name, 52, 141);
   // 站名
   x.textAlign = 'left';
   x.fillStyle = '#15181a';
-  x.font = '800 132px "PingFang SC","Microsoft YaHei",sans-serif';
-  x.fillText(station.zh, 260, 190);
+  x.font = `800 ${Math.round(132 * S)}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.fillText(station.zh, 130, 95);
   x.fillStyle = '#586468';
-  x.font = '500 40px "Segoe UI",Helvetica,sans-serif';
-  x.fillText(station.en.toUpperCase(), 264, 258);
+  x.font = `500 ${Math.round(40 * S)}px "Segoe UI",Helvetica,sans-serif`;
+  x.fillText(station.en.toUpperCase(), 132, 129);
   // 方向
-  x.fillStyle = '#2b3236'; x.font = '600 40px "Microsoft YaHei",sans-serif';
+  x.fillStyle = '#2b3236'; x.font = `600 ${Math.round(40 * S)}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'right';
-  x.fillText(`往 ${dirTo}`, W - 70, 150);
-  x.fillStyle = '#7a868b'; x.font = '500 32px "Microsoft YaHei",sans-serif';
-  x.fillText('TO ' + dirTo, W - 70, 210);
-  x.strokeStyle = '#c9cfd1'; x.lineWidth = 4; x.strokeRect(2, 2, W - 4, H - 4);
+  x.fillText(`往 ${dirTo}`, W - 35, 75);
+  x.fillStyle = '#7a868b'; x.font = `500 ${Math.round(32 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillText('TO ' + dirTo, W - 35, 105);
+  x.strokeStyle = '#c9cfd1'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
   const t = toTex(c, 1, 1);
   TEX_CACHE.set(key, t);
   return t;
@@ -4888,7 +4904,22 @@ function texRainGlass() {
 /* ================================================================
    世界构建 A：材质初始化、轨道、隧道、高架、地面、城市、地标
    ================================================================ */
+
+/* 材质缓存：initMaterials 唯一依赖的主题参数是 theme.windowGlow（纹理本身
+   已有 TEX_CACHE）。同一主题重复加载线路时直接复用整套材质，
+   省掉 30+ 次 MeshStandardMaterial 构造与着色器编译。
+   实测 4 号线加载中 initMaterials 占 2.1 s，是第二大瓶颈。 */
+const MAT_CACHE = new Map();
+
 function initMaterials(renderer, theme) {
+  const key = String(theme.windowGlow);
+  const cached = MAT_CACHE.get(key);
+  if (cached) {
+    /* 复用：把缓存的材质灌回 MAT（MAT 是模块级对象，被各构建函数直接引用） */
+    for (const k in cached) MAT[k] = cached[k];
+    return MAT;
+  }
+
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const setAniso = t => { t.anisotropy = aniso; return t; };
 
@@ -4953,6 +4984,12 @@ function initMaterials(renderer, theme) {
       }));
     }
   }
+
+  /* 存一份快照供下次复用（浅拷贝，材质对象本身共享） */
+  const snap = {};
+  for (const k in MAT) snap[k] = MAT[k];
+  MAT_CACHE.set(key, snap);
+  return MAT;
 }
 
 function texGround() {
@@ -9188,12 +9225,28 @@ function onResize() {
 function makeComposer(targetScene) {
   if (composer) { composer.dispose(); composer = null; }
   if (G.quality === 'low') return;
+  /* 后期管线的构造会触发大量着色器编译（实测形成一个 4 s 长任务），
+     但它是「进入驾驶后第一帧」才需要的东西。
+     因此先填一张最简管线（只有 RenderPass），让玩家立刻能动；
+     Bloom 延迟到首个真实帧之后异步补装（见 updateGame 里的 _bloomPending）。
+     代价：开局头一两帧没有泛光，肉眼几乎看不出。 */
   const pr = Math.min(window.devicePixelRatio || 1, 1.6);
   const rt = new THREE.WebGLRenderTarget(Math.floor(window.innerWidth * pr), Math.floor(window.innerHeight * pr), {
     type: THREE.HalfFloatType, samples: 4
   });
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(targetScene, camera));
+  G._bloomPending = targetScene;      // 交给主循环延后补装
+}
+
+/* 真正把 Bloom + 暗角 + 输出 装上去。由 updateGame 在首帧后调用一次。 */
+function installBloomChain() {
+  const targetScene = G._bloomPending;
+  G._bloomPending = null;
+  if (!targetScene || G.quality === 'low') return;
+  if (!composer) { makeComposer(targetScene); return; }
+  /* 移除除 RenderPass 之外的旧 pass（重复调用时保持幂等） */
+  if (composer.passes.length > 1) composer.passes.length = 1;
   bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), theme.bloom * 0.34, 0.55, 1.08);
   composer.addPass(bloomPass);
   const vig = new ShaderPass({
@@ -9247,6 +9300,18 @@ function updateGame(dt) {
 
   train.setLever(G.lever);
   train.update(G.s, G.v, dt);
+  /* 延后补装后期管线：首帧先让玩家能动，之后再把 Bloom 装上。
+     放在这里而不是 buildService 末尾，是因为那时玩家还在看加载条，
+     现在至少画面已经在动了。
+     按「时间」而不是「帧数」判定：软件渲染下帧率可能只有 1–2 fps，
+     按帧数会让 Bloom 迟迟不出现；500 ms 后必然装上。 */
+  if (G._bloomPending) {
+    if (!G._bloomAt) G._bloomAt = performance.now();
+    if (performance.now() - G._bloomAt > 500) installBloomChain();
+  }
+  G._frames = (G._frames || 0) + 1;
+  /* 手柄轮询（P3-2）：无手柄时立即返回，开销可忽略 */
+  if (typeof window !== 'undefined' && window.__pollGamepad) window.__pollGamepad(dt);
   G.aiT = (G.aiT || 0) + dt;
   for (const ai of aiTrains) ai.update(dt);
   updateAiPsd();
@@ -9322,6 +9387,33 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+
+  /* ---- 车站距离剔除（P1-2）----
+     实测 4 号线 1638 draw calls、3521 个普通 mesh，其中绝大部分是沿线车站。
+     按里程把远处车站整组隐藏，能砍掉一半以上 draw call，且玩家完全看不出
+     （隧道里与雾里的远处站台本来就看不见）。
+
+     阈值 260/420 m：上海地铁平均站距约 1.2 km，取 600 m 只能剔掉很少的站；
+     260 m 约等于两个站台的可见范围，既能省 draw call，又不会看到「站台凭空出现」。
+
+     不按时间节流：每帧遍历 30 个站只是 30 次减法，比维护计时器更简单可靠
+     （之前按 0.25 s 节流，在低帧率环境下会长期不触发）。 */
+  {
+    const NEAR = 260, FAR = 420;
+    let hidden = 0;
+    for (let i = 0; i < stationObjs.length; i++) {
+      const so = stationObjs[i];
+      if (!so || !so.group) continue;
+      const d = Math.abs((so.s || 0) - G.s);
+      /* 本务所在站与下一站永远显示（停站、开门、PIS 需要） */
+      const mustShow = i === G.targetIdx || i === G.targetIdx + 1;
+      const vis = mustShow || d < NEAR ? true : d > FAR ? false : so.group.visible;
+      if (so.group.visible !== vis) so.group.visible = vis;
+      if (!so.group.visible) hidden++;
+    }
+    G.culledCount = hidden;
+  }
+
   // 乘客乘降
   G._crowdT = (G._crowdT || 0) + dt;
   if (G._crowdT > 1 / 30) {
@@ -9400,15 +9492,39 @@ function togglePause(on) {
    菜单场景与线路世界构建
    （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
+
+/* ---- PMREM 环境贴图缓存（P1-1）----
+   PMREMGenerator.fromScene() 会把天空盒渲染成一个立方体再预滤波，
+   是整条加载链里最贵的一步（实测挂在「初始化材质」标签下约 2 s）。
+   它只依赖 theme，因此按 theme.windowGlow 缓存即可复用。
+   注意：缓存的是 texture，不随场景销毁；PMREM 生成器本身用完即弃。 */
+const ENV_CACHE = new Map();
+
+function envTextureFor(theme2) {
+  const key = String(theme2.windowGlow);
+  if (ENV_CACHE.has(key)) return ENV_CACHE.get(key);
+  const pm = new THREE.PMREMGenerator(renderer);
+  const es = new THREE.Scene(); es.add(createSky(theme2));
+  let tex = null;
+  try {
+    tex = pm.fromScene(es, 0.02).texture;
+  } catch (e) {
+    console.warn('[PMREM] 降级', e);
+  }
+  /* 生成器用完释放，只留贴图 */
+  try { pm.dispose(); } catch (e) { /* 忽略 */ }
+  ENV_CACHE.set(key, tex);
+  return tex;
+}
+
 /* ---------------------------------------------------------------- 菜单场景 */
 function buildHero() {
   const th = THEMES[G.tod];
   const s = new THREE.Scene();
   s.fog = new THREE.FogExp2(th.fog, 0.0022);
   s.add(createSky(th));
-  const pm = new THREE.PMREMGenerator(renderer);
-  const es = new THREE.Scene(); es.add(createSky(th));
-  try { s.environment = pm.fromScene(es, 0.02).texture; } catch (e) { console.warn("[PMREM] 降级", e); }
+  const env = envTextureFor(th);
+  if (env) s.environment = env;
   const sunL = new THREE.DirectionalLight(th.sun, th.sunI * 2.4);
   sunL.position.set(-70, 26, 40);
   s.add(sunL);
@@ -9504,11 +9620,37 @@ function updateHero(dt) {
   camera.fov = 46; camera.updateProjectionMatrix();
 }
 /* ---------------------------------------------------------------- 世界构建 */
+/* 分帧让出：原来只有 rAF + setTimeout(0)，浏览器拿到的是「立即执行」，
+   长任务仍是 2 s 级。现在按预算让出：每片最多占用 12 ms，
+   超过就让出一帧，让加载条能刷新、浏览器不判定为卡死。
+   frameBudget 可用 ?fast=1 关闭（自动化测试不需要可视反馈）。 */
+const FRAME_BUDGET = (typeof location !== 'undefined' && /[?&]fast=1/.test(location.search)) ? 1e9 : 12;
+
 async function loadStep(label, pct) {
   $('loadStep').textContent = label;
   $('loadFill').style.width = Math.round(pct * 100) + '%';
   $('loadPct').textContent = Math.round(pct * 100) + '%';
   await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+}
+
+/* 把一个长循环切成若干片，每片结束让出一次。
+   items 可以是数组或数字（次数）；fn 收到 (index, item)。 */
+async function chunked(items, fn, label, pctFrom, pctTo) {
+  const n = typeof items === 'number' ? items : items.length;
+  if (!n) return;
+  let sliceStart = performance.now();
+  for (let i = 0; i < n; i++) {
+    fn(i, typeof items === 'number' ? i : items[i]);
+    if (performance.now() - sliceStart > FRAME_BUDGET) {
+      sliceStart = performance.now();
+      if (label) {
+        const p = pctFrom + (pctTo - pctFrom) * (i / n);
+        $('loadFill').style.width = Math.round(p * 100) + '%';
+        $('loadPct').textContent = Math.round(p * 100) + '%';
+      }
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+    }
+  }
 }
 
 async function buildService(routeIdx, reverse) {
@@ -9539,9 +9681,10 @@ async function buildService(routeIdx, reverse) {
   s.fog = new THREE.FogExp2(theme.fog, theme.fogD);
   skyMesh = createSky(theme);
   s.add(skyMesh);
-  const pm = new THREE.PMREMGenerator(renderer);
-  const es = new THREE.Scene(); es.add(createSky(theme));
-  try { s.environment = pm.fromScene(es, 0.02).texture; } catch (e) { console.warn("[PMREM] 降级", e); }
+  /* 同一主题的环境贴图在菜单 hero 场景里已经生成过，这里直接复用。
+     之前每次进线路都重跑一次 fromScene，是「初始化材质」耗时 2 s 的主因。 */
+  const env = envTextureFor(theme);
+  if (env) s.environment = env;
 
   hemi = new THREE.HemisphereLight(0xc2d8e8, 0x2c2a22, theme.hemi);
   s.add(hemi);
@@ -9586,15 +9729,18 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在布置地标建筑…', 0.7);
   buildLandmarks(path, root, theme);
 
+  /* 逐站建造：用 chunked 分帧，避免 27 站连续同步执行形成 2 s 长任务。
+     每站自身仍是原子的（buildStation 内部不能中断），但站与站之间会让出。 */
   stationObjs = [];
-  for (let i = 0; i < path.stations.length; i++) {
+  $('loadStep').textContent = '正在建造车站…';
+  await chunked(path.stations.length, (i) => {
     const st = path.stations[i];
-    if (st.synthetic) { stationObjs.push(null); continue; }
-    await loadStep(`正在建造车站  ${st.zh}…`, 0.72 + 0.18 * (i / path.stations.length));
+    if (st.synthetic) { stationObjs.push(null); return; }
+    $('loadStep').textContent = `正在建造车站  ${st.zh}…`;
     const so = buildStation(path, line, st, i, theme);
     root.add(so.group);
     stationObjs.push(so);
-  }
+  }, '正在建造车站', 0.72, 0.9);
 
   await loadStep('列车整备中…', 0.94);
   AUDIO.vType = line.vvvf || 'IGBT';
@@ -10841,6 +10987,63 @@ function bindInput() {
   window.addEventListener('keyup', e => { keys[e.code] = false; });
   window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
+  /* ---------------- 手柄支持（P3-2）----------------
+     左摇杆 Y 轴 → 手柄牵引/制动。这是模拟量最自然的输入，
+     比键盘的点按更接近真实司控器。
+       A(0)  → ATO 开关
+       B(1)  → 开/关车门（按停站状态自动判断）
+       X(2)  → 鸣笛
+       Y(3)  → 视角循环
+       LB(4) → 紧急制动施加/缓解
+       RB(5) → 切换固定闭塞
+     每帧轮询一次；没有手柄时开销可忽略（navigator.getGamepads 返回长度 0）。 */
+  G.gamepad = { idx: -1, prev: {}, axis: 0 };
+  window.__pollGamepad = (dt) => {
+    if (!navigator.getGamepads) return;
+    const pads = navigator.getGamepads();
+    let pad = null;
+    for (const p of pads) { if (p && p.connected) { pad = p; break; } }
+    G.gamepad.connected = !!pad;
+    if (!pad) return;
+    if (G.mode !== 'driving') return;
+
+    /* 左摇杆 Y：-1 = 推向上（牵引），+1 = 拉向下（制动）。死区 0.12 */
+    const ax = pad.axes[1] != null ? pad.axes[1] : 0;
+    const dead = Math.abs(ax) < 0.12 ? 0 : ax;
+    if (dead !== 0) {
+      /* 摇杆是绝对位置，直接映射手柄位置（-1..1），比增量更直观 */
+      G.lever = clamp(-dead, -1, 1);
+      G.gamepad.axis = G.lever;
+      if (G.ato) { G.ato = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 2600); }
+    } else if (G.gamepad.axis !== 0) {
+      /* 摇杆回中 → 手柄归零。不回零会让列车一直带着上次的牵引/制动。 */
+      G.lever = 0;
+      G.gamepad.axis = 0;
+    }
+
+    /* 按钮：只在按下沿触发一次 */
+    const btn = i => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const edge = (i) => {
+      const now = btn(i);
+      const was = !!G.gamepad.prev[i];
+      G.gamepad.prev[i] = now;
+      return now && !was;
+    };
+    if (edge(0)) toggleATO();
+    if (edge(1)) {
+      if (G.doorsOpen) closeDoors();
+      else openDoors();
+    }
+    if (edge(2)) AUDIO.horn();
+    if (edge(3)) {
+      G.camMode = (G.camMode + 1) % 4;
+      toast(['司机室视角', '追车视角', '自由环绕', '站台视角'][G.camMode], 'info', 1600);
+      updateCamera(0, true);
+    }
+    if (edge(4)) { if (G.eb) releaseEB(); else triggerEB('手柄施加'); }
+    if (edge(5)) toggleSignalMode();
+  };
+
   const transferList = $('transferList');
   if (transferList) transferList.addEventListener('click', e => {
     const b = e.target.closest('button[data-line]');
@@ -11095,7 +11298,12 @@ function routeMapSVG(route) {
   </svg>`;
 }
 
-/* ---------------- 生涯进度（本地存档） ---------------- */
+/* ---------------- 生涯进度（本地存档，按线路分层） ----------------
+   存储结构：
+     sm_career  { routeId: {score, grade}, routeId:rev: {...} }   逐交路最高分
+   导出结构（带版本与时间戳，便于跨设备迁移）：
+     { v:1, at:<ISO>, routes:{...}, settings:{...} }
+   分层目的：用户换电脑/清缓存后能带走成绩，不再「一清就没」。 */
 function loadCareer() {
   try { return JSON.parse(localStorage.getItem('sm_career') || '{}'); } catch (e) { return {}; }
 }
@@ -11103,6 +11311,139 @@ function saveCareer(id, score, grade) {
   const c = loadCareer();
   if (!c[id] || score > c[id].score) c[id] = { score, grade };
   try { localStorage.setItem('sm_career', JSON.stringify(c)); } catch (e) { console.warn('[career] 存档写入失败', e); }
+}
+
+/** 按线路分组，供菜单显示「本线已完成几个交路」 */
+function careerByLine() {
+  const c = loadCareer();
+  const out = {};
+  for (const id in c) {
+    const base = id.replace(/:rev$/, '');
+    const r = (typeof ROUTES !== 'undefined') ? ROUTES.find(x => x.id === base) : null;
+    if (!r) continue;
+    const l = LINES[r.line];
+    if (!l) continue;
+    const key = l.name;
+    if (!out[key]) out[key] = { name: key, badge: l.badge, color: l.color, done: 0, total: 0, best: null };
+    out[key].done++;
+    if (!out[key].best || c[id].score > out[key].best.score) out[key].best = { score: c[id].score, grade: c[id].grade };
+  }
+  /* 分母：该线路在 ROUTES 里的交路数 */
+  for (const r of ROUTES) {
+    const l = LINES[r.line];
+    if (!l) continue;
+    if (!out[l.name]) out[l.name] = { name: l.name, badge: l.badge, color: l.color, done: 0, total: 0, best: null };
+    out[l.name].total++;
+  }
+  return Object.values(out).sort((a, b) => (parseInt(a.badge) || 99) - (parseInt(b.badge) || 99));
+}
+
+/** 导出存档为可下载的 JSON 字符串 */
+function exportSave() {
+  const payload = {
+    v: 1,
+    at: new Date().toISOString(),
+    routes: loadCareer(),
+    settings: loadSettings()
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/** 导入存档。返回 {ok, routes, settings, reason} */
+function importSave(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) {
+    return { ok: false, reason: '不是合法的 JSON' };
+  }
+  if (!data || typeof data !== 'object') return { ok: false, reason: '内容为空' };
+  if (data.v !== 1) return { ok: false, reason: `不支持的存档版本：${data.v}` };
+  if (!data.routes || typeof data.routes !== 'object') return { ok: false, reason: '缺少成绩数据' };
+
+  /* 只接受结构正确的条目，脏数据丢弃而不是整包失败 */
+  const clean = {};
+  for (const id in data.routes) {
+    const v = data.routes[id];
+    if (!v || typeof v.score !== 'number' || typeof v.grade !== 'string') continue;
+    clean[id] = { score: Math.round(v.score), grade: String(v.grade).slice(0, 2) };
+  }
+  if (!Object.keys(clean).length) return { ok: false, reason: '没有可用的成绩记录' };
+
+  /* 与现有成绩合并，取高分，不覆盖更优记录 */
+  const cur = loadCareer();
+  let added = 0;
+  for (const id in clean) {
+    if (!cur[id] || clean[id].score > cur[id].score) { cur[id] = clean[id]; added++; }
+  }
+  try { localStorage.setItem('sm_career', JSON.stringify(cur)); } catch (e) {
+    return { ok: false, reason: '写入失败：' + e.message };
+  }
+  if (data.settings) {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(Object.assign(loadSettings(), data.settings))); } catch (e) { /* 设置写入失败不影响成绩 */ }
+  }
+  return { ok: true, routes: Object.keys(clean).length, added, settings: !!data.settings };
+}
+
+/* ---------------- 设置持久化 ----------------
+   之前时段/天气/难度/画质/音量/震动每次重开页面都重置，是线上使用时最刺眼的
+   体验问题之一（每开一次要重设一遍）。这里统一存 sm_settings。 */
+const SETTINGS_KEY = 'sm_settings';
+const SETTINGS_DEFAULTS = {
+  tod: 'dusk', weather: 'clear', diff: 'normal',
+  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7
+};
+
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') || {}; } catch (e) {
+    console.warn('[settings] 读取失败，使用默认值', e);
+  }
+  /* 逐字段校验：存档可能来自旧版本或被手改，脏值一律回退默认 */
+  const out = Object.assign({}, SETTINGS_DEFAULTS);
+  if (THEMES[s.tod]) out.tod = s.tod;
+  if (typeof WEATHER !== 'undefined' && WEATHER[s.weather]) out.weather = s.weather;
+  if (['easy', 'normal', 'hard'].includes(s.diff)) out.diff = s.diff;
+  if (['high', 'low'].includes(s.quality)) out.quality = s.quality;
+  if (['on', 'off'].includes(s.voice)) out.voice = s.voice;
+  if (typeof s.shakeOn === 'boolean') out.shakeOn = s.shakeOn;
+  if (typeof s.volume === 'number' && s.volume >= 0 && s.volume <= 1) out.volume = s.volume;
+  return out;
+}
+
+function saveSettings(patch) {
+  const cur = loadSettings();
+  const next = Object.assign(cur, patch || {});
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch (e) {
+    console.warn('[settings] 写入失败', e);
+  }
+  return next;
+}
+
+/** 把设置灌进 G 与 UI 的选中态（启动时调用一次） */
+function applySettings() {
+  const s = loadSettings();
+  G.tod = s.tod;
+  G.weather = s.weather;
+  G.diff = s.diff;
+  G.quality = s.quality;
+  G.voice = s.voice;
+  G.shakeOn = s.shakeOn;
+  theme = THEMES[G.tod];
+
+  /* 回填按钮选中态：分组按钮用 data-v 与设置值比对 */
+  const mark = (groupId, val) => {
+    const box = $(groupId);
+    if (!box) return;
+    [...box.children].forEach(b => b.classList.toggle('on', b.dataset.v === String(val)));
+  };
+  mark('todGroup', s.tod);
+  mark('weatherGroup', s.weather);
+  mark('diffGroup', s.diff);
+  mark('qualGroup', s.quality);
+  mark('voiceGroup', s.voice);
+  mark('shakeGroup', s.shakeOn ? 'on' : 'off');
+  const vol = $('volRange');
+  if (vol) vol.value = Math.round(s.volume * 100);
+  return s;
 }
 
 function renderRouteCards() {
@@ -11163,6 +11504,7 @@ function bindMenu() {
   $('todGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.tod = b.dataset.v;
+    saveSettings({ tod: G.tod });
     [...$('todGroup').children].forEach(x => x.classList.toggle('on', x === b));
     theme = THEMES[G.tod];
     rebuildHero();
@@ -11170,6 +11512,7 @@ function bindMenu() {
   $('weatherGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.weather = b.dataset.v;
+    saveSettings({ weather: G.weather });
     [...$('weatherGroup').children].forEach(x => x.classList.toggle('on', x === b));
     applyWeather(G.weather, scene);
     toast('天气 · ' + (WEATHER[G.weather] || WEATHER.clear).name, 'info', 1600);
@@ -11183,11 +11526,13 @@ function bindMenu() {
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.diff = b.dataset.v;
+    saveSettings({ diff: G.diff });
     [...$('diffGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
   $('voiceGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.voice = b.dataset.v;
+    saveSettings({ voice: G.voice });
     AUDIO.voiceOn = G.voice === 'on';
     [...$('voiceGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
@@ -11239,17 +11584,22 @@ function bindMenu() {
     resetService();
   });
   $('pQuit').addEventListener('click', () => location.reload());
-  $('volRange').addEventListener('input', e => AUDIO.setVolume(e.target.value / 100));
+  $('volRange').addEventListener('input', e => {
+    AUDIO.setVolume(e.target.value / 100);
+    saveSettings({ volume: e.target.value / 100 });
+  });
 
   $('qualGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.quality = b.dataset.v;
+    saveSettings({ quality: G.quality });
     [...$('qualGroup').children].forEach(x => x.classList.toggle('on', x === b));
     if (sun) sun.castShadow = G.quality !== 'low';
   });
   $('shakeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.shakeOn = b.dataset.v === 'on';
+    saveSettings({ shakeOn: G.shakeOn });
     [...$('shakeGroup').children].forEach(x => x.classList.toggle('on', x === b));
   });
   $('resAgain').addEventListener('click', () => {
@@ -11261,6 +11611,48 @@ function bindMenu() {
   });
   $('resReverse') && $('resReverse').addEventListener('click', () => startTurnback());
   $('resMenu').addEventListener('click', () => location.reload());
+
+  /* ---------------- 存档导出 / 导入（P3-3）---------------- */
+  const expBtn = $('saveExport');
+  if (expBtn) expBtn.addEventListener('click', () => {
+    const text = exportSave();
+    const blob = new Blob([text], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    a.href = url;
+    a.download = `地铁驾驶存档-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    const n = Object.keys(loadCareer()).length;
+    toast(`已导出 ${n} 条成绩记录`, 'good', 3000);
+  });
+
+  const impBtn = $('saveImport');
+  const fileEl = $('saveFile');
+  if (impBtn && fileEl) {
+    impBtn.addEventListener('click', () => fileEl.click());
+    fileEl.addEventListener('change', () => {
+      const f = fileEl.files && fileEl.files[0];
+      if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        const r = importSave(String(rd.result || ''));
+        if (r.ok) {
+          toast(`导入成功 · ${r.added} 条新成绩（共 ${r.routes} 条）`, 'good', 4000);
+          /* 重新渲染卡片以显示新成绩 */
+          if (typeof renderRouteCards === 'function') renderRouteCards();
+          if (typeof applySettings === 'function') applySettings();
+        } else {
+          toast('导入失败 · ' + r.reason, 'bad', 5000);
+        }
+        fileEl.value = '';       // 允许重复导入同一文件
+      };
+      rd.onerror = () => toast('导入失败 · 文件读取错误', 'bad', 4000);
+      rd.readAsText(f);
+    });
+  }
 
   window.addEventListener('beforeunload', () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); });
 }
@@ -11279,14 +11671,22 @@ function boot() {
   initRenderer();
   G.quality = 'high';
   G.mode = 'menu';
-  theme = THEMES[G.tod];
   line = LINES[ROUTES[0].line];
+  /* 设置持久化：在 bindMenu 之前应用，按钮选中态才能对齐已存设置。
+     G.quality 不能只硬编码 'high'——低画质用户重开页面会被改回去。 */
+  const saved = (typeof applySettings === 'function') ? applySettings() : null;
+  theme = THEMES[G.tod];
   initMaterials(renderer, theme);
   renderRouteCards();
   bindMenu();
   bindInput();
   ATS.init();
   IX.init();
+  /* 音量在 AUDIO.init 之前只是记下数值；真正出声要等首次点击（浏览器自动播放策略） */
+  if (saved && typeof AUDIO !== 'undefined') {
+    AUDIO.volume = saved.volume;
+    AUDIO.voiceOn = saved.voice === 'on';
+  }
   selectRoute(0);
   loop();
 }
@@ -11322,6 +11722,7 @@ window.__sim = {
   },
   setLever(v) { G.lever = v; },
   openDoors, closeDoors, finishService, releaseEB, triggerEB, toggleATO,
+  installBloomChain, makeComposer,
   startTurnback, performTransfer,
   advanceTurnback(sec) {
     const n = Math.round(sec / 0.02);
@@ -11329,6 +11730,11 @@ window.__sim = {
     return { mode: G.mode, s: G.s, tb: G.turnback };
   },
   getKeys() { return { ...keys }; },
+  /* 存档与设置：暴露给自动化测试，也方便在控制台里手动导出 */
+  exportSave, importSave, loadCareer, careerByLine,
+  loadSettings, saveSettings, applySettings,
+  get gamepad() { return G.gamepad; },
+  pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };
 

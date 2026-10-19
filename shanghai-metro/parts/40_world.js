@@ -1,7 +1,22 @@
 /* ================================================================
    世界构建 A：材质初始化、轨道、隧道、高架、地面、城市、地标
    ================================================================ */
+
+/* 材质缓存：initMaterials 唯一依赖的主题参数是 theme.windowGlow（纹理本身
+   已有 TEX_CACHE）。同一主题重复加载线路时直接复用整套材质，
+   省掉 30+ 次 MeshStandardMaterial 构造与着色器编译。
+   实测 4 号线加载中 initMaterials 占 2.1 s，是第二大瓶颈。 */
+const MAT_CACHE = new Map();
+
 function initMaterials(renderer, theme) {
+  const key = String(theme.windowGlow);
+  const cached = MAT_CACHE.get(key);
+  if (cached) {
+    /* 复用：把缓存的材质灌回 MAT（MAT 是模块级对象，被各构建函数直接引用） */
+    for (const k in cached) MAT[k] = cached[k];
+    return MAT;
+  }
+
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const setAniso = t => { t.anisotropy = aniso; return t; };
 
@@ -66,6 +81,12 @@ function initMaterials(renderer, theme) {
       }));
     }
   }
+
+  /* 存一份快照供下次复用（浅拷贝，材质对象本身共享） */
+  const snap = {};
+  for (const k in MAT) snap[k] = MAT[k];
+  MAT_CACHE.set(key, snap);
+  return MAT;
 }
 
 function texGround() {

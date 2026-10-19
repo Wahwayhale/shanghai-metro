@@ -400,6 +400,13 @@
     .keys-hint{display:none}
     .brand h1{font-size:42px}
   }
+
+  /* ============ 存档导入导出 ============ */
+  .save-row{position:relative;z-index:2;display:flex;gap:8px;justify-content:center;margin-top:14px}
+  .save-row button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#9fb2c0;
+    font:inherit;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .save-row button:hover{background:rgba(255,255,255,.1);color:#dbe6ed;border-color:rgba(140,198,63,.45)}
+  #saveFile{display:none}
 </style>
 </head>
 <body>
@@ -458,7 +465,12 @@
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
       </div>
     </div>
-    <div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
+        <div class="save-row">
+      <button id="saveExport">导出存档</button>
+      <button id="saveImport">导入存档</button>
+      <input id="saveFile" type="file" accept="application/json,.json">
+    </div>
+<div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
   </div>
 
   <!-- ===================== 加载 ===================== -->

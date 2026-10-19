@@ -1,0 +1,35 @@
+﻿P1 性能 + P3 体验
+
+P1-1 加载优化（长任务 8942ms -> 251ms，降 97%）
+- 原计划两处判断被实测推翻：initMaterials 实测 0ms（已命中缓存）、
+  RoutePath 约 300ms 而非 3.6s。真正瓶颈是长任务而非某个函数
+- 用 PerformanceObserver longtask 定位：加载期 6 个长任务
+  - 2029ms 逐站建造 -> chunked() 分帧，每片 12ms 预算后让出
+  - 2073ms PMREMGenerator.fromScene -> 按 theme 缓存 ENV_CACHE
+  - 4087ms makeComposer 的 Bloom 着色器编译 -> 延迟到进驾驶 500ms 后装
+- 站名牌纹理 1536x384 -> 768x192，微基准 10 次绘制 481ms -> 10ms
+- 不报 X秒->Y秒：软件渲染下同一配置两次测量差 3-4s，长任务时长才是确定性指标
+
+P1-2 draw calls 削减（1985 -> 975，降 51%）
+- 按里程剔除远处车站，三角面 240万 -> 130万，可见车站 27 -> 2
+- 踩坑：第一版按 0.25s 节流，低帧率下 _cullT 永远累积不到阈值。
+  改成每帧直接遍历 30 个站（30 次减法，比计时器可靠）
+
+P3-1 设置持久化
+- sm_settings 存七项，loadSettings 逐字段校验（脏值回退默认）
+- applySettings 在 bindMenu 之前调用，按钮选中态才对得上
+- 修了隐藏 bug：boot 里硬编码 G.quality=high 会覆盖低画质选择
+
+P3-2 手柄支持
+- 左摇杆模拟量 + 6 按钮（A=ATO B=车门 X=鸣笛 Y=视角 LB=EB RB=闭塞）
+- 踩坑：摇杆回中后手柄位置不归零，列车会带着上次的牵引跑。补归零
+
+P3-3 存档分层 + 导出导入
+- careerByLine() 按线路聚合 done/total/best
+- exportSave/importSave 带版本校验，合并只取高分不覆盖更优记录
+- 三种坏数据各自给出可读原因
+
+未做：触摸支持（无移动端目标）、P1-3 首屏分片（单文件是平台最优形态）
+
+验证：npm test 九套全绿（4 node 单测 + 5 浏览器回归），errors []
+截图 shots/after_p1.png 确认驾驶室画面、HUD、车钩仪表正常

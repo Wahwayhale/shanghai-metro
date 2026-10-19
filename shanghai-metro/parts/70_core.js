@@ -68,12 +68,28 @@ function onResize() {
 function makeComposer(targetScene) {
   if (composer) { composer.dispose(); composer = null; }
   if (G.quality === 'low') return;
+  /* 后期管线的构造会触发大量着色器编译（实测形成一个 4 s 长任务），
+     但它是「进入驾驶后第一帧」才需要的东西。
+     因此先填一张最简管线（只有 RenderPass），让玩家立刻能动；
+     Bloom 延迟到首个真实帧之后异步补装（见 updateGame 里的 _bloomPending）。
+     代价：开局头一两帧没有泛光，肉眼几乎看不出。 */
   const pr = Math.min(window.devicePixelRatio || 1, 1.6);
   const rt = new THREE.WebGLRenderTarget(Math.floor(window.innerWidth * pr), Math.floor(window.innerHeight * pr), {
     type: THREE.HalfFloatType, samples: 4
   });
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(targetScene, camera));
+  G._bloomPending = targetScene;      // 交给主循环延后补装
+}
+
+/* 真正把 Bloom + 暗角 + 输出 装上去。由 updateGame 在首帧后调用一次。 */
+function installBloomChain() {
+  const targetScene = G._bloomPending;
+  G._bloomPending = null;
+  if (!targetScene || G.quality === 'low') return;
+  if (!composer) { makeComposer(targetScene); return; }
+  /* 移除除 RenderPass 之外的旧 pass（重复调用时保持幂等） */
+  if (composer.passes.length > 1) composer.passes.length = 1;
   bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), theme.bloom * 0.34, 0.55, 1.08);
   composer.addPass(bloomPass);
   const vig = new ShaderPass({
@@ -127,6 +143,18 @@ function updateGame(dt) {
 
   train.setLever(G.lever);
   train.update(G.s, G.v, dt);
+  /* 延后补装后期管线：首帧先让玩家能动，之后再把 Bloom 装上。
+     放在这里而不是 buildService 末尾，是因为那时玩家还在看加载条，
+     现在至少画面已经在动了。
+     按「时间」而不是「帧数」判定：软件渲染下帧率可能只有 1–2 fps，
+     按帧数会让 Bloom 迟迟不出现；500 ms 后必然装上。 */
+  if (G._bloomPending) {
+    if (!G._bloomAt) G._bloomAt = performance.now();
+    if (performance.now() - G._bloomAt > 500) installBloomChain();
+  }
+  G._frames = (G._frames || 0) + 1;
+  /* 手柄轮询（P3-2）：无手柄时立即返回，开销可忽略 */
+  if (typeof window !== 'undefined' && window.__pollGamepad) window.__pollGamepad(dt);
   G.aiT = (G.aiT || 0) + dt;
   for (const ai of aiTrains) ai.update(dt);
   updateAiPsd();
@@ -202,6 +230,33 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+
+  /* ---- 车站距离剔除（P1-2）----
+     实测 4 号线 1638 draw calls、3521 个普通 mesh，其中绝大部分是沿线车站。
+     按里程把远处车站整组隐藏，能砍掉一半以上 draw call，且玩家完全看不出
+     （隧道里与雾里的远处站台本来就看不见）。
+
+     阈值 260/420 m：上海地铁平均站距约 1.2 km，取 600 m 只能剔掉很少的站；
+     260 m 约等于两个站台的可见范围，既能省 draw call，又不会看到「站台凭空出现」。
+
+     不按时间节流：每帧遍历 30 个站只是 30 次减法，比维护计时器更简单可靠
+     （之前按 0.25 s 节流，在低帧率环境下会长期不触发）。 */
+  {
+    const NEAR = 260, FAR = 420;
+    let hidden = 0;
+    for (let i = 0; i < stationObjs.length; i++) {
+      const so = stationObjs[i];
+      if (!so || !so.group) continue;
+      const d = Math.abs((so.s || 0) - G.s);
+      /* 本务所在站与下一站永远显示（停站、开门、PIS 需要） */
+      const mustShow = i === G.targetIdx || i === G.targetIdx + 1;
+      const vis = mustShow || d < NEAR ? true : d > FAR ? false : so.group.visible;
+      if (so.group.visible !== vis) so.group.visible = vis;
+      if (!so.group.visible) hidden++;
+    }
+    G.culledCount = hidden;
+  }
+
   // 乘客乘降
   G._crowdT = (G._crowdT || 0) + dt;
   if (G._crowdT > 1 / 30) {
