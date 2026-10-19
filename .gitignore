@@ -17,3 +17,9 @@ deploy/
 # 系统噪声
 Thumbs.db
 .DS_Store
+
+# 临时文件
+_msg.txt
+_*.js
+!shanghai-metro/parts/
+
