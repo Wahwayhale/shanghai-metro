@@ -7717,7 +7717,10 @@ class Train {
        左侧相反。否则车门的贴图会左右镜像。 */
     const sideMesh = (sign) => {
       const NX = 24, NY = 12;                 // 沿车长 / 沿高度分段
-      const H = 2.85, Y0 = 1.0;               // 与原来 PlaneGeometry(CAR_LEN, 2.85) 对齐
+      /* 侧壁只做到车顶「赤道」高度 3.72：RoundedBoxGeometry 的车顶在 y=3.72
+         处最宽（x=±CAR_W/2），再往上开始收圆。如果侧壁继续延伸到 3.85，
+         就会在接缝处比车顶更外侧，形成一圈外翻的小檐。 */
+      const H = 2.72, Y0 = 1.0;
       const pos = [], uv = [], idx = [];
       for (let iz = 0; iz <= NX; iz++) {
         const zt = iz / NX;                   // 0..1
@@ -7728,7 +7731,8 @@ class Train {
           const y = Y0 + v * H;
           /* 鼓形：中段最宽，上下各收 0.055 / 0.075 */
           const k = Math.abs(2 * v - 1);
-          const inset = (v < 0.5 ? 0.055 : 0.075) * Math.pow(k, 1.7);
+          /* 上段不再内收（0），让侧壁与车顶赤道相切；下段保留裙边收分 */
+          const inset = v < 0.5 ? 0.055 * Math.pow(k, 1.7) : 0;
           pos.push(sign * (CAR_W / 2 - inset), y, z);
           uv.push(zt, v);
         }
