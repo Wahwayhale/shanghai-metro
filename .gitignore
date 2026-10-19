@@ -13,6 +13,7 @@ shanghai-metro/dist.mjs
 
 # 部署目录：build2.js 自动同步的产物副本，不入库
 deploy/
+deploy-readable/
 
 # 系统噪声
 Thumbs.db

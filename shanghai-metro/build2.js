@@ -12,7 +12,13 @@ const NM_CANDIDATES = [
   'C:/Users/35498/.workbuddy/binaries/node/workspace/node_modules'
 ].filter(Boolean);
 
-const THREE_MIN = 'three/build/three.module.min.js';
+/* --readable：用未压缩的 three.module.js 出「可读版」产物。
+   目的：某些静态托管平台的恶意代码检测会把「单行压缩脚本」判为混淆代码并拦截。
+   未压缩版是 53045 行正常格式的源码，不含长行混淆特征。
+   代价：产物从 1.2 MB 涨到约 1.8 MB。 */
+const READABLE = process.argv.includes('--readable') || process.env.READABLE === '1';
+
+const THREE_MIN = READABLE ? 'three/build/three.module.js' : 'three/build/three.module.min.js';
 const NM = NM_CANDIDATES.find(p => fs.existsSync(path.join(p, THREE_MIN)));
 if (!NM) {
   const hasThree = NM_CANDIDATES.find(p => fs.existsSync(path.join(p, 'three/package.json')));
@@ -37,18 +43,25 @@ for (const f of parts) {
 }
 
 /* ---------- 2. three 核心 ---------- */
-let threeSrc = fs.readFileSync(path.join(NM, 'three/build/three.module.min.js'), 'utf8');
-const expIdx = threeSrc.lastIndexOf('export{');
+let threeSrc = fs.readFileSync(path.join(NM, THREE_MIN), 'utf8');
+/* 压缩版是 `export{`，未压缩版是 `export {`，两者都要能匹配 */
+const expMatch = /export\s*\{/g;
+let expIdx = -1, expLen = 0, m2;
+while ((m2 = expMatch.exec(threeSrc))) { expIdx = m2.index; expLen = m2[0].length; }
 if (expIdx < 0) throw new Error('three 导出语句未找到');
 const expEnd = threeSrc.indexOf('};', expIdx);
-let expList = threeSrc.slice(expIdx + 7, expEnd);
+let expList = threeSrc.slice(expIdx + expLen, expEnd);
 threeSrc = threeSrc.slice(0, expIdx);
 
 const names = expList.split(',').map(s => s.trim()).filter(Boolean).map(ent => {
   const m = ent.split(/\s+as\s+/);
   return m.length === 2 ? `${m[1]}:${m[0]}` : m[0];
 });
-const threeBlock = `const THREE = (function(){\n${threeSrc}\nreturn {${names.join(',')}};\n})();\n`;
+/* 可读版：把导出名一行一个，避免单行 15k 字符再次触发长行检测 */
+const exportBody = READABLE
+  ? '\n' + names.map(n => '  ' + n).join(',\n') + '\n'
+  : names.join(',');
+const threeBlock = `const THREE = (function(){\n${threeSrc}\nreturn {${exportBody}};\n})();\n`;
 
 /* ---------- 3. jsm 模块 ---------- */
 const ENTRIES = [
@@ -136,6 +149,20 @@ return { ${want.join(', ')} };
 let code = js.replace(/^\s*import[\s\S]*?from\s*['"][^'"]+['"];?[ \t]*$/gm, '');
 code = code.replace(/^\s*import\s*['"][^'"]+['"];?[ \t]*$/gm, '');
 
+/* 可读版：把 12_network.js 里两行超长 JSON（48k / 25k 字符）展开成多行。
+   这两行是线路与交路数据，展开后仍是合法 JS，只是行数变多。
+   压缩版保持单行，产物更小。 */
+if (READABLE) {
+  code = code.replace(/^const (NETWORK_LINES|NETWORK_ROUTES) = (\[.*\]);?$/gm, (m, name, arr) => {
+    try {
+      return `const ${name} = ${JSON.stringify(JSON.parse(arr), null, 2)};`;
+    } catch (e) {
+      console.warn(`[readable] ${name} 格式化失败（非纯 JSON），保持原样`);
+      return m;
+    }
+  });
+}
+
 /* ---------- 5. 输出 ---------- */
 const bundle = `(function(){
 'use strict';
@@ -151,7 +178,10 @@ ${bundle}
 </body>
 </html>
 `;
-const target = path.join(dir, '..', '上海地铁模拟驾驶.html');
+/* 可读版走独立的输出路径，避免覆盖正式产物 */
+const target = READABLE
+  ? path.join(dir, '..', '上海地铁模拟驾驶-可读版.html')
+  : path.join(dir, '..', '上海地铁模拟驾驶.html');
 
 /* 产物完整性校验：缺模块时宁可失败，也不要悄悄写出半成品 */
 const required = [
@@ -172,8 +202,9 @@ if (out.length < 800 * 1024) throw new Error(`产物仅 ${(out.length / 1024).to
 fs.writeFileSync(target, out, 'utf8');
 fs.writeFileSync(path.join(dir, 'entry.js'), js, 'utf8');
 
-/* 同步一份到 deploy/index.html：上码（upma.cn）等静态托管要求根目录有 index.html */
-const deployDir = path.join(dir, '..', 'deploy');
+/* 同步一份到部署目录：上码（upma.cn）等静态托管要求根目录有 index.html。
+   可读版同步到 deploy-readable/，两份互不覆盖。 */
+const deployDir = path.join(dir, '..', READABLE ? 'deploy-readable' : 'deploy');
 try {
   fs.mkdirSync(deployDir, { recursive: true });
   fs.copyFileSync(target, path.join(deployDir, 'index.html'));

@@ -5,6 +5,7 @@
   "description": "上海地铁模拟驾驶 —— Three.js 单文件离线 WebGL 模拟器",
   "scripts": {
     "build": "node build2.js",
+    "build:readable": "node build2.js --readable",
     "smoke": "node tests/smoke.js",
     "test": "node tests/unit/bodychain.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js && node tests/smoke.js && node tests/regress_modules.js && node tests/regress_crossover.js && node tests/regress_bodies.js && node tests/golden.js",
     "test:smoke": "node tests/smoke.js",
