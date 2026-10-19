@@ -6927,6 +6927,34 @@ function buildWeather(scene) {
   rainN = N;
 }
 
+/* 天气对材质的影响：只改材质参数，不增加任何 mesh 与 pass，
+   在 CPU 受限（本机实测瓶颈）的情况下几乎零成本，但观感差别明显。 */
+const WEATHER_MAT_BASE = {
+  /* platform/ballast 带 roughnessMap，基准必须保持 1.0，否则会整体变亮泽 */
+  platform: { roughness: 1.0, metalness: 0.06, env: 1.0 },
+  ground: { roughness: 0.95, metalness: 0.02, env: 1.0 },
+  ballast: { roughness: 1.0, metalness: 0.00, env: 1.0 },
+  concrete: { roughness: 0.90, metalness: 0.03, env: 1.0 }
+};
+
+function applyWeatherMaterials() {
+  if (typeof MAT === 'undefined') return;
+  const wet = weatherNow === 'rain' ? 1 : 0;
+  /* 雨天：地面与站台被打湿 → 粗糙度下降、环境反射增强，出现「湿反光」 */
+  const apply = (key, mat, wetK) => {
+    if (!mat) return;
+    const base = WEATHER_MAT_BASE[key];
+    mat.roughness = wet ? Math.max(0.18, base.roughness * (1 - 0.72 * wetK)) : base.roughness;
+    mat.metalness = wet ? base.metalness + 0.10 * wetK : base.metalness;
+    mat.envMapIntensity = wet ? base.env * (1 + 0.8 * wetK) : base.env;
+    mat.needsUpdate = true;
+  };
+  apply('platform', MAT.platform, 1.0);
+  apply('ground', MAT.ground, 1.0);
+  apply('ballast', MAT.ballast, 0.55);      // 道砟吸水性弱，变化小一些
+  apply('concrete', MAT.concrete, 0.35);    // 混凝土墙面只是微湿
+}
+
 function applyWeather(w, scene) {
   weatherNow = WEATHER[w] ? w : 'clear';
   const cfg = WEATHER[weatherNow];
@@ -6935,6 +6963,7 @@ function applyWeather(w, scene) {
     const base = (THEMES[G.tod] || THEMES.dusk).fogD;
     scene.fog.density = base * cfg.fogMul;
   }
+  applyWeatherMaterials();
 }
 
 function updateWeather(dt) {
