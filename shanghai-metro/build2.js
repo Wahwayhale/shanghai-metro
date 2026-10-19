@@ -171,6 +171,17 @@ if (out.length < 800 * 1024) throw new Error(`产物仅 ${(out.length / 1024).to
 
 fs.writeFileSync(target, out, 'utf8');
 fs.writeFileSync(path.join(dir, 'entry.js'), js, 'utf8');
+
+/* 同步一份到 deploy/index.html：上码（upma.cn）等静态托管要求根目录有 index.html */
+const deployDir = path.join(dir, '..', 'deploy');
+try {
+  fs.mkdirSync(deployDir, { recursive: true });
+  fs.copyFileSync(target, path.join(deployDir, 'index.html'));
+  console.log('deploy →', path.join(deployDir, 'index.html'));
+} catch (e) {
+  console.warn('[deploy] 同步失败，不影响构建：', e.message);
+}
+
 console.log('built', target, (out.length / 1024).toFixed(0) + ' KB', '| bundle', (bundle.length / 1024).toFixed(0) + ' KB',
   '| three', (threeSrc.length / 1024).toFixed(0) + 'KB', '| jsm', (jsmSrc.length / 1024).toFixed(0) + 'KB',
   '| three@' + threePkg.version);

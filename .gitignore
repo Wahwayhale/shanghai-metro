@@ -11,6 +11,9 @@ shanghai-metro/entry.js
 shanghai-metro/dist.js
 shanghai-metro/dist.mjs
 
+# 部署目录：build2.js 自动同步的产物副本，不入库
+deploy/
+
 # 系统噪声
 Thumbs.db
 .DS_Store
