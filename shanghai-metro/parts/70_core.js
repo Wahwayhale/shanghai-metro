@@ -34,6 +34,7 @@ const G = {
 let renderer, camera, scene, composer, bloomPass, sun, skyMesh, hemi;
 let path = null, line = null, routeDef = null, theme = THEMES.dusk;
 let train = null, aiTrains = [], stationObjs = [], worldGroup = null, stationLights = [];
+let tunnelLights = [];   // 隧道照明跟随灯（建模提升）
 const SL_OFF = [[-8.2, 4.6, -40], [8.2, 4.6, -40], [-8.2, 4.6, 40], [8.2, 4.6, 40]];
 let hero = null;
 let clock = new THREE.Clock();
@@ -316,6 +317,26 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+
+  /* ---- 隧道照明跟随（建模提升）----
+     3 盏灯放在玩家前/中/后各一盏（间隔 22 m，与 buildTunnels 的灯具间距一致），
+     沿隧道拱顶布置。出隧道后立刻熄灭，不占无谓预算。
+     位置按里程取 frameAt，所以弯道里灯也会沿着洞顶走。 */
+  if (tunnelLights.length) {
+    const inTunnel = path.frameAt(G.s).pos.y < -2;
+    for (let i = 0; i < tunnelLights.length; i++) {
+      const L = tunnelLights[i];
+      if (!inTunnel) { L.intensity = 0; continue; }
+      const off = (i - 1) * 22;                 // 前 / 当前位置 / 后
+      const ss = clamp(G.s + off, 0, path.length - 1);
+      const f = path.frameAt(ss);
+      L.position.copy(f.pos).addScaledVector(f.up, TUNNEL_R - 0.7);
+      /* three.js r155+ 的 PointLight 用物理单位（坎德拉），衰减为 1/d²。
+         站台补光用的是 620，这里按洞顶到洞壁约 6–8 m 换算，
+         取 420 才能让洞壁出现明显亮斑。距离越远越暗，避免照亮洞口外的空气。 */
+      L.intensity = 420 * clamp(1 - Math.abs(off) / 60, 0, 1);
+    }
+  }
 
   /* ---- 车站距离剔除（P1-2）----
      实测 4 号线 1638 draw calls、3521 个普通 mesh，其中绝大部分是沿线车站。

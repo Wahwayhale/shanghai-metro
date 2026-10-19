@@ -217,6 +217,17 @@ async function buildService(routeIdx, reverse) {
     stationLights.push(L);
   }
 
+  /* 隧道照明：3 盏跟随玩家的 PointLight。
+     原来隧道里 0 个真实光源，只有自发光灯条 —— 自发光不会照亮周围，
+     所以洞壁永远是均匀暗色，没有「灯下亮斑、灯间暗区」。
+     只点亮玩家附近 3 盏（间距 22 m 与灯具布置一致），远处不占预算。 */
+  tunnelLights = [];
+  for (let i = 0; i < 3; i++) {
+    const L = new THREE.PointLight(0xffe3b8, 0, 34, 2);
+    s.add(L);
+    tunnelLights.push(L);
+  }
+
   const root = new THREE.Group();
   worldGroup = root;
   s.add(root);
