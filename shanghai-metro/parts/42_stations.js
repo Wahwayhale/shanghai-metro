@@ -311,6 +311,22 @@ function buildStation(route, line, st, idx, theme) {
     }
     lights.instanceMatrix.needsUpdate = true; lights.frustumCulled = false;
     g.add(lights);
+
+    /* 吊顶格栅：真实地铁站顶棚是悬挂式格栅 + 嵌入式灯带，
+       原来只有一片素板加两条灯，抬头看是平的。
+       这里沿站台长度方向每 1.2 m 加一根横向格栅条（沿站台宽度），
+       用实例化，约 120 根，开销可以忽略。 */
+    const grilleN = 118;
+    const grille = new THREE.InstancedMesh(UNIT_BOX, MAT.darkMetal, grilleN);
+    const dg = new THREE.Object3D();
+    for (let i = 0; i < grilleN; i++) {
+      const z = -70 + i * 1.2;
+      dg.position.set(0, H - 0.36, z);
+      dg.scale.set(PLAT_HALF * 1.9, 0.07, 0.10);
+      dg.updateMatrix(); grille.setMatrixAt(i, dg.matrix);
+    }
+    grille.instanceMatrix.needsUpdate = true; grille.frustumCulled = false;
+    g.add(grille);
   } else {
     /* 高架：雨棚覆盖岛式站台 + 两侧轨道 */
     const roofW = 20.0;

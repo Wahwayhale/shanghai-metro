@@ -212,7 +212,9 @@ async function buildService(routeIdx, reverse) {
 
   stationLights = [];
   for (let i = 0; i < SL_OFF.length; i++) {
-    const L = new THREE.PointLight(0xffeccf, 0, 85, 2);
+    /* 站台用暖白，与隧道的中性冷白形成色温对比 —— 
+       原来站台灯和隧道灯几乎同色（都是暖黄），进出隧道没有光线氛围的切换感。 */
+    const L = new THREE.PointLight(0xffe6c4, 0, 85, 2);
     s.add(L);
     stationLights.push(L);
   }
@@ -223,7 +225,8 @@ async function buildService(routeIdx, reverse) {
      只点亮玩家附近 3 盏（间距 22 m 与灯具布置一致），远处不占预算。 */
   tunnelLights = [];
   for (let i = 0; i < 3; i++) {
-    const L = new THREE.PointLight(0xffe3b8, 0, 34, 2);
+    /* 隧道用中性偏冷白：与站台暖白拉开色温差，进出隧道时氛围能明显切换 */
+    const L = new THREE.PointLight(0xd6e2f5, 0, 34, 2);
     s.add(L);
     tunnelLights.push(L);
   }
