@@ -25,10 +25,28 @@ function initMaterials(renderer, theme) {
     color: 0xffffff, side: THREE.DoubleSide, emissive: new THREE.Color('#2b2b29'), emissiveIntensity: 0.6
   });
   MAT.tunnel.map.repeat.set(1, 1);
+  /* 隧道壁法线：低频起伏（衬砌不平整）+ 横向拼缝（管片接缝） */
+  MAT.tunnel.normalMap = setAniso(texNormalMap('n_tunnel', 256, 256, (x, y) => {
+    let h = fbm2(x, y, 11, 3) * 0.8;
+    /* 每 64 px 一条管片缝，缝处高度下陷 */
+    const seam = Math.abs((y % 64) - 0.5);
+    if (seam < 1.2) h -= 0.5;
+    return h;
+  }, 3.2));
+  MAT.tunnel.normalScale = new THREE.Vector2(1.1, 1.1);
+
   MAT.stationWall = new THREE.MeshStandardMaterial({
     map: setAniso(texConcrete('#93979a', 0.06, 0)), roughness: 0.82, metalness: 0.04,
     color: 0xffffff, side: THREE.DoubleSide, emissive: new THREE.Color('#45453d'), emissiveIntensity: 0.5
   });
+  /* 站台墙：细密抹灰起伏 + 竖向板材缝 */
+  MAT.stationWall.normalMap = setAniso(texNormalMap('n_stwall', 256, 256, (x, y) => {
+    let h = fbm2(x, y, 23, 3) * 0.6;
+    if (Math.abs((x % 128) - 0.5) < 1.0) h -= 0.35;
+    return h;
+  }, 2.4));
+  MAT.stationWall.normalScale = new THREE.Vector2(0.8, 0.8);
+
   MAT.concrete = new THREE.MeshStandardMaterial({
     map: setAniso(texConcrete('#77797b', 0.08, 0)), roughness: 0.9, metalness: 0.03,
     side: THREE.DoubleSide, emissive: new THREE.Color('#111'), emissiveIntensity: 0.35
@@ -42,10 +60,25 @@ function initMaterials(renderer, theme) {
     emissive: new THREE.Color('#101010'), emissiveIntensity: 0.4
   });
   MAT.ballast.map.repeat.set(1, 1);
+  /* 道砟：碎石颗粒。用高频哈希做颗粒感，凹凸尺度比隧道壁细得多 */
+  MAT.ballast.normalMap = setAniso(texNormalMap('n_ballast', 128, 128, (x, y) => {
+    return hash2(x >> 1, y >> 1, 7) * 0.7 + fbm2(x, y, 5, 2) * 0.3;
+  }, 4.5));
+  MAT.ballast.normalScale = new THREE.Vector2(1.4, 1.4);
+
   MAT.rail = new THREE.MeshStandardMaterial({ color: 0xd7dade, roughness: 0.28, metalness: 0.92, envMapIntensity: 1.2 });
   MAT.sleeper = new THREE.MeshStandardMaterial({ color: 0x9a9d9c, roughness: 0.9, metalness: 0.05 });
   MAT.platform = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.72, metalness: 0.06, color: 0xd7dade, emissive: new THREE.Color('#2e2e2a'), emissiveIntensity: 0.45 });
   MAT.platform.map.repeat.set(2, 24);
+  /* 站台地面：地砖网格 + 轻微磨损。砖缝用 32px 周期，与基础色贴图对齐 */
+  MAT.platform.normalMap = setAniso(texNormalMap('n_platform', 256, 256, (x, y) => {
+    const gx = Math.abs((x % 32) - 0.5), gy = Math.abs((y % 32) - 0.5);
+    let h = 0.6;
+    if (gx < 1.0 || gy < 1.0) h -= 0.45;      // 砖缝
+    h += fbm2(x, y, 41, 2) * 0.25;            // 磨损起伏
+    return h;
+  }, 2.2));
+  MAT.platform.normalScale = new THREE.Vector2(0.9, 0.9);
   MAT.tactile = new THREE.MeshStandardMaterial({ map: setAniso(texTactile()), roughness: 0.8, metalness: 0.02, color: 0xffffff });
   MAT.tactile.map.repeat.set(2, 90);
   MAT.safety = new THREE.MeshStandardMaterial({ color: 0xe8b93a, roughness: 0.7, metalness: 0.05 });

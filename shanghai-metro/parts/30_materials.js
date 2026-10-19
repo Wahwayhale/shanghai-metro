@@ -18,6 +18,86 @@ function toTex(canvas, rx = 1, ry = 1, srgb = true) {
   t.needsUpdate = true;
   return t;
 }
+
+/* ---------------- 程序化法线贴图（建模提升） ----------------
+   本项目所有材质原本只有基础色 + 常数粗糙度，normalMap / bumpMap 全为 0，
+   这就是画面「像塑料」的根源——表面没有任何微观起伏。
+
+   这里的做法：给一个高度函数 h(x,y)，用中心差分算梯度，直接写出法线贴图的
+   RGB。采样时用 RepeatWrapping，与基础色贴图共用 UV（three.js 会按材质里的
+   map 的 repeat 自动处理，所以只要两张贴图的 repeat 一致即可对齐）。
+
+   注意：不生成切线属性。three.js 在没有 tangent 时会用屏幕空间导数推 TBN，
+   对这种大平面接缝类几何完全够用，省掉每顶点 4 个 float。 */
+function texNormalMap(key, W, H, heightFn, strength) {
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  const s = strength == null ? 2.0 : strength;
+
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      /* 环绕采样，保证贴图平铺时四边无缝 */
+      const hl = heightFn((x - 1 + W) % W, y);
+      const hr = heightFn((x + 1) % W, y);
+      const hu = heightFn(x, (y - 1 + H) % H);
+      const hd = heightFn(x, (y + 1) % H);
+      let nx = (hl - hr) * s;
+      let ny = (hu - hd) * s;
+      let nz = 1;
+      const inv = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+      const i = (y * W + x) * 4;
+      d[i] = (nx * inv * 0.5 + 0.5) * 255;
+      d[i + 1] = (ny * inv * 0.5 + 0.5) * 255;
+      d[i + 2] = (nz * inv * 0.5 + 0.5) * 255;
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  /* 法线贴图是数据贴图，不能当 sRGB 颜色处理 */
+  tex.colorSpace = THREE.NoColorSpace;
+  TEX_CACHE.set(key, tex);
+  return tex;
+}
+
+/* 确定性哈希噪声：同一个坐标永远得到同一个值，便于平铺 */
+function hash2(x, y, seed) {
+  let h = x * 374761393 + y * 668265263 + (seed || 0) * 1442695040;
+  h = (h ^ (h >> 13)) * 1274126177;
+  h = h ^ (h >> 16);
+  return ((h >>> 0) % 100000) / 100000;
+}
+
+/* 平滑值噪声：在格点上插值，得到连续的起伏场 */
+function valueNoise(x, y, cells, seed) {
+  const fx = x / 256 * cells, fy = y / 256 * cells;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const tx = fx - x0, ty = fy - y0;
+  const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+  const a = hash2(x0, y0, seed), b = hash2(x0 + 1, y0, seed);
+  const c2 = hash2(x0, y0 + 1, seed), d2 = hash2(x0 + 1, y0 + 1, seed);
+  const top = a + (b - a) * sx;
+  const bot = c2 + (d2 - c2) * sx;
+  return top + (bot - top) * sy;
+}
+
+/* 多倍频噪声，模拟混凝土/道砟的粗糙表面 */
+function fbm2(x, y, seed, octaves) {
+  let v = 0, amp = 0.5, cells = 6;
+  const n = octaves || 3;
+  for (let i = 0; i < n; i++) {
+    v += valueNoise(x, y, cells, seed + i * 17) * amp;
+    amp *= 0.5; cells *= 2;
+  }
+  return v;
+}
+
 function noiseFill(ctx, w, h, n, col, aMin, aMax) {
   ctx.save();
   for (let i = 0; i < n; i++) {
