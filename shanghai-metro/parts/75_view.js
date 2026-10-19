@@ -119,6 +119,10 @@ function bindInput() {
         e.preventDefault();
         $('hud').classList.toggle('on');
       }
+      if (e.code === 'F3') {
+        e.preventDefault();
+        togglePerfBadge();
+      }
       if (e.code === 'Escape') togglePause(true);
     } else if (G.mode === 'paused') {
       if (e.code === 'Escape') togglePause(false);

@@ -39,11 +39,57 @@ let hero = null;
 let clock = new THREE.Clock();
 let matInited = false;
 /* ---------------------------------------------------------------- 初始化 */
+/* ---------------- 渲染分辨率与像素预算 ----------------
+   性能目标硬件：780M 核显 + 2K 屏（2560×1440），要求 60 fps。
+   核显的瓶颈是填充率与内存带宽，不是顶点。所以像素数必须显式控制。
+
+   关键换算（2K 屏）：
+     pixelRatio 1.80 → 4608×2592 = 11.9 MP（当前默认，是 1080p 的 5.8 倍）
+     pixelRatio 1.00 → 2560×1440 =  3.7 MP
+     pixelRatio 0.75 → 1920×1080 =  2.1 MP  ← 「1080p 画质」的等价点
+
+   因此把画质档位改为「目标像素预算」，而不是 pixelRatio 倍数：
+   低 = 1.4 MP（约 720p）、中 = 2.1 MP（1080p）、高 = 3.7 MP（原生 2K）。
+   这样同一档在不同屏幕上表现一致，换屏不用重调。 */
+const PIXEL_BUDGET = {
+  low: 1.4e6,
+  medium: 2.1e6,
+  high: 3.7e6
+};
+
+/** 按目标像素预算算 pixelRatio。
+ *  three.js 里 setPixelRatio(pr) 的效果是「绘制缓冲 = CSS 尺寸 × pr」，
+ *  所以要达到目标像素数，pr = sqrt(预算 / CSS 像素数)。
+ *  不做超采样（上限 1.0 之外没有收益），下限 0.5 防止过度模糊。 */
+function pixelRatioForBudget(budget) {
+  const cssPx = window.innerWidth * window.innerHeight;
+  if (cssPx <= 0) return 1;
+  const raw = Math.sqrt(budget / cssPx);
+  return clamp(raw, 0.5, 1.0);
+}
+
+function applyRenderScale() {
+  if (!renderer) return;
+  const budget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
+  const pr = pixelRatioForBudget(budget);
+  renderer.setPixelRatio(pr);
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  G.renderPR = pr;
+  const w = Math.floor(window.innerWidth * pr);
+  const h = Math.floor(window.innerHeight * pr);
+  G.renderPx = w * h;
+  if (composer && composer.setSize) {
+    composer.setSize(window.innerWidth, window.innerHeight);
+    if (bloomPass && bloomPass.resolution) bloomPass.resolution.set(w, h);
+  }
+}
+
 function initRenderer() {
   const canvas = $('scene');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  /* antialias 关掉：780M 上 4x MSAA 的填充率代价过高，
+     而本项目大量是硬边几何与自发光，锯齿可接受。
+     抗锯齿改由渲染分辨率 + 后处理的轻微模糊承担。 */
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -51,6 +97,9 @@ function initRenderer() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.06, 5200);
   camera.position.set(0, 3, 10);
+  /* 初始按「中」档（1080p 画质）定像素预算，之后 applySettings 会按用户档位覆盖 */
+  G.quality = 'medium';
+  applyRenderScale();
   window.addEventListener('resize', onResize);
 }
 
@@ -58,11 +107,7 @@ function onResize() {
   if (!renderer) return;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  if (composer) {
-    composer.setSize(window.innerWidth, window.innerHeight);
-    if (bloomPass) bloomPass.resolution.set(window.innerWidth, window.innerHeight);
-  }
+  applyRenderScale();
 }
 
 function makeComposer(targetScene) {
@@ -72,10 +117,19 @@ function makeComposer(targetScene) {
      但它是「进入驾驶后第一帧」才需要的东西。
      因此先填一张最简管线（只有 RenderPass），让玩家立刻能动；
      Bloom 延迟到首个真实帧之后异步补装（见 updateGame 里的 _bloomPending）。
-     代价：开局头一两帧没有泛光，肉眼几乎看不出。 */
-  const pr = Math.min(window.devicePixelRatio || 1, 1.6);
-  const rt = new THREE.WebGLRenderTarget(Math.floor(window.innerWidth * pr), Math.floor(window.innerHeight * pr), {
-    type: THREE.HalfFloatType, samples: 4
+     代价：开局头一两帧没有泛光，肉眼几乎看不出。
+
+     RT 必须是 HalfFloat：实测换成 UnsignedByte 会让自发光材质（站台灯带
+     color 1.6/2.4/3.2）在 ToneMapping 之前就被裁到 1.0，画面整体过曝发白。
+     HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
+
+     samples: 0 —— 核显上 4x MSAA 的填充率代价过高，而它只是「每像素 ×4」。
+     光靠关掉 MSAA 就把这块带宽从 32 B/px 降到 8 B/px（4 倍），已经够了。 */
+  const pr = G.renderPR || 1;
+  const w = Math.max(1, Math.floor(window.innerWidth * pr));
+  const h = Math.max(1, Math.floor(window.innerHeight * pr));
+  const rt = new THREE.WebGLRenderTarget(w, h, {
+    type: THREE.HalfFloatType, samples: 0
   });
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(targetScene, camera));
@@ -90,8 +144,24 @@ function installBloomChain() {
   if (!composer) { makeComposer(targetScene); return; }
   /* 移除除 RenderPass 之外的旧 pass（重复调用时保持幂等） */
   if (composer.passes.length > 1) composer.passes.length = 1;
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), theme.bloom * 0.34, 0.55, 1.08);
-  composer.addPass(bloomPass);
+  /* Bloom 只在「中/高」档启用。
+     中档把 bloom 分辨率再降一半：UnrealBloomPass 内部 5 级 mip 都是
+     从这张基准分辨率继续减半，所以基准减半等于整条链路的像素成本降到 1/4，
+     而泛光本身是低频效果，减半肉眼几乎看不出。
+     低档直接跳过整个 composer。 */
+  if (G.quality === 'medium' || G.quality === 'high') {
+    const pr = G.renderPR || 1;
+    const w = Math.max(1, Math.floor(window.innerWidth * pr));
+    const h = Math.max(1, Math.floor(window.innerHeight * pr));
+    const bScale = G.quality === 'medium' ? 0.5 : 1.0;
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(Math.floor(w * bScale), Math.floor(h * bScale)),
+      theme.bloom * 0.34, 0.55, 1.08
+    );
+    composer.addPass(bloomPass);
+  } else {
+    bloomPass = null;
+  }
   const vig = new ShaderPass({
     uniforms: { tDiffuse: { value: null }, strength: { value: 0.55 }, time: { value: 0 } },
     vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
@@ -101,6 +171,22 @@ function installBloomChain() {
   });
   composer.addPass(vig);
   composer.addPass(new OutputPass());
+}
+
+/* 切换画质档位后重建后期链路。
+   低档要彻底拆掉 composer（走 renderer.render 直出），
+   中/高档重新建 RT 并把 bloom 挂上。 */
+function rebuildPostChain() {
+  const targetScene = (G.mode === 'menu' && hero) ? hero.scene : scene;
+  if (!targetScene) return;
+  if (G.quality === 'low') {
+    if (composer) { composer.dispose(); composer = null; }
+    bloomPass = null;
+    G._bloomPending = null;
+    return;
+  }
+  makeComposer(targetScene);
+  installBloomChain();
 }
 /* ---------------------------------------------------------------- 主循环 */
 function updateGame(dt) {
@@ -291,9 +377,87 @@ function updateGame(dt) {
   if (G._pisT > 1.0) { G._pisT = 0; updatePisDisplays(); }
 }
 let lastFrame = 0;
+/* ---------------- 帧率探针与自适应降档 ----------------
+   目标硬件 780M + 2K 屏要求 60 fps（16.67 ms/帧）。
+   没有真实帧率数据时，所有画质取舍都是盲猜，所以这个必须做。
+
+   实现要点：
+   - 用性能计数器环形缓冲统计最近 N 帧的平均帧时间，避免瞬时抖动误判
+   - 只在 driving 模式下计入（菜单/加载的帧意义不同）
+   - 自适应只降不升：自动升档容易在临界点来回抖，体验更差 */
+const FPS_SAMPLE = 60;                 // 取 60 帧窗口
+const FPS_TARGET_MS = 1000 / 60;       // 60 fps
+
+function sampleFrame(dt) {
+  if (G.mode !== 'driving') { G._fpsBuf = null; return; }
+  if (!G._fpsBuf) { G._fpsBuf = []; G._fpsSum = 0; }
+  const ms = dt * 1000;
+  G._fpsBuf.push(ms);
+  G._fpsSum += ms;
+  if (G._fpsBuf.length > FPS_SAMPLE) G._fpsSum -= G._fpsBuf.shift();
+  /* 12 帧就开始估算：低帧率设备（或软件渲染）等不到 60 帧，
+     那样探针会永远显示 0，起不到诊断作用。 */
+  const MIN_SAMPLE = 12;
+  if (G._fpsBuf.length < MIN_SAMPLE) { updatePerfBadge(); return; }
+  const avg = G._fpsSum / G._fpsBuf.length;
+  G.frameMs = avg;
+  G.fps = 1000 / avg;
+  G.fpsProvisional = G._fpsBuf.length < FPS_SAMPLE;
+  updatePerfBadge();
+  /* 自适应：连续 2 个窗口超过 60fps 预算 1.3 倍才降档，避免误判 */
+  if (G.autoQuality !== false && avg > FPS_TARGET_MS * 1.3) {
+    G._slowStreak = (G._slowStreak || 0) + 1;
+    if (G._slowStreak >= 2) {
+      G._slowStreak = 0;
+      const order = ['high', 'medium', 'low'];
+      const i = order.indexOf(G.quality);
+      if (i >= 0 && i < order.length - 1) {
+        G.quality = order[i + 1];
+        saveSettings({ quality: G.quality });
+        if (typeof applyRenderScale === 'function') applyRenderScale();
+        if (typeof rebuildPostChain === 'function') rebuildPostChain();
+        const names = { high: '精细', medium: '标准', low: '流畅' };
+        toast(`帧率偏低（${G.fps.toFixed(0)} fps）· 已自动降到「${names[G.quality]}」`, 'warn', 4200);
+      }
+    }
+  } else {
+    G._slowStreak = 0;
+  }
+}
+
+/* 性能徽章：F3 开关。显示 fps / 帧时间 / 渲染分辨率 / 档位，
+   让玩家（和我）能直接判断当前设备是否达到 60 fps 目标。 */
+function updatePerfBadge() {
+  const el = $('perfBadge');
+  if (!el || !el.classList.contains('on')) return;
+  const n = G._fpsBuf ? G._fpsBuf.length : 0;
+  const w = Math.round(window.innerWidth * (G.renderPR || 1));
+  const h = Math.round(window.innerHeight * (G.renderPR || 1));
+  const names = { high: '精细', medium: '标准', low: '流畅' };
+  const res = `${w}×${h}  ${names[G.quality] || G.quality}`;
+  if (!G.fps || n < 12) {
+    el.innerHTML = `<b style="color:#7f939f">采样中…</b>  ${n}/12\n${res}`;
+    return;
+  }
+  const fps = G.fps;
+  const ms = G.frameMs;
+  const color = fps >= 55 ? '#c9f07a' : fps >= 40 ? '#ffb020' : '#ff6b5a';
+  const mark = G.fpsProvisional ? '~' : '';
+  el.innerHTML =
+    `<b style="color:${color}">${mark}${fps.toFixed(0)} fps</b>  ${ms.toFixed(1)} ms\n${res}`;
+}
+
+function togglePerfBadge() {
+  const el = $('perfBadge');
+  if (!el) return;
+  el.classList.toggle('on');
+  if (el.classList.contains('on')) updatePerfBadge();
+}
+
 function loop() {
   requestAnimationFrame(loop);
   const dt = Math.min(0.06, clock.getDelta());
+  sampleFrame(dt);
   if (G.mode === 'menu') {
     if (hero) {
       updateHero(dt);

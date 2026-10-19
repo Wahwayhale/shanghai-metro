@@ -132,7 +132,7 @@ function importSave(text) {
 const SETTINGS_KEY = 'sm_settings';
 const SETTINGS_DEFAULTS = {
   tod: 'dusk', weather: 'clear', diff: 'normal',
-  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7
+  quality: 'medium', voice: 'on', shakeOn: true, volume: 0.7
 };
 
 function loadSettings() {
@@ -145,7 +145,7 @@ function loadSettings() {
   if (THEMES[s.tod]) out.tod = s.tod;
   if (typeof WEATHER !== 'undefined' && WEATHER[s.weather]) out.weather = s.weather;
   if (['easy', 'normal', 'hard'].includes(s.diff)) out.diff = s.diff;
-  if (['high', 'low'].includes(s.quality)) out.quality = s.quality;
+  if (['high', 'medium', 'low'].includes(s.quality)) out.quality = s.quality;
   if (['on', 'off'].includes(s.voice)) out.voice = s.voice;
   if (typeof s.shakeOn === 'boolean') out.shakeOn = s.shakeOn;
   if (typeof s.volume === 'number' && s.volume >= 0 && s.volume <= 1) out.volume = s.volume;
@@ -338,6 +338,9 @@ function bindMenu() {
     saveSettings({ quality: G.quality });
     [...$('qualGroup').children].forEach(x => x.classList.toggle('on', x === b));
     if (sun) sun.castShadow = G.quality !== 'low';
+    /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
+    if (typeof applyRenderScale === 'function') applyRenderScale();
+    if (typeof rebuildPostChain === 'function') rebuildPostChain();
   });
   $('shakeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -412,7 +415,7 @@ function boot() {
     return;
   }
   initRenderer();
-  G.quality = 'high';
+  G.quality = 'medium';
   G.mode = 'menu';
   line = LINES[ROUTES[0].line];
   /* 设置持久化：在 bindMenu 之前应用，按钮选中态才能对齐已存设置。
@@ -447,6 +450,7 @@ window.__sim = {
   G,
   get path() { return path; }, get train() { return train; }, get stationObjs() { return stationObjs; },
   get renderer() { return renderer; }, get scene() { return scene; }, get hero() { return hero; },
+  get composer() { return composer; }, get bloomPass() { return bloomPass; },
   get line() { return line; }, get routeDef() { return routeDef; }, get camera() { return camera; },
   get aiTrains() { return aiTrains; },
   get audio() { return AUDIO; },
@@ -477,6 +481,11 @@ window.__sim = {
   exportSave, importSave, loadCareer, careerByLine,
   loadSettings, saveSettings, applySettings,
   get gamepad() { return G.gamepad; },
+  get fps() { return G.fps || 0; },
+  get frameMs() { return G.frameMs || 0; },
+  get renderPx() { return G.renderPx || 0; },
+  get renderPR() { return G.renderPR || 1; },
+  applyRenderScale, rebuildPostChain,
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };

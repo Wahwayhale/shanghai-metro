@@ -407,11 +407,20 @@
     font:inherit;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.15s}
   .save-row button:hover{background:rgba(255,255,255,.1);color:#dbe6ed;border-color:rgba(140,198,63,.45)}
   #saveFile{display:none}
+
+  /* ============ 性能探针 ============ */
+  #perfBadge{position:absolute;right:14px;bottom:58px;z-index:45;font:600 11px/1.5 ui-monospace,monospace;
+    color:#7f939f;background:rgba(8,14,18,.72);border:1px solid rgba(255,255,255,.10);
+    border-radius:6px;padding:5px 9px;pointer-events:none;letter-spacing:.02em;display:none;white-space:pre}
+  #perfBadge.on{display:block}
+  #perfBadge b{color:#c9f07a;font-weight:700}
 </style>
 </head>
 <body>
 <div id="app">
   <canvas id="scene"></canvas>
+<div id="perfBadge">—</div>
+
   <div id="reticle"></div>
 
   <!-- ===================== 主菜单 ===================== -->
@@ -521,7 +530,7 @@
     </div>
 
     <div class="keys-hint">
-      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 隔离车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span>
+      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 隔离车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span>
     </div>
     <div class="exam-panel" id="examPanel"></div>
     <div class="toast-area" id="toastArea"></div>
@@ -600,7 +609,7 @@
       <div class="pause-grid">
         <div class="vol"><span>音量</span><input id="volRange" type="range" min="0" max="100" value="65"></div>
         <div class="vol"><span>画质</span>
-          <div class="seg" id="qualGroup"><button data-v="low">流畅</button><button data-v="high" class="on">精细</button></div>
+          <div class="seg" id="qualGroup"><button data-v="low">流畅</button><button data-v="medium" class="on">标准</button><button data-v="high">精细</button></div>
         </div>
         <div class="vol"><span>司机室震动</span>
           <div class="seg" id="shakeGroup"><button data-v="on" class="on">轻微</button><button data-v="off">关闭</button></div>
