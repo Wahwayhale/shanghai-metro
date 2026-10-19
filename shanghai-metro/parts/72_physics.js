@@ -71,14 +71,14 @@ function physics(dt) {
   for (const ev of split.events) {
     if (ev === 'fault:pantograph') {
       G.fault.warned = true;
-      toast('受电弓无电流 · 牵引封锁，按 L 重启', 'bad', 5200);
+      toast('受电弓无电流 · 牵引锁定，按 L 重启', 'bad', 5200);
       AUDIO.beep(true);
     } else if (ev === 'fault:door') {
       G.fault.warned = true;
-      toast(`${G.fault.name}未关闭 · 牵引被封锁，按 L 隔离`, 'bad', 5200);
+      toast(`${G.fault.name}未关闭 · 牵引被锁定，按 L 切除`, 'bad', 5200);
       AUDIO.beep(true);
     } else if (ev === 'interlock:door') {
-      toast('车门未关闭，牵引被封锁', 'warn'); AUDIO.beep(); G.doorWarned = true;
+      toast('车门未关闭，牵引被锁定', 'warn'); AUDIO.beep(); G.doorWarned = true;
     }
   }
   if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
@@ -390,11 +390,11 @@ function openDoors() {
 const FAULT_TYPES = [
   { type: 'door', w: 0.34, make: () => {
       const car = 2 + Math.floor(Math.random() * 4);
-      return { name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 隔离该车门' };
+      return { name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 切除该车门' };
     } },
   { type: 'traction', w: 0.24, make: () => ({ name: '牵引逆变器', brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' }) },
   { type: 'signal', w: 0.2, make: () => ({ name: '车载 ATP', brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' }) },
-  { type: 'pantograph', w: 0.12, make: () => ({ name: '受电弓', brief: '受电弓检测异常', hint: '牵引封锁，按 L 重启' }) },
+  { type: 'pantograph', w: 0.12, make: () => ({ name: '受电弓', brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' }) },
   { type: 'brake', w: 0.1, make: () => ({ name: '制动系统', brief: '制动缓解不良', hint: '制动力下降，按 L 复位' }) }
 ];
 
@@ -422,7 +422,7 @@ function clearFault() {
   AUDIO.beep();
   AUDIO.hiss(0.3, 0.04);
   if (ty === 'signal') G.sigMode = 'cbtc';
-  const msg = ty === 'door' ? `${n}已隔离 · 牵引封锁解除`
+  const msg = ty === 'door' ? `${n}已切除 · 牵引锁定解除`
     : ty === 'traction' ? '牵引逆变器已复位 · 限速解除'
       : ty === 'signal' ? 'ATP 已重启 · 恢复移动闭塞'
         : ty === 'pantograph' ? '受电弓已重启 · 牵引恢复'

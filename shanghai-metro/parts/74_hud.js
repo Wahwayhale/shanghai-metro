@@ -204,10 +204,10 @@ function updateHUD(force = false) {
   let status = '区间运行';
   if (G.sigMode === 'fixed') status = '固定闭塞 · 按地面信号行车';
   if (G.fault) {
-    status = G.fault.type === 'door' ? '车门故障 · 按 L 隔离'
+    status = G.fault.type === 'door' ? '车门故障 · 按 L 切除'
       : G.fault.type === 'traction' ? '牵引故障 · 限速 40'
         : G.fault.type === 'signal' ? 'ATP 故障 · 固定闭塞'
-          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引封锁'
+          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引锁定'
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';

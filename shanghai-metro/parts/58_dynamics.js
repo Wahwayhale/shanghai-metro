@@ -47,7 +47,7 @@ function splitTraction(o) {
   else if (o.lever > 0.005) traction = o.lever;
   else if (o.lever < -0.005) brake = -o.lever;
 
-  /* 受电弓故障：牵引封锁（只在首次触发时报告） */
+  /* 受电弓故障：牵引锁定（只在首次触发时报告） */
   if (o.fault && o.fault.type === 'pantograph' && traction > 0) {
     traction = 0;
     if (!o.fault.warned) events.push('fault:pantograph');
@@ -57,7 +57,7 @@ function splitTraction(o) {
   /* 制动缓解不良：制动力下降 */
   if (o.fault && o.fault.type === 'brake') brake *= 0.7;
 
-  /* 车门故障：未隔离则牵引封锁 */
+  /* 车门故障：未切除则牵引锁定 */
   if (o.fault && o.fault.type === 'door' && traction > 0) {
     traction = 0;
     if (!o.fault.warned) events.push('fault:door');

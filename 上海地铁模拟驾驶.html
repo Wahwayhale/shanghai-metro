@@ -530,7 +530,7 @@
     </div>
 
     <div class="keys-hint">
-      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 隔离车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span>
+      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 切除车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span>
     </div>
     <div class="exam-panel" id="examPanel"></div>
     <div class="toast-area" id="toastArea"></div>
@@ -574,7 +574,7 @@
         <div class="key-row"><kbd>P</kbd> 关闭车门</div>
         <div class="key-row"><kbd>A</kbd> ATO 自动驾驶</div>
         <div class="key-row"><kbd>Tab</kbd> ATS 调度台</div>
-        <div class="key-row"><kbd>L</kbd> 隔离故障车门</div>
+        <div class="key-row"><kbd>L</kbd> 切除故障车门</div>
         <div class="key-row"><kbd>K</kbd> 切换固定闭塞</div>
         <div class="key-row"><kbd>H</kbd> 鸣笛</div>
         <div class="key-row"><kbd>C</kbd> 切换视角</div>
@@ -636,7 +636,7 @@
         <div class="stat-cell"><i>停站精度</i><b id="resStop">—<small>m</small></b></div>
         <div class="stat-cell"><i>准点率</i><b id="resPunc">—<small>%</small></b></div>
         <div class="stat-cell"><i>牵引能耗</i><b id="resKwh">—<small>kWh</small></b></div>
-        <div class="stat-cell"><i>违章扣分</i><b id="resPenalty">0<small>分</small></b></div>
+        <div class="stat-cell"><i>不当操作减分</i><b id="resPenalty">0<small>分</small></b></div>
       </div>
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
@@ -9049,7 +9049,7 @@ function splitTraction(o) {
   else if (o.lever > 0.005) traction = o.lever;
   else if (o.lever < -0.005) brake = -o.lever;
 
-  /* 受电弓故障：牵引封锁（只在首次触发时报告） */
+  /* 受电弓故障：牵引锁定（只在首次触发时报告） */
   if (o.fault && o.fault.type === 'pantograph' && traction > 0) {
     traction = 0;
     if (!o.fault.warned) events.push('fault:pantograph');
@@ -9059,7 +9059,7 @@ function splitTraction(o) {
   /* 制动缓解不良：制动力下降 */
   if (o.fault && o.fault.type === 'brake') brake *= 0.7;
 
-  /* 车门故障：未隔离则牵引封锁 */
+  /* 车门故障：未切除则牵引锁定 */
   if (o.fault && o.fault.type === 'door' && traction > 0) {
     traction = 0;
     if (!o.fault.warned) events.push('fault:door');
@@ -10374,14 +10374,14 @@ function physics(dt) {
   for (const ev of split.events) {
     if (ev === 'fault:pantograph') {
       G.fault.warned = true;
-      toast('受电弓无电流 · 牵引封锁，按 L 重启', 'bad', 5200);
+      toast('受电弓无电流 · 牵引锁定，按 L 重启', 'bad', 5200);
       AUDIO.beep(true);
     } else if (ev === 'fault:door') {
       G.fault.warned = true;
-      toast(`${G.fault.name}未关闭 · 牵引被封锁，按 L 隔离`, 'bad', 5200);
+      toast(`${G.fault.name}未关闭 · 牵引被锁定，按 L 切除`, 'bad', 5200);
       AUDIO.beep(true);
     } else if (ev === 'interlock:door') {
-      toast('车门未关闭，牵引被封锁', 'warn'); AUDIO.beep(); G.doorWarned = true;
+      toast('车门未关闭，牵引被锁定', 'warn'); AUDIO.beep(); G.doorWarned = true;
     }
   }
   if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
@@ -10693,11 +10693,11 @@ function openDoors() {
 const FAULT_TYPES = [
   { type: 'door', w: 0.34, make: () => {
       const car = 2 + Math.floor(Math.random() * 4);
-      return { name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 隔离该车门' };
+      return { name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 切除该车门' };
     } },
   { type: 'traction', w: 0.24, make: () => ({ name: '牵引逆变器', brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' }) },
   { type: 'signal', w: 0.2, make: () => ({ name: '车载 ATP', brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' }) },
-  { type: 'pantograph', w: 0.12, make: () => ({ name: '受电弓', brief: '受电弓检测异常', hint: '牵引封锁，按 L 重启' }) },
+  { type: 'pantograph', w: 0.12, make: () => ({ name: '受电弓', brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' }) },
   { type: 'brake', w: 0.1, make: () => ({ name: '制动系统', brief: '制动缓解不良', hint: '制动力下降，按 L 复位' }) }
 ];
 
@@ -10725,7 +10725,7 @@ function clearFault() {
   AUDIO.beep();
   AUDIO.hiss(0.3, 0.04);
   if (ty === 'signal') G.sigMode = 'cbtc';
-  const msg = ty === 'door' ? `${n}已隔离 · 牵引封锁解除`
+  const msg = ty === 'door' ? `${n}已切除 · 牵引锁定解除`
     : ty === 'traction' ? '牵引逆变器已复位 · 限速解除'
       : ty === 'signal' ? 'ATP 已重启 · 恢复移动闭塞'
         : ty === 'pantograph' ? '受电弓已重启 · 牵引恢复'
@@ -11348,10 +11348,10 @@ function updateHUD(force = false) {
   let status = '区间运行';
   if (G.sigMode === 'fixed') status = '固定闭塞 · 按地面信号行车';
   if (G.fault) {
-    status = G.fault.type === 'door' ? '车门故障 · 按 L 隔离'
+    status = G.fault.type === 'door' ? '车门故障 · 按 L 切除'
       : G.fault.type === 'traction' ? '牵引故障 · 限速 40'
         : G.fault.type === 'signal' ? 'ATP 故障 · 固定闭塞'
-          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引封锁'
+          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引锁定'
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';
