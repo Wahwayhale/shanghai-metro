@@ -154,7 +154,17 @@ ${bundle}
 const target = path.join(dir, '..', '上海地铁模拟驾驶.html');
 
 /* 产物完整性校验：缺模块时宁可失败，也不要悄悄写出半成品 */
-const required = ['/* ===== 10_data.js ===== */', '/* ===== 70_game.js ===== */', '/* ===== 80_ui.js ===== */', 'UnrealBloomPass'];
+const required = [
+  '/* ===== 10_data.js ===== */',
+  '/* ===== 70_core.js ===== */',
+  '/* ===== 71_scene.js ===== */',
+  '/* ===== 72_physics.js ===== */',
+  '/* ===== 73_flow.js ===== */',
+  '/* ===== 74_hud.js ===== */',
+  '/* ===== 75_view.js ===== */',
+  '/* ===== 80_ui.js ===== */',
+  'UnrealBloomPass'
+];
 const missing = required.filter(k => !out.includes(k));
 if (missing.length) throw new Error('产物缺少关键片段，构建中止：' + missing.join(', '));
 if (out.length < 800 * 1024) throw new Error(`产物仅 ${(out.length / 1024).toFixed(0)} KB，疑似打包不完整`);

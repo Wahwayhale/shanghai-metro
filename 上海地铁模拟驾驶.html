@@ -8512,9 +8512,10 @@ class AudioEngine {
 const AUDIO = new AudioEngine();
 
 
-/* ===== 70_game.js ===== */
+/* ===== 70_core.js ===== */
 /* ================================================================
-   游戏主体：状态机 / 物理 / 停站 / 视角 / HUD
+   核心状态 / 渲染基础设施 / 主循环
+   （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
 const $ = id => document.getElementById(id);
 const G = {
@@ -8552,7 +8553,6 @@ const SL_OFF = [[-8.2, 4.6, -40], [8.2, 4.6, -40], [-8.2, 4.6, 40], [8.2, 4.6, 4
 let hero = null;
 let clock = new THREE.Clock();
 let matInited = false;
-
 /* ---------------------------------------------------------------- 初始化 */
 function initRenderer() {
   const canvas = $('scene');
@@ -8601,7 +8601,199 @@ function makeComposer(targetScene) {
   composer.addPass(vig);
   composer.addPass(new OutputPass());
 }
+/* ---------------------------------------------------------------- 主循环 */
+function updateGame(dt) {
+  if (!G.ready || G.mode !== 'driving') return;
+  if (G.paused) return;
+  let remain = Math.min(dt, 0.1);
+  while (remain > 0.0001) {
+    const h = Math.min(1 / 120, remain);
+    physics(h);
+    remain -= h;
+  }
+  G.clock += dt;
+  if (G.finishTimer > 0) {
+    G.finishTimer -= dt;
+    if (G.finishTimer <= 0) finishService();
+  }
+  // 手柄速率控制 / 站内步行
+  if (G.walk && G.walk.active) {
+    G.lever = 0;
+    const fwd = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+    const str = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+    if (fwd || str) {
+      const spd = (keys['ShiftLeft'] || keys['ShiftRight'] ? 4.2 : 2.4) * dt;
+      const sy = Math.sin(G.walk.yaw), cy = Math.cos(G.walk.yaw);
+      const dx = -sy * fwd + cy * str;
+      const dz = -cy * fwd - sy * str;
+      const len = Math.hypot(dx, dz) || 1;
+      G.walk.pos.x += dx / len * spd;
+      G.walk.pos.z += dz / len * spd;
+    }
+    clampWalk();
+  } else {
+    const up = keys['KeyW'] || keys['ArrowUp'];
+    const dn = keys['KeyS'] || keys['ArrowDown'];
+    if (G.ato && (up || dn)) { G.ato = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 3000); updateHUD(true); }
+    if (up && !dn) G.lever = clamp(G.lever + dt * 1.15, -1, 1);
+    if (dn && !up) G.lever = clamp(G.lever - dt * 1.15, -1, 1);
+    if (!up && !dn && Math.abs(G.lever) < 0.02) G.lever = 0;
+  }
 
+  train.setLever(G.lever);
+  train.update(G.s, G.v, dt);
+  G.aiT = (G.aiT || 0) + dt;
+  for (const ai of aiTrains) ai.update(dt);
+  updateAiPsd();
+  updateCamera(dt);
+  updateHUD();
+  if (train && train.cabDisplay) {
+    const st = path.stations[G.targetIdx];
+    const sig = nextSignalAhead();
+    train.cabDisplay.update(dt, {
+      signal: sig ? sig.state : 2,
+      signalDist: sig ? Math.max(0, sig.gap) : 0,
+      speedKmh: G.v * 3.6,
+      limit: G.limit || 80,
+      distToStop: Math.max(0, st.stopS - G.s),
+      doorOpen: G.doorT > 0.1,
+      eb: G.eb,
+      traction: G.eb ? 0 : Math.max(0, G.lever),
+      atpWarn: !!G.atpWarn,
+      overSpeed: !!G.atpWarn,
+      ato: G.ato,
+      sigMode: G.sigMode,
+      lineColor: line.color,
+      lineBadge: line.badge,
+      lineName: line.name,
+      nextZh: st.zh, nextEn: st.en,
+      schArr: st.schArr, schDep: st.schDep,
+      clock: G.clock,
+      delay: (() => {
+        const dd = Math.max(0, st.stopS - G.s);
+        const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
+        return eta - st.schArr;
+      })(),
+      progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
+      fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
+    });
+  }
+  if (AUDIO.ready) {
+    AUDIO.update(dt, {
+      speed: G.v,
+      traction: G.eb ? 0 : Math.max(0, G.lever),
+      brake: G.eb ? 1 : Math.max(0, -G.lever),
+      inTunnel: path.frameAt(G.s).pos.y < -2,
+      nearStation: path.stations.some(s => Math.abs(s.s - G.s) < 130)
+    });
+    if (G.atpWarn && !G.atpBeepT) { AUDIO.beep(); G.atpBeepT = setTimeout(() => { G.atpBeepT = null; }, 1800); }
+  }
+  // 阳光跟随 + 地下/地上光照过渡
+  if (sun) {
+    const f = path.frameAt(G.s);
+    sun.target.position.copy(f.pos);
+    sun.position.copy(f.pos).addScaledVector(theme.sunDir.clone().normalize(), 220);
+    sun.target.updateMatrixWorld();
+    const indoor = f.pos.y < -2.4;
+    const k = Math.min(1, dt * 1.6);
+    sun.intensity = lerp(sun.intensity, indoor ? 0.03 : theme.sunI, k);
+    hemi.intensity = lerp(hemi.intensity, indoor ? theme.hemi * 0.55 : theme.hemi, k);
+    // 站台补光
+    let ns = null, nd = 1e9;
+    for (const st of path.stations) {
+      const d = Math.abs(st.s - G.s);
+      if (d < nd) { nd = d; ns = st; }
+    }
+    const near = ns ? clamp(1 - (nd - 30) / 70, 0, 1) : 0;
+    stationLights.forEach((L, i) => {
+      if (!ns) { L.intensity = 0; return; }
+      const off = SL_OFF[i];
+      L.position.copy(ns.frame.pos)
+        .addScaledVector(ns.frame.right, off[0])
+        .addScaledVector(ns.frame.tan, off[2])
+        .addScaledVector(ns.frame.up, off[1]);
+      L.intensity = 620 * near;
+    });
+  }
+  if (skyMesh) skyMesh.position.copy(camera.position);
+  // 乘客乘降
+  G._crowdT = (G._crowdT || 0) + dt;
+  if (G._crowdT > 1 / 30) {
+    const h = Math.min(0.12, G._crowdT);
+    G._crowdT = 0;
+    let best = null, bd = 210;
+    for (const so of stationObjs) {
+      if (!so) continue;
+      const dd = Math.abs((so.s || 0) - G.s);
+      if (dd < bd) { bd = dd; best = so; }
+    }
+    const tgtSt = path.stations[G.targetIdx];
+    if (tgtSt && tgtSt.synthetic) best = stationObjFor(G.targetIdx) || best;
+    if (best && best.crowd) best.crowd.update(h, G.doorT);
+  }
+  // 速度曲线采样（每 1.5 秒）
+  G._logT = (G._logT || 0) + dt;
+  if (G._logT > 1.5) {
+    G._logT = 0;
+    (G.speedLog || (G.speedLog = [])).push([G.s, G.v * 3.6]);
+    if (G.speedLog.length > 900) G.speedLog.shift();
+  }
+  // 每秒刷新时刻表
+  G._ttT = (G._ttT || 0) + dt;
+  if (G._ttT > 0.5) { G._ttT = 0; updateTimetable(); }
+  updateSignals(dt);
+  IX.update(dt);
+  updateWeather(dt);
+  if (typeof ATS !== 'undefined') ATS.update(dt);
+  // PIS 屏：每秒刷新当前与下一站
+  G._pisT = (G._pisT || 0) + dt;
+  if (G._pisT > 1.0) { G._pisT = 0; updatePisDisplays(); }
+}
+let lastFrame = 0;
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.06, clock.getDelta());
+  if (G.mode === 'menu') {
+    if (hero) {
+      updateHero(dt);
+      if (composer && G.quality !== 'low') composer.render(); else renderer.render(hero.scene, camera);
+    }
+    return;
+  }
+  if (G.mode === 'loading') {
+    if (hero) renderer.render(hero.scene, camera);
+    return;
+  }
+  if (G.mode === 'turnback') {
+    updateTurnback(dt);
+    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
+    return;
+  }
+  if (G.mode === 'driving' || G.mode === 'paused' || G.mode === 'results') {
+    updateGame(dt);
+    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
+  }
+}
+const keys = {};
+function togglePause(on) {
+  if (G.mode === 'driving' && on) {
+    G.mode = 'paused';
+    $('pause').classList.remove('hidden');
+    $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  } else if (G.mode === 'paused' && !on) {
+    G.mode = 'driving';
+    $('pause').classList.add('hidden');
+    clock.getDelta();
+  }
+}
+
+
+/* ===== 71_scene.js ===== */
+/* ================================================================
+   菜单场景与线路世界构建
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
 /* ---------------------------------------------------------------- 菜单场景 */
 function buildHero() {
   const th = THEMES[G.tod];
@@ -8705,7 +8897,6 @@ function updateHero(dt) {
   camera.lookAt(target);
   camera.fov = 46; camera.updateProjectionMatrix();
 }
-
 /* ---------------------------------------------------------------- 世界构建 */
 async function loadStep(label, pct) {
   $('loadStep').textContent = label;
@@ -8818,57 +9009,12 @@ async function buildService(routeIdx, reverse) {
   G.ready = true;
 }
 
-/* ---------------------------------------------------------------- 开始 / 重置 */
-function resetService() {
-  const st = path.stations;
-  G.s = st[0].stopS;
-  G.v = 0; G.lever = 0; G.eb = false;
-  G.doorsOpen = true; G.doorT = 1;
-  G.clock = path.startSec - 30;
-  G.targetIdx = 0;
-  G.stopState = 'dwell';
-  G.stopErr = 0; G.stopScore = 0;
-  G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-  G.energy = 0; G.finishTimer = -1;
-  G.announced = {};
-  G.camMode = 0; G.yaw = 0; G.pitch = -0.02;
-  G.ato = false; G.atoState = 'run'; G.atoTimer = 0; G.atpBrake = false; G.doorWarned = false;
-  if (typeof IX !== 'undefined' && IX.routes.length) IX.applyRoute('main', true);
-  G.fault = null; G.faultCount = 0; G.speedLog = [];
-  G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
-  G.walk = null; G.turnback = null;
-  hideTransferPanel();
-  if (G.exam) examInit();
 
-  train.carLag.fill(0);
-  train._lastV = 0;
-  train.update(G.s, 0, 0);
-  train.setDoorT(1);
-  stationObjs.forEach((so, i) => {
-    if (!so) return;
-    so.psdL.setOpen(i === 0 ? 1 : 0);
-    so.psdR.setOpen(0);
-    if (so.crowd) so.crowd.reset();
-  });
-  for (const ai of aiTrains) { ai.reset(); ai._psd = null; }
-  G.leaderGap = null; G.leaderNo = '';
-  buildTimetable();
-  updateHUD(true);
-  showBanner(st[0].zh, st[0].en);
-  toast(`值乘开始 · ${st[0].zh} 站，请关闭车门`, 'good', 5200);
-  AUDIO.announce(`欢迎乘坐上海地铁${line.name}，本次列车开往${st[st.length - 1].zh}方向。请关闭车门，准备发车。`);
-}
-
-function beginDriving() {
-  $('briefing').classList.add('hidden');
-  $('hud').classList.add('on');
-  G.mode = 'driving';
-  G.paused = false;
-  clock.getDelta();
-  resetService();
-  updateCamera(0, true);
-}
-
+/* ===== 72_physics.js ===== */
+/* ================================================================
+   动力学 / 停站判定 / ATO / 车门 / 故障演练
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
 /* ---------------------------------------------------------------- 物理 */
 function stationDist() {
   const st = path.stations[G.targetIdx];
@@ -8882,246 +9028,6 @@ function stationObjFor(idx) {
   const st = path.stations[idx];
   return (st && st.synthetic) ? stationObjs[0] : null;
 }
-
-/* ---------------- 站内步行 ---------------- */
-function enterWalk(idx) {
-  const st = path.stations[idx], f = st.frame;
-  const pos = f.pos.clone()
-    .addScaledVector(f.right, -3.0)
-    .addScaledVector(f.up, 1.06 + 1.7)
-    .addScaledVector(f.tan, 60);
-  G.walk = {
-    active: true, station: idx, pos,
-    yaw: Math.atan2(-f.tan.x, -f.tan.z), pitch: 0, tip: false, tpHidden: false
-  };
-  hideTransferPanel();
-}
-
-function toggleWalk() {
-  if (G.mode !== 'driving' || G.paused) return;
-  if (G.walk && G.walk.active) {
-    G.walk.active = false;
-    hideTransferPanel();
-    updateCamera(0, true);
-    toast('已返回司机室', 'info', 2600);
-    return;
-  }
-  if (G.stopState !== 'dwell' || !G.doorsOpen) { toast('停稳并开门后才能下车', 'warn', 3000); return; }
-  if (isLastServed(G.targetIdx)) { toast('终到站请结束值乘', 'warn', 3000); return; }
-  if (G.ato) toggleATO(false);
-  enterWalk(G.targetIdx);
-  toast('步行模式 · WASD 移动，鼠标环视，F 返回司机室；换乘通道尽头可换乘', 'info', 5200);
-}
-
-function clampWalk() {
-  if (!G.walk || !G.walk.active) return;
-  const w = G.walk, st = path.stations[w.station], f = st.frame;
-  const inv = new THREE.Matrix4().makeBasis(f.right, f.up, f.tan).invert();
-  const local = w.pos.clone().sub(f.pos).applyMatrix4(inv);
-  local.x = clamp(local.x, -3.75, 3.75);
-  local.z = Math.max(local.z, -69);
-  const hasTr = st.tr && st.tr.length;
-  if (hasTr) {
-    if (local.z > 69) {
-      local.x = clamp(local.x, -3.0, 3.0);
-      local.z = Math.min(local.z, 94);
-      if (!w.tip) {
-        w.tip = true;
-        toast('换乘通道 · 走到尽头选择要换乘的线路', 'info', 4200);
-      }
-    }
-    if (local.z < 82) w.tpHidden = false;
-    if (local.z > 88 && !w.tpHidden) showTransferPanel();
-    else hideTransferPanel();
-  } else {
-    local.z = Math.min(local.z, 69);
-    hideTransferPanel();
-  }
-  local.y = 1.06 + 1.7;
-  w.pos.copy(f.pos)
-    .addScaledVector(f.right, local.x)
-    .addScaledVector(f.up, local.y)
-    .addScaledVector(f.tan, local.z);
-}
-
-function transferRouteFor(name) {
-  let fallback = -1;
-  for (let i = 0; i < ROUTES.length; i++) {
-    const r = ROUTES[i], l = LINES[r.line];
-    if (!l || l.name !== name) continue;
-    if (r.id.startsWith('full')) return i;
-    if (fallback < 0) fallback = i;
-  }
-  return fallback;
-}
-
-function showTransferPanel() {
-  if (!G.walk || !G.walk.active) return;
-  const st = path.stations[G.walk.station];
-  const box = $('transferPanel'), list = $('transferList');
-  if (!st || !st.tr || !st.tr.length) { hideTransferPanel(); return; }
-  const names = [...new Set(st.tr)].filter(n => n !== line.name && transferRouteFor(n) >= 0);
-  if (!names.length) { hideTransferPanel(); return; }
-  const key = G.walk.station + '|' + line.name + '|' + names.join(',');
-  if (box.dataset.key !== key) {
-    box.dataset.key = key;
-    list.innerHTML = names.map(n => {
-      const ri = transferRouteFor(n), l = LINES[ROUTES[ri].line];
-      return `<button class="tp-line" data-line="${n}" style="--c:${l.color}"><b>${l.badge}</b><span>${l.name}</span><i>换乘</i></button>`;
-    }).join('');
-  }
-  box.classList.remove('hidden');
-}
-
-function hideTransferPanel() {
-  const box = $('transferPanel');
-  if (box) box.classList.add('hidden');
-}
-
-async function performTransfer(lineName) {
-  if (!G.walk || !G.walk.active) return;
-  const from = path.stations[G.walk.station];
-  const ri = transferRouteFor(lineName);
-  if (ri < 0) { toast(`${lineName} 暂无可用交路`, 'warn', 3000); return; }
-  hideTransferPanel();
-  G.walk.active = false;
-  G.mode = 'loading';
-  $('hud').classList.remove('on');
-  $('loading').classList.remove('hidden');
-  $('loadStep').textContent = `正在换乘至 ${lineName}…`;
-  $('loadPct').textContent = '';
-  $('loadFill').style.width = '0%';
-  try {
-    await buildService(ri);
-    let ti = path.stations.findIndex(s => s.zh === from.zh);
-    if (ti < 0) ti = 0;
-    const st = path.stations[ti];
-    G.targetIdx = ti;
-    G.s = st.stopS;
-    G.v = 0; G.lever = 0; G.eb = false;
-    G.doorsOpen = true; G.doorT = 1;
-    G.stopState = 'dwell';
-    G.clock = st.schArr;
-    G.doorAt = {}; G.announced = {};
-    G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-    G.energy = 0; G.speedLog = [];
-    G.finishTimer = -1; G.ato = false; G.atoState = 'run';
-    G.exam = false; G.examTasks = []; G.fault = null; G.faultCount = 0;
-    G.sigMode = 'cbtc'; G.walk = null; G.turnback = null;
-    train.carLag.fill(0); train._lastV = 0;
-    train.update(G.s, 0, 0);
-    train.setDoorT(1);
-    const so = stationObjFor(ti);
-    if (so) so.psdL.setOpen(1);
-    buildTimetable();
-    updateTimetable();
-    updateHUD(true);
-    $('loading').classList.add('hidden');
-    $('results').classList.add('hidden');
-    $('examPanel').classList.remove('on');
-    $('hud').classList.add('on');
-    G.mode = 'driving';
-    clock.getDelta();
-    enterWalk(ti);
-    toast(`换乘成功 · ${line.name} ${st.zh} 站台`, 'good', 4600);
-    AUDIO.announce(`已换乘至上海地铁${line.name}${st.zh}站。`);
-    updateCamera(0, true);
-  } catch (err) {
-    console.error(err);
-    $('loadStep').textContent = '换乘失败：' + (err && err.message ? err.message : err);
-    $('loadPct').textContent = '请刷新页面重试';
-  }
-}
-
-/* 终端折返：先锁闭 B 进路，列车动车至折返线，再重建反向交路 */
-function startTurnback() {
-  if (!path || !train || G.mode !== 'results') return;
-  if (routeDef.loop || routeDef.stopPlan || G.reverse) return;
-  const last = path.stations[path.stations.length - 1];
-  if (G.targetIdx !== last.index) { toast('只能在终到站折返', 'warn', 3000); return; }
-  if (typeof IX !== 'undefined' && IX.occupied()) {
-    toast('折返进路区段有车占用 · 进路锁闭', 'warn', 3600);
-    return;
-  }
-  if (typeof IX !== 'undefined') IX.applyRoute('revB');
-  G.doorsOpen = false; G.doorT = 0;
-  train.setDoorT(0);
-  const so = stationObjFor(G.targetIdx);
-  if (so) so.psdL.setOpen(0);
-  $('results').classList.add('hidden');
-  $('hud').classList.add('on');
-  G.mode = 'turnback';
-  G.finishTimer = -1;
-  G.ato = false; G.lever = 0; G.eb = false;
-  G.turnback = {
-    phase: 'move', t: 0, v: 0, s: G.s,
-    target: Math.min(path.length - 20, last.stopS + 80)
-  };
-  toast('终端折返 · B 进路已锁闭，列车动车至折返线', 'info', 4600);
-  AUDIO.announce('终点站折返，列车动车至折返线，请注意安全。');
-  updateHUD(true);
-}
-
-function updateTurnback(dt) {
-  const tb = G.turnback;
-  if (!tb) return;
-  if (typeof IX !== 'undefined') IX.update(dt);
-  if (typeof updateSignals === 'function') updateSignals(dt);
-  for (const ai of aiTrains) ai.update(dt);
-  if (tb.phase === 'move') {
-    tb.t += dt;
-    const d = tb.target - tb.s;
-    const vT = d > 16 ? 6 : Math.max(0, d * 0.6);
-    tb.v += clamp(vT - tb.v, -1.1 * dt, 0.9 * dt);
-    tb.s = Math.min(tb.target, tb.s + tb.v * dt);
-    G.s = tb.s; G.v = tb.v;
-    train.setDoorT(0);
-    train.update(G.s, G.v, dt);
-    updateCamera(dt);
-    if (tb.target - tb.s < 0.15 && tb.v < 0.08) {
-      tb.s = tb.target; tb.v = 0; tb.phase = 'wait'; tb.t = 0;
-    }
-  } else if (tb.phase === 'wait') {
-    tb.t += dt;
-    if (tb.t > 2.4) {
-      tb.phase = 'reload';
-      finishTurnback();
-    }
-  }
-}
-
-async function finishTurnback() {
-  G.mode = 'loading';
-  $('hud').classList.remove('on');
-  $('loading').classList.remove('hidden');
-  $('loadStep').textContent = '折返完成，正在准备反向交路…';
-  $('loadPct').textContent = '';
-  $('loadFill').style.width = '0%';
-  try {
-    await buildService(G.routeIdx, true);
-    $('loading').classList.add('hidden');
-    G.turnback = null;
-    beginDriving();
-    toast('折返完成 · 反向值乘开始', 'good', 4200);
-  } catch (err) {
-    console.error(err);
-    $('loadStep').textContent = '折返失败：' + (err && err.message ? err.message : err);
-    $('loadPct').textContent = '请刷新页面重试';
-  }
-}
-
-function nextServedIdx(idx) {
-  if (!G.stopPlan) return idx + 1;
-  for (let i = idx + 1; i < path.stations.length; i++) {
-    if (G.stopPlan.has(i)) return i;
-  }
-  return path.stations.length;
-}
-
-function isLastServed(idx) {
-  return nextServedIdx(idx) >= path.stations.length;
-}
-
 function physics(dt) {
   const st = path.stations[G.targetIdx];
   const v = G.v;
@@ -9279,7 +9185,6 @@ function physics(dt) {
     if (so) { so.psdL.setOpen(G.doorT); }
   }
 }
-
 function triggerEB(reason) {
   if (G.eb) return;
   G.eb = true;
@@ -9308,7 +9213,6 @@ function releaseEB() {
   updateHUD(true);
   return true;
 }
-
 /* ---------------- ATO 自动运行 ---------------- */
 function toggleATO(force) {
   if (G.mode !== 'driving') return;
@@ -9394,7 +9298,6 @@ function atoCommand() {
   if (v < vT - 0.12) return clamp(0.22 + (vT - v) * 0.5, 0, 0.85);
   return 0;
 }
-
 function onStopped(st, dist) {
   if (G.exam) examEvent('stop', Math.abs(dist));
   G.stopState = 'stop';
@@ -9462,7 +9365,6 @@ function missedStation(st) {
     finishService();
   }
 }
-
 /* ---------------------------------------------------------------- 门控 */
 function openDoors() {
   if (G.mode !== 'driving' || G.paused) return;
@@ -9552,6 +9454,298 @@ function closeDoors() {
   toast('车门关闭 · 可以发车', 'good', 3000);
 }
 
+
+/* ===== 73_flow.js ===== */
+/* ================================================================
+   值乘流程 / 站内步行 / 换乘 / 终端折返 / 结算
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
+/* ---------------------------------------------------------------- 开始 / 重置 */
+function resetService() {
+  const st = path.stations;
+  G.s = st[0].stopS;
+  G.v = 0; G.lever = 0; G.eb = false;
+  G.doorsOpen = true; G.doorT = 1;
+  G.clock = path.startSec - 30;
+  G.targetIdx = 0;
+  G.stopState = 'dwell';
+  G.stopErr = 0; G.stopScore = 0;
+  G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
+  G.energy = 0; G.finishTimer = -1;
+  G.announced = {};
+  G.camMode = 0; G.yaw = 0; G.pitch = -0.02;
+  G.ato = false; G.atoState = 'run'; G.atoTimer = 0; G.atpBrake = false; G.doorWarned = false;
+  if (typeof IX !== 'undefined' && IX.routes.length) IX.applyRoute('main', true);
+  G.fault = null; G.faultCount = 0; G.speedLog = [];
+  G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
+  G.walk = null; G.turnback = null;
+  hideTransferPanel();
+  if (G.exam) examInit();
+
+  train.carLag.fill(0);
+  train._lastV = 0;
+  train.update(G.s, 0, 0);
+  train.setDoorT(1);
+  stationObjs.forEach((so, i) => {
+    if (!so) return;
+    so.psdL.setOpen(i === 0 ? 1 : 0);
+    so.psdR.setOpen(0);
+    if (so.crowd) so.crowd.reset();
+  });
+  for (const ai of aiTrains) { ai.reset(); ai._psd = null; }
+  G.leaderGap = null; G.leaderNo = '';
+  buildTimetable();
+  updateHUD(true);
+  showBanner(st[0].zh, st[0].en);
+  toast(`值乘开始 · ${st[0].zh} 站，请关闭车门`, 'good', 5200);
+  AUDIO.announce(`欢迎乘坐上海地铁${line.name}，本次列车开往${st[st.length - 1].zh}方向。请关闭车门，准备发车。`);
+}
+
+function beginDriving() {
+  $('briefing').classList.add('hidden');
+  $('hud').classList.add('on');
+  G.mode = 'driving';
+  G.paused = false;
+  clock.getDelta();
+  resetService();
+  updateCamera(0, true);
+}
+/* ---------------- 站内步行 ---------------- */
+function enterWalk(idx) {
+  const st = path.stations[idx], f = st.frame;
+  const pos = f.pos.clone()
+    .addScaledVector(f.right, -3.0)
+    .addScaledVector(f.up, 1.06 + 1.7)
+    .addScaledVector(f.tan, 60);
+  G.walk = {
+    active: true, station: idx, pos,
+    yaw: Math.atan2(-f.tan.x, -f.tan.z), pitch: 0, tip: false, tpHidden: false
+  };
+  hideTransferPanel();
+}
+
+function toggleWalk() {
+  if (G.mode !== 'driving' || G.paused) return;
+  if (G.walk && G.walk.active) {
+    G.walk.active = false;
+    hideTransferPanel();
+    updateCamera(0, true);
+    toast('已返回司机室', 'info', 2600);
+    return;
+  }
+  if (G.stopState !== 'dwell' || !G.doorsOpen) { toast('停稳并开门后才能下车', 'warn', 3000); return; }
+  if (isLastServed(G.targetIdx)) { toast('终到站请结束值乘', 'warn', 3000); return; }
+  if (G.ato) toggleATO(false);
+  enterWalk(G.targetIdx);
+  toast('步行模式 · WASD 移动，鼠标环视，F 返回司机室；换乘通道尽头可换乘', 'info', 5200);
+}
+
+function clampWalk() {
+  if (!G.walk || !G.walk.active) return;
+  const w = G.walk, st = path.stations[w.station], f = st.frame;
+  const inv = new THREE.Matrix4().makeBasis(f.right, f.up, f.tan).invert();
+  const local = w.pos.clone().sub(f.pos).applyMatrix4(inv);
+  local.x = clamp(local.x, -3.75, 3.75);
+  local.z = Math.max(local.z, -69);
+  const hasTr = st.tr && st.tr.length;
+  if (hasTr) {
+    if (local.z > 69) {
+      local.x = clamp(local.x, -3.0, 3.0);
+      local.z = Math.min(local.z, 94);
+      if (!w.tip) {
+        w.tip = true;
+        toast('换乘通道 · 走到尽头选择要换乘的线路', 'info', 4200);
+      }
+    }
+    if (local.z < 82) w.tpHidden = false;
+    if (local.z > 88 && !w.tpHidden) showTransferPanel();
+    else hideTransferPanel();
+  } else {
+    local.z = Math.min(local.z, 69);
+    hideTransferPanel();
+  }
+  local.y = 1.06 + 1.7;
+  w.pos.copy(f.pos)
+    .addScaledVector(f.right, local.x)
+    .addScaledVector(f.up, local.y)
+    .addScaledVector(f.tan, local.z);
+}
+
+function transferRouteFor(name) {
+  let fallback = -1;
+  for (let i = 0; i < ROUTES.length; i++) {
+    const r = ROUTES[i], l = LINES[r.line];
+    if (!l || l.name !== name) continue;
+    if (r.id.startsWith('full')) return i;
+    if (fallback < 0) fallback = i;
+  }
+  return fallback;
+}
+
+function showTransferPanel() {
+  if (!G.walk || !G.walk.active) return;
+  const st = path.stations[G.walk.station];
+  const box = $('transferPanel'), list = $('transferList');
+  if (!st || !st.tr || !st.tr.length) { hideTransferPanel(); return; }
+  const names = [...new Set(st.tr)].filter(n => n !== line.name && transferRouteFor(n) >= 0);
+  if (!names.length) { hideTransferPanel(); return; }
+  const key = G.walk.station + '|' + line.name + '|' + names.join(',');
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    list.innerHTML = names.map(n => {
+      const ri = transferRouteFor(n), l = LINES[ROUTES[ri].line];
+      return `<button class="tp-line" data-line="${n}" style="--c:${l.color}"><b>${l.badge}</b><span>${l.name}</span><i>换乘</i></button>`;
+    }).join('');
+  }
+  box.classList.remove('hidden');
+}
+
+function hideTransferPanel() {
+  const box = $('transferPanel');
+  if (box) box.classList.add('hidden');
+}
+async function performTransfer(lineName) {
+  if (!G.walk || !G.walk.active) return;
+  const from = path.stations[G.walk.station];
+  const ri = transferRouteFor(lineName);
+  if (ri < 0) { toast(`${lineName} 暂无可用交路`, 'warn', 3000); return; }
+  hideTransferPanel();
+  G.walk.active = false;
+  G.mode = 'loading';
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = `正在换乘至 ${lineName}…`;
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  try {
+    await buildService(ri);
+    let ti = path.stations.findIndex(s => s.zh === from.zh);
+    if (ti < 0) ti = 0;
+    const st = path.stations[ti];
+    G.targetIdx = ti;
+    G.s = st.stopS;
+    G.v = 0; G.lever = 0; G.eb = false;
+    G.doorsOpen = true; G.doorT = 1;
+    G.stopState = 'dwell';
+    G.clock = st.schArr;
+    G.doorAt = {}; G.announced = {};
+    G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
+    G.energy = 0; G.speedLog = [];
+    G.finishTimer = -1; G.ato = false; G.atoState = 'run';
+    G.exam = false; G.examTasks = []; G.fault = null; G.faultCount = 0;
+    G.sigMode = 'cbtc'; G.walk = null; G.turnback = null;
+    train.carLag.fill(0); train._lastV = 0;
+    train.update(G.s, 0, 0);
+    train.setDoorT(1);
+    const so = stationObjFor(ti);
+    if (so) so.psdL.setOpen(1);
+    buildTimetable();
+    updateTimetable();
+    updateHUD(true);
+    $('loading').classList.add('hidden');
+    $('results').classList.add('hidden');
+    $('examPanel').classList.remove('on');
+    $('hud').classList.add('on');
+    G.mode = 'driving';
+    clock.getDelta();
+    enterWalk(ti);
+    toast(`换乘成功 · ${line.name} ${st.zh} 站台`, 'good', 4600);
+    AUDIO.announce(`已换乘至上海地铁${line.name}${st.zh}站。`);
+    updateCamera(0, true);
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '换乘失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+  }
+}
+/* 终端折返：先锁闭 B 进路，列车动车至折返线，再重建反向交路 */
+function startTurnback() {
+  if (!path || !train || G.mode !== 'results') return;
+  if (routeDef.loop || routeDef.stopPlan || G.reverse) return;
+  const last = path.stations[path.stations.length - 1];
+  if (G.targetIdx !== last.index) { toast('只能在终到站折返', 'warn', 3000); return; }
+  if (typeof IX !== 'undefined' && IX.occupied()) {
+    toast('折返进路区段有车占用 · 进路锁闭', 'warn', 3600);
+    return;
+  }
+  if (typeof IX !== 'undefined') IX.applyRoute('revB');
+  G.doorsOpen = false; G.doorT = 0;
+  train.setDoorT(0);
+  const so = stationObjFor(G.targetIdx);
+  if (so) so.psdL.setOpen(0);
+  $('results').classList.add('hidden');
+  $('hud').classList.add('on');
+  G.mode = 'turnback';
+  G.finishTimer = -1;
+  G.ato = false; G.lever = 0; G.eb = false;
+  G.turnback = {
+    phase: 'move', t: 0, v: 0, s: G.s,
+    target: Math.min(path.length - 20, last.stopS + 80)
+  };
+  toast('终端折返 · B 进路已锁闭，列车动车至折返线', 'info', 4600);
+  AUDIO.announce('终点站折返，列车动车至折返线，请注意安全。');
+  updateHUD(true);
+}
+
+function updateTurnback(dt) {
+  const tb = G.turnback;
+  if (!tb) return;
+  if (typeof IX !== 'undefined') IX.update(dt);
+  if (typeof updateSignals === 'function') updateSignals(dt);
+  for (const ai of aiTrains) ai.update(dt);
+  if (tb.phase === 'move') {
+    tb.t += dt;
+    const d = tb.target - tb.s;
+    const vT = d > 16 ? 6 : Math.max(0, d * 0.6);
+    tb.v += clamp(vT - tb.v, -1.1 * dt, 0.9 * dt);
+    tb.s = Math.min(tb.target, tb.s + tb.v * dt);
+    G.s = tb.s; G.v = tb.v;
+    train.setDoorT(0);
+    train.update(G.s, G.v, dt);
+    updateCamera(dt);
+    if (tb.target - tb.s < 0.15 && tb.v < 0.08) {
+      tb.s = tb.target; tb.v = 0; tb.phase = 'wait'; tb.t = 0;
+    }
+  } else if (tb.phase === 'wait') {
+    tb.t += dt;
+    if (tb.t > 2.4) {
+      tb.phase = 'reload';
+      finishTurnback();
+    }
+  }
+}
+
+async function finishTurnback() {
+  G.mode = 'loading';
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = '折返完成，正在准备反向交路…';
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  try {
+    await buildService(G.routeIdx, true);
+    $('loading').classList.add('hidden');
+    G.turnback = null;
+    beginDriving();
+    toast('折返完成 · 反向值乘开始', 'good', 4200);
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '折返失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+  }
+}
+
+function nextServedIdx(idx) {
+  if (!G.stopPlan) return idx + 1;
+  for (let i = idx + 1; i < path.stations.length; i++) {
+    if (G.stopPlan.has(i)) return i;
+  }
+  return path.stations.length;
+}
+
+function isLastServed(idx) {
+  return nextServedIdx(idx) >= path.stations.length;
+}
 /* ---------------------------------------------------------------- 结算 */
 function finishService() {
   if (G.mode === 'results') return;
@@ -9603,7 +9797,6 @@ function finishService() {
   $('hud').classList.remove('on');
   AUDIO.announce(`本次值乘结束，综合评分${score}分，${grade}级。感谢您的驾驶。`);
 }
-
 /* ---------------------------------------------------------------- 结算曲线 */
 function drawSpeedChart() {
   const cv = $('resChart');
@@ -9643,6 +9836,253 @@ function drawSpeedChart() {
   ctx.fillText('全程速度曲线', x0 + 4, y0 + 14);
 }
 
+
+/* ===== 74_hud.js ===== */
+/* ================================================================
+   HUD / 时刻表 / 执照考试 / PIS / AI 屏蔽门
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
+/* ---------------------------------------------------------------- HUD */
+function toast(text, kind = 'info', ms = 3400) {
+  const area = $('toastArea');
+  const d = document.createElement('div');
+  d.className = 'toast ' + (kind === 'info' ? '' : kind);
+  d.textContent = text;
+  area.appendChild(d);
+  while (area.children.length > 3) area.removeChild(area.firstChild);
+  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 400); }, ms);
+}
+function showBanner(zh, en) {
+  const b = $('stationBanner');
+  b.querySelector('.zh').textContent = zh;
+  b.querySelector('.en').textContent = en;
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+}
+
+let ttRows = [];
+function buildTimetable() {
+  const box = $('hudTT');
+  box.innerHTML = '';
+  ttRows = [];
+  path.stations.forEach((st, i) => {
+    if (G.stopPlan && !G.stopPlan.has(i)) return;
+    const row = document.createElement('div');
+    row.className = 'tt-row' + (i === G.targetIdx ? ' now' : '');
+    row.innerHTML = `<span class="st"></span><span>${st.zh}</span><span class="t1">${fmtClockShort(st.schArr)}</span><span class="t2">${fmtClockShort(st.schDep)}</span>`;
+    box.appendChild(row);
+    ttRows.push({ row, idx: i });
+  });
+  $('hudLine').textContent = line.name;
+  $('hudSeg').textContent = routeDef.seg;
+  $('hudService').textContent = routeDef.seg;
+  document.documentElement.style.setProperty('--line', line.color);
+  document.documentElement.style.setProperty('--line-glow', line.color + '59');
+}
+function updateTimetable() {
+  ttRows.forEach((item, k) => {
+    item.row.classList.toggle('now', item.idx === G.targetIdx);
+    item.row.classList.toggle('done', item.idx < G.targetIdx);
+  });
+}
+/* ---------------- 执照考试 ---------------- */
+function examInit() {
+  G.examTasks = [
+    { id: 'depart', label: '首站正点发车（±20 秒）', ok: null },
+    { id: 'stop', label: '连续 3 站停车误差 ≤ 0.3 m', ok: null, prog: 0 },
+    { id: 'eb', label: '全程未施加紧急制动', ok: true },
+    { id: 'atp', label: '全程未触发 ATP 制动', ok: true },
+    { id: 'door', label: '站站开门办理乘降', ok: true }
+  ];
+  G.examDone = 0;
+  examRender();
+}
+
+function examEvent(id, val) {
+  if (!G.exam || !G.examTasks.length) return;
+  const t = G.examTasks.find(x => x.id === id);
+  if (!t) return;
+  if (id === 'stop') {
+    if (val <= 0.3) {
+      t.prog = (t.prog || 0) + 1;
+      if (t.prog >= 3) t.ok = true;
+    } else {
+      t.prog = 0;
+    }
+  } else if (id === 'depart') {
+    t.ok = Math.abs(val) <= 20;
+  } else {
+    t.ok = !!val;
+  }
+  examRender();
+}
+
+function examRender() {
+  const box = $('examPanel');
+  if (!box) return;
+  const on = G.exam && G.mode === 'driving';
+  box.classList.toggle('on', !!on);
+  if (!on) return;
+  const done = G.examTasks.filter(t => t.ok === true).length;
+  box.innerHTML = `<h6>执照考试 · ${done}/${G.examTasks.length}</h6>` +
+    G.examTasks.map(t => {
+      const cls = t.ok === true ? 'ok' : t.ok === false ? 'bad' : '';
+      const mark = t.ok === true ? '✓' : t.ok === false ? '✕' : '·';
+      const extra = t.id === 'stop' && t.ok !== true ? `（${t.prog || 0}/3）` : '';
+      return `<div class="exam-item ${cls}"><i>${mark}</i><span>${t.label}${extra}</span></div>`;
+    }).join('');
+}
+
+function examPassed() {
+  return G.examTasks.length > 0 && G.examTasks.every(t => t.ok === true);
+}
+/* 站台 PIS：显示下一列车到站时间 */
+function updatePisDisplays() {
+  const term = path.stations[path.stations.length - 1];
+  const show = (idx, so) => {
+    if (!so || !so.pis) return;
+    const st = path.stations[idx];
+    if (!st) return;
+    const d = st.stopS - G.s;
+    let eta = '—', label = '暂无列车', soon = false;
+    if (G.targetIdx === idx) {
+      if (d < 0) { eta = '已到站'; label = ''; }
+      else if (d < 30) { eta = '即将'; label = '进站'; soon = true; }
+      else {
+        const tt = estimateRunTime(Math.max(30, d), 60);
+        eta = Math.ceil(tt / 60) + "'";
+        label = `${Math.round(d)} m`;
+        soon = tt < 100;
+      }
+    } else if (G.targetIdx > idx) {
+      eta = '已过'; label = '';
+    } else {
+      const gap = path.stations[G.targetIdx].stopS - G.s;
+      const tt = estimateRunTime(gap + (st.stopS - path.stations[G.targetIdx].stopS), 60) + 60;
+      eta = Math.ceil(tt / 60) + "'";
+      label = '预计';
+    }
+    drawPis(so.pis, {
+      color: line.color, line: line.name,
+      dir: `开往 ${term.zh}`,
+      eta, etaLabel: label, soon,
+      tip: st.tr && st.tr.length ? `可换乘 ${st.tr.join('、')}` : '请站在安全线内候车'
+    });
+  };
+  if (G.targetIdx > 0) show(G.targetIdx - 1, stationObjFor(G.targetIdx - 1));
+  show(G.targetIdx, stationObjFor(G.targetIdx));
+  const nx = nextServedIdx(G.targetIdx);
+  if (nx < stationObjs.length) show(nx, stationObjFor(nx));
+}
+/* AI 停站时联动对应侧屏蔽门 */
+function updateAiPsd() {
+  for (const ai of aiTrains) {
+    if (ai.dead) continue;
+    if (ai.state === 'dwell') {
+      let so = null, bd = 1e9;
+      for (const s of stationObjs) {
+        if (!s) continue;
+        const d = Math.abs(ai.s - ((s.s || 0) + (s.stopZ || 70)));
+        if (d < bd) { bd = d; so = s; }
+      }
+      if (so && bd < 40) {
+        const psd = ai.lateral > 0 ? so.psdR : so.psdL;
+        if (psd) { psd.setOpen(ai.doorT); ai._psd = { psd, so }; }
+      }
+    } else if (ai._psd) {
+      const pso = stationObjFor(G.targetIdx);
+      const playerAt = pso === ai._psd.so && (G.stopState === 'stop' || G.stopState === 'dwell');
+      if (!playerAt) ai._psd.psd.setOpen(0);
+      ai._psd = null;
+    }
+  }
+}
+function updateHUD(force = false) {
+  if (!path || !train) return;
+  const st = path.stations[G.targetIdx];
+  const dist = Math.max(0, st.stopS - G.s);
+  $('hudNextZh').textContent = st.zh;
+  $('hudNextEn').textContent = st.en;
+  $('hudDist').textContent = Math.round(dist);
+  $('hudTime').textContent = fmtClock(G.clock);
+  $('hudSpeed').textContent = Math.round(G.v * 3.6);
+  const lim = Math.round(G.limit || 80);
+  $('hudLimit').textContent = lim;
+  $('hudLimit').className = G.eb ? 'eb' : (lim < 70 ? 'warn' : '');
+  const lv = G.lever;
+  $('hudTraction').style.width = (lv > 0 ? lv * 50 : 0) + '%';
+  $('hudBrake').style.width = (lv < 0 ? -lv * 50 : 0) + '%';
+  $('hudLeverTxt').textContent = G.eb ? '紧急制动' : lv > 0.005 ? `牵引 ${Math.round(lv * 100)}%` : lv < -0.005 ? `制动 ${Math.round(-lv * 100)}%` : '0%';
+  const ldEl = $('hudLeader');
+  if (ldEl) {
+    if (G.leaderGap != null && G.leaderGap < 1200) {
+      ldEl.textContent = `${G.leaderNo}  ${Math.round(Math.max(0, G.leaderGap))} m`;
+      ldEl.style.color = G.leaderGap < 220 ? '#ff9f43' : '';
+    } else {
+      ldEl.textContent = '—';
+      ldEl.style.color = '';
+    }
+  }
+  $('hudDoorL').classList.toggle('open', G.doorT > 0.1);
+  $('hudDoorR').classList.toggle('open', false);
+  const ebB = $('ebBanner'); if (ebB) ebB.classList.toggle('on', G.eb);
+  const ab = $('atoBtn'); if (ab) ab.classList.toggle('on', G.ato);
+  const progress = clamp(1 - dist / Math.max(1, st.stopS - (G.targetIdx > 0 ? path.stations[G.targetIdx - 1].stopS : 0)), 0, 1);
+  $('hudStopFill').style.width = (G.stopState === 'dwell' || G.stopState === 'stop' ? 100 : progress * 100) + '%';
+  let status = '区间运行';
+  if (G.sigMode === 'fixed') status = '固定闭塞 · 按地面信号行车';
+  if (G.fault) {
+    status = G.fault.type === 'door' ? '车门故障 · 按 L 隔离'
+      : G.fault.type === 'traction' ? '牵引故障 · 限速 40'
+        : G.fault.type === 'signal' ? 'ATP 故障 · 固定闭塞'
+          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引封锁'
+            : '制动故障 · 制动力下降';
+  }
+  else if (G.eb) status = '紧急制动';
+  else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
+  else if (G.stopState === 'dwell') status = '停站作业';
+  else if (G.stopState === 'stop') status = '停稳';
+  else if (G.atpWarn) status = '超速警告';
+  else if (isLastServed(G.targetIdx) && G.stopState === 'dwell') status = '终到';
+  if (G.walk && G.walk.active) status = '站内步行 · F 返回';
+  $('hudStatus').textContent = status;
+  $('hudStatus').className = (G.eb || G.atpWarn) ? 'late' : '';
+  // 停车误差
+  if (G.stopState === 'stop' || G.stopState === 'dwell') {
+    const e = G.s - st.stopS;
+    $('hudStopDelta').textContent = (e >= 0 ? '+' : '') + e.toFixed(2) + ' m';
+    $('hudStopDelta').style.color = Math.abs(e) < 0.35 ? '#3ddc97' : Math.abs(e) < 1.5 ? '#ffb020' : '#ff6b5a';
+  } else {
+    $('hudStopDelta').textContent = dist > 0 ? `${Math.round(dist)} m` : '—';
+    $('hudStopDelta').style.color = '';
+  }
+  // 停站倒计时
+  if (G.stopState === 'dwell') {
+    const dwell = G.clock - st.schArr;
+    $('hudDwell').textContent = `停站 ${Math.max(0, Math.round(dwell))}s`;
+  } else if (G.doorsOpen) {
+    $('hudDwell').textContent = '开门';
+  } else if (G.stopState === 'run' && G.v > 0.5 && !G.ato) {
+    const d = st.stopS - G.s;
+    const need = d > 1 ? (G.v * G.v) / (2 * d) / BRK_SRV : 0;
+    if (need > 0.12) {
+      $('hudDwell').textContent = `建议制动 ${Math.min(100, Math.round(need * 100))}%`;
+      $('hudDwell').style.color = need > 0.85 ? '#ff6b5a' : need > 0.5 ? '#ffb020' : '#8b9daa';
+    } else {
+      $('hudDwell').textContent = '区间运行';
+      $('hudDwell').style.color = '';
+    }
+  } else {
+    $('hudDwell').textContent = G.v > 0.1 ? '运行中' : '待发车';
+    $('hudDwell').style.color = '';
+  }
+}
+
+
+/* ===== 75_view.js ===== */
+/* ================================================================
+   相机与输入
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
 /* ---------------------------------------------------------------- 相机 */
 const qFlip = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, PI, 0));
 
@@ -9726,423 +10166,6 @@ function updateCamera(dt, snap = false) {
   }
   if (G.camMode === 0 && !snap) camera.updateProjectionMatrix();
 }
-
-/* ---------------------------------------------------------------- HUD */
-function toast(text, kind = 'info', ms = 3400) {
-  const area = $('toastArea');
-  const d = document.createElement('div');
-  d.className = 'toast ' + (kind === 'info' ? '' : kind);
-  d.textContent = text;
-  area.appendChild(d);
-  while (area.children.length > 3) area.removeChild(area.firstChild);
-  setTimeout(() => { d.classList.add('out'); setTimeout(() => d.remove(), 400); }, ms);
-}
-function showBanner(zh, en) {
-  const b = $('stationBanner');
-  b.querySelector('.zh').textContent = zh;
-  b.querySelector('.en').textContent = en;
-  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
-}
-
-let ttRows = [];
-function buildTimetable() {
-  const box = $('hudTT');
-  box.innerHTML = '';
-  ttRows = [];
-  path.stations.forEach((st, i) => {
-    if (G.stopPlan && !G.stopPlan.has(i)) return;
-    const row = document.createElement('div');
-    row.className = 'tt-row' + (i === G.targetIdx ? ' now' : '');
-    row.innerHTML = `<span class="st"></span><span>${st.zh}</span><span class="t1">${fmtClockShort(st.schArr)}</span><span class="t2">${fmtClockShort(st.schDep)}</span>`;
-    box.appendChild(row);
-    ttRows.push({ row, idx: i });
-  });
-  $('hudLine').textContent = line.name;
-  $('hudSeg').textContent = routeDef.seg;
-  $('hudService').textContent = routeDef.seg;
-  document.documentElement.style.setProperty('--line', line.color);
-  document.documentElement.style.setProperty('--line-glow', line.color + '59');
-}
-function updateTimetable() {
-  ttRows.forEach((item, k) => {
-    item.row.classList.toggle('now', item.idx === G.targetIdx);
-    item.row.classList.toggle('done', item.idx < G.targetIdx);
-  });
-}
-
-/* ---------------- 执照考试 ---------------- */
-function examInit() {
-  G.examTasks = [
-    { id: 'depart', label: '首站正点发车（±20 秒）', ok: null },
-    { id: 'stop', label: '连续 3 站停车误差 ≤ 0.3 m', ok: null, prog: 0 },
-    { id: 'eb', label: '全程未施加紧急制动', ok: true },
-    { id: 'atp', label: '全程未触发 ATP 制动', ok: true },
-    { id: 'door', label: '站站开门办理乘降', ok: true }
-  ];
-  G.examDone = 0;
-  examRender();
-}
-
-function examEvent(id, val) {
-  if (!G.exam || !G.examTasks.length) return;
-  const t = G.examTasks.find(x => x.id === id);
-  if (!t) return;
-  if (id === 'stop') {
-    if (val <= 0.3) {
-      t.prog = (t.prog || 0) + 1;
-      if (t.prog >= 3) t.ok = true;
-    } else {
-      t.prog = 0;
-    }
-  } else if (id === 'depart') {
-    t.ok = Math.abs(val) <= 20;
-  } else {
-    t.ok = !!val;
-  }
-  examRender();
-}
-
-function examRender() {
-  const box = $('examPanel');
-  if (!box) return;
-  const on = G.exam && G.mode === 'driving';
-  box.classList.toggle('on', !!on);
-  if (!on) return;
-  const done = G.examTasks.filter(t => t.ok === true).length;
-  box.innerHTML = `<h6>执照考试 · ${done}/${G.examTasks.length}</h6>` +
-    G.examTasks.map(t => {
-      const cls = t.ok === true ? 'ok' : t.ok === false ? 'bad' : '';
-      const mark = t.ok === true ? '✓' : t.ok === false ? '✕' : '·';
-      const extra = t.id === 'stop' && t.ok !== true ? `（${t.prog || 0}/3）` : '';
-      return `<div class="exam-item ${cls}"><i>${mark}</i><span>${t.label}${extra}</span></div>`;
-    }).join('');
-}
-
-function examPassed() {
-  return G.examTasks.length > 0 && G.examTasks.every(t => t.ok === true);
-}
-
-/* 站台 PIS：显示下一列车到站时间 */
-function updatePisDisplays() {
-  const term = path.stations[path.stations.length - 1];
-  const show = (idx, so) => {
-    if (!so || !so.pis) return;
-    const st = path.stations[idx];
-    if (!st) return;
-    const d = st.stopS - G.s;
-    let eta = '—', label = '暂无列车', soon = false;
-    if (G.targetIdx === idx) {
-      if (d < 0) { eta = '已到站'; label = ''; }
-      else if (d < 30) { eta = '即将'; label = '进站'; soon = true; }
-      else {
-        const tt = estimateRunTime(Math.max(30, d), 60);
-        eta = Math.ceil(tt / 60) + "'";
-        label = `${Math.round(d)} m`;
-        soon = tt < 100;
-      }
-    } else if (G.targetIdx > idx) {
-      eta = '已过'; label = '';
-    } else {
-      const gap = path.stations[G.targetIdx].stopS - G.s;
-      const tt = estimateRunTime(gap + (st.stopS - path.stations[G.targetIdx].stopS), 60) + 60;
-      eta = Math.ceil(tt / 60) + "'";
-      label = '预计';
-    }
-    drawPis(so.pis, {
-      color: line.color, line: line.name,
-      dir: `开往 ${term.zh}`,
-      eta, etaLabel: label, soon,
-      tip: st.tr && st.tr.length ? `可换乘 ${st.tr.join('、')}` : '请站在安全线内候车'
-    });
-  };
-  if (G.targetIdx > 0) show(G.targetIdx - 1, stationObjFor(G.targetIdx - 1));
-  show(G.targetIdx, stationObjFor(G.targetIdx));
-  const nx = nextServedIdx(G.targetIdx);
-  if (nx < stationObjs.length) show(nx, stationObjFor(nx));
-}
-
-/* AI 停站时联动对应侧屏蔽门 */
-function updateAiPsd() {
-  for (const ai of aiTrains) {
-    if (ai.dead) continue;
-    if (ai.state === 'dwell') {
-      let so = null, bd = 1e9;
-      for (const s of stationObjs) {
-        if (!s) continue;
-        const d = Math.abs(ai.s - ((s.s || 0) + (s.stopZ || 70)));
-        if (d < bd) { bd = d; so = s; }
-      }
-      if (so && bd < 40) {
-        const psd = ai.lateral > 0 ? so.psdR : so.psdL;
-        if (psd) { psd.setOpen(ai.doorT); ai._psd = { psd, so }; }
-      }
-    } else if (ai._psd) {
-      const pso = stationObjFor(G.targetIdx);
-      const playerAt = pso === ai._psd.so && (G.stopState === 'stop' || G.stopState === 'dwell');
-      if (!playerAt) ai._psd.psd.setOpen(0);
-      ai._psd = null;
-    }
-  }
-}
-
-function updateHUD(force = false) {
-  if (!path || !train) return;
-  const st = path.stations[G.targetIdx];
-  const dist = Math.max(0, st.stopS - G.s);
-  $('hudNextZh').textContent = st.zh;
-  $('hudNextEn').textContent = st.en;
-  $('hudDist').textContent = Math.round(dist);
-  $('hudTime').textContent = fmtClock(G.clock);
-  $('hudSpeed').textContent = Math.round(G.v * 3.6);
-  const lim = Math.round(G.limit || 80);
-  $('hudLimit').textContent = lim;
-  $('hudLimit').className = G.eb ? 'eb' : (lim < 70 ? 'warn' : '');
-  const lv = G.lever;
-  $('hudTraction').style.width = (lv > 0 ? lv * 50 : 0) + '%';
-  $('hudBrake').style.width = (lv < 0 ? -lv * 50 : 0) + '%';
-  $('hudLeverTxt').textContent = G.eb ? '紧急制动' : lv > 0.005 ? `牵引 ${Math.round(lv * 100)}%` : lv < -0.005 ? `制动 ${Math.round(-lv * 100)}%` : '0%';
-  const ldEl = $('hudLeader');
-  if (ldEl) {
-    if (G.leaderGap != null && G.leaderGap < 1200) {
-      ldEl.textContent = `${G.leaderNo}  ${Math.round(Math.max(0, G.leaderGap))} m`;
-      ldEl.style.color = G.leaderGap < 220 ? '#ff9f43' : '';
-    } else {
-      ldEl.textContent = '—';
-      ldEl.style.color = '';
-    }
-  }
-  $('hudDoorL').classList.toggle('open', G.doorT > 0.1);
-  $('hudDoorR').classList.toggle('open', false);
-  const ebB = $('ebBanner'); if (ebB) ebB.classList.toggle('on', G.eb);
-  const ab = $('atoBtn'); if (ab) ab.classList.toggle('on', G.ato);
-  const progress = clamp(1 - dist / Math.max(1, st.stopS - (G.targetIdx > 0 ? path.stations[G.targetIdx - 1].stopS : 0)), 0, 1);
-  $('hudStopFill').style.width = (G.stopState === 'dwell' || G.stopState === 'stop' ? 100 : progress * 100) + '%';
-  let status = '区间运行';
-  if (G.sigMode === 'fixed') status = '固定闭塞 · 按地面信号行车';
-  if (G.fault) {
-    status = G.fault.type === 'door' ? '车门故障 · 按 L 隔离'
-      : G.fault.type === 'traction' ? '牵引故障 · 限速 40'
-        : G.fault.type === 'signal' ? 'ATP 故障 · 固定闭塞'
-          : G.fault.type === 'pantograph' ? '受电弓故障 · 牵引封锁'
-            : '制动故障 · 制动力下降';
-  }
-  else if (G.eb) status = '紧急制动';
-  else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
-  else if (G.stopState === 'dwell') status = '停站作业';
-  else if (G.stopState === 'stop') status = '停稳';
-  else if (G.atpWarn) status = '超速警告';
-  else if (isLastServed(G.targetIdx) && G.stopState === 'dwell') status = '终到';
-  if (G.walk && G.walk.active) status = '站内步行 · F 返回';
-  $('hudStatus').textContent = status;
-  $('hudStatus').className = (G.eb || G.atpWarn) ? 'late' : '';
-  // 停车误差
-  if (G.stopState === 'stop' || G.stopState === 'dwell') {
-    const e = G.s - st.stopS;
-    $('hudStopDelta').textContent = (e >= 0 ? '+' : '') + e.toFixed(2) + ' m';
-    $('hudStopDelta').style.color = Math.abs(e) < 0.35 ? '#3ddc97' : Math.abs(e) < 1.5 ? '#ffb020' : '#ff6b5a';
-  } else {
-    $('hudStopDelta').textContent = dist > 0 ? `${Math.round(dist)} m` : '—';
-    $('hudStopDelta').style.color = '';
-  }
-  // 停站倒计时
-  if (G.stopState === 'dwell') {
-    const dwell = G.clock - st.schArr;
-    $('hudDwell').textContent = `停站 ${Math.max(0, Math.round(dwell))}s`;
-  } else if (G.doorsOpen) {
-    $('hudDwell').textContent = '开门';
-  } else if (G.stopState === 'run' && G.v > 0.5 && !G.ato) {
-    const d = st.stopS - G.s;
-    const need = d > 1 ? (G.v * G.v) / (2 * d) / BRK_SRV : 0;
-    if (need > 0.12) {
-      $('hudDwell').textContent = `建议制动 ${Math.min(100, Math.round(need * 100))}%`;
-      $('hudDwell').style.color = need > 0.85 ? '#ff6b5a' : need > 0.5 ? '#ffb020' : '#8b9daa';
-    } else {
-      $('hudDwell').textContent = '区间运行';
-      $('hudDwell').style.color = '';
-    }
-  } else {
-    $('hudDwell').textContent = G.v > 0.1 ? '运行中' : '待发车';
-    $('hudDwell').style.color = '';
-  }
-}
-
-/* ---------------------------------------------------------------- 主循环 */
-function updateGame(dt) {
-  if (!G.ready || G.mode !== 'driving') return;
-  if (G.paused) return;
-  let remain = Math.min(dt, 0.1);
-  while (remain > 0.0001) {
-    const h = Math.min(1 / 120, remain);
-    physics(h);
-    remain -= h;
-  }
-  G.clock += dt;
-  if (G.finishTimer > 0) {
-    G.finishTimer -= dt;
-    if (G.finishTimer <= 0) finishService();
-  }
-  // 手柄速率控制 / 站内步行
-  if (G.walk && G.walk.active) {
-    G.lever = 0;
-    const fwd = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
-    const str = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
-    if (fwd || str) {
-      const spd = (keys['ShiftLeft'] || keys['ShiftRight'] ? 4.2 : 2.4) * dt;
-      const sy = Math.sin(G.walk.yaw), cy = Math.cos(G.walk.yaw);
-      const dx = -sy * fwd + cy * str;
-      const dz = -cy * fwd - sy * str;
-      const len = Math.hypot(dx, dz) || 1;
-      G.walk.pos.x += dx / len * spd;
-      G.walk.pos.z += dz / len * spd;
-    }
-    clampWalk();
-  } else {
-    const up = keys['KeyW'] || keys['ArrowUp'];
-    const dn = keys['KeyS'] || keys['ArrowDown'];
-    if (G.ato && (up || dn)) { G.ato = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 3000); updateHUD(true); }
-    if (up && !dn) G.lever = clamp(G.lever + dt * 1.15, -1, 1);
-    if (dn && !up) G.lever = clamp(G.lever - dt * 1.15, -1, 1);
-    if (!up && !dn && Math.abs(G.lever) < 0.02) G.lever = 0;
-  }
-
-  train.setLever(G.lever);
-  train.update(G.s, G.v, dt);
-  G.aiT = (G.aiT || 0) + dt;
-  for (const ai of aiTrains) ai.update(dt);
-  updateAiPsd();
-  updateCamera(dt);
-  updateHUD();
-  if (train && train.cabDisplay) {
-    const st = path.stations[G.targetIdx];
-    const sig = nextSignalAhead();
-    train.cabDisplay.update(dt, {
-      signal: sig ? sig.state : 2,
-      signalDist: sig ? Math.max(0, sig.gap) : 0,
-      speedKmh: G.v * 3.6,
-      limit: G.limit || 80,
-      distToStop: Math.max(0, st.stopS - G.s),
-      doorOpen: G.doorT > 0.1,
-      eb: G.eb,
-      traction: G.eb ? 0 : Math.max(0, G.lever),
-      atpWarn: !!G.atpWarn,
-      overSpeed: !!G.atpWarn,
-      ato: G.ato,
-      sigMode: G.sigMode,
-      lineColor: line.color,
-      lineBadge: line.badge,
-      lineName: line.name,
-      nextZh: st.zh, nextEn: st.en,
-      schArr: st.schArr, schDep: st.schDep,
-      clock: G.clock,
-      delay: (() => {
-        const dd = Math.max(0, st.stopS - G.s);
-        const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
-        return eta - st.schArr;
-      })(),
-      progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
-      fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
-    });
-  }
-  if (AUDIO.ready) {
-    AUDIO.update(dt, {
-      speed: G.v,
-      traction: G.eb ? 0 : Math.max(0, G.lever),
-      brake: G.eb ? 1 : Math.max(0, -G.lever),
-      inTunnel: path.frameAt(G.s).pos.y < -2,
-      nearStation: path.stations.some(s => Math.abs(s.s - G.s) < 130)
-    });
-    if (G.atpWarn && !G.atpBeepT) { AUDIO.beep(); G.atpBeepT = setTimeout(() => { G.atpBeepT = null; }, 1800); }
-  }
-  // 阳光跟随 + 地下/地上光照过渡
-  if (sun) {
-    const f = path.frameAt(G.s);
-    sun.target.position.copy(f.pos);
-    sun.position.copy(f.pos).addScaledVector(theme.sunDir.clone().normalize(), 220);
-    sun.target.updateMatrixWorld();
-    const indoor = f.pos.y < -2.4;
-    const k = Math.min(1, dt * 1.6);
-    sun.intensity = lerp(sun.intensity, indoor ? 0.03 : theme.sunI, k);
-    hemi.intensity = lerp(hemi.intensity, indoor ? theme.hemi * 0.55 : theme.hemi, k);
-    // 站台补光
-    let ns = null, nd = 1e9;
-    for (const st of path.stations) {
-      const d = Math.abs(st.s - G.s);
-      if (d < nd) { nd = d; ns = st; }
-    }
-    const near = ns ? clamp(1 - (nd - 30) / 70, 0, 1) : 0;
-    stationLights.forEach((L, i) => {
-      if (!ns) { L.intensity = 0; return; }
-      const off = SL_OFF[i];
-      L.position.copy(ns.frame.pos)
-        .addScaledVector(ns.frame.right, off[0])
-        .addScaledVector(ns.frame.tan, off[2])
-        .addScaledVector(ns.frame.up, off[1]);
-      L.intensity = 620 * near;
-    });
-  }
-  if (skyMesh) skyMesh.position.copy(camera.position);
-  // 乘客乘降
-  G._crowdT = (G._crowdT || 0) + dt;
-  if (G._crowdT > 1 / 30) {
-    const h = Math.min(0.12, G._crowdT);
-    G._crowdT = 0;
-    let best = null, bd = 210;
-    for (const so of stationObjs) {
-      if (!so) continue;
-      const dd = Math.abs((so.s || 0) - G.s);
-      if (dd < bd) { bd = dd; best = so; }
-    }
-    const tgtSt = path.stations[G.targetIdx];
-    if (tgtSt && tgtSt.synthetic) best = stationObjFor(G.targetIdx) || best;
-    if (best && best.crowd) best.crowd.update(h, G.doorT);
-  }
-  // 速度曲线采样（每 1.5 秒）
-  G._logT = (G._logT || 0) + dt;
-  if (G._logT > 1.5) {
-    G._logT = 0;
-    (G.speedLog || (G.speedLog = [])).push([G.s, G.v * 3.6]);
-    if (G.speedLog.length > 900) G.speedLog.shift();
-  }
-  // 每秒刷新时刻表
-  G._ttT = (G._ttT || 0) + dt;
-  if (G._ttT > 0.5) { G._ttT = 0; updateTimetable(); }
-  updateSignals(dt);
-  IX.update(dt);
-  updateWeather(dt);
-  if (typeof ATS !== 'undefined') ATS.update(dt);
-  // PIS 屏：每秒刷新当前与下一站
-  G._pisT = (G._pisT || 0) + dt;
-  if (G._pisT > 1.0) { G._pisT = 0; updatePisDisplays(); }
-}
-
-let lastFrame = 0;
-function loop() {
-  requestAnimationFrame(loop);
-  const dt = Math.min(0.06, clock.getDelta());
-  if (G.mode === 'menu') {
-    if (hero) {
-      updateHero(dt);
-      if (composer && G.quality !== 'low') composer.render(); else renderer.render(hero.scene, camera);
-    }
-    return;
-  }
-  if (G.mode === 'loading') {
-    if (hero) renderer.render(hero.scene, camera);
-    return;
-  }
-  if (G.mode === 'turnback') {
-    updateTurnback(dt);
-    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
-    return;
-  }
-  if (G.mode === 'driving' || G.mode === 'paused' || G.mode === 'results') {
-    updateGame(dt);
-    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
-  }
-}
-
-/* ---------------------------------------------------------------- 输入 */
-const keys = {};
 function bindInput() {
   window.addEventListener('keydown', e => {
     if (e.repeat) return;
@@ -10226,19 +10249,6 @@ function bindInput() {
   canvas.addEventListener('contextmenu', e => { e.preventDefault(); G.yaw = 0; G.pitch = -0.02; });
 
   window.addEventListener('blur', () => { if (G.mode === 'driving') togglePause(true); });
-}
-
-function togglePause(on) {
-  if (G.mode === 'driving' && on) {
-    G.mode = 'paused';
-    $('pause').classList.remove('hidden');
-    $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-  } else if (G.mode === 'paused' && !on) {
-    G.mode = 'driving';
-    $('pause').classList.add('hidden');
-    clock.getDelta();
-  }
 }
 
 

@@ -5,8 +5,10 @@
   "description": "上海地铁模拟驾驶 —— Three.js 单文件离线 WebGL 模拟器",
   "scripts": {
     "build": "node build2.js",
-    "smoke": "node smoke.js",
-    "test": "node smoke.js"
+    "smoke": "node tests/smoke.js",
+    "test": "node tests/smoke.js && node tests/regress_modules.js",
+    "test:smoke": "node tests/smoke.js",
+    "test:modules": "node tests/regress_modules.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.0.0"

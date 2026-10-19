@@ -1,10 +1,15 @@
-# 依赖（three 固定 0.160.1，打包器依赖其中的 three.module.min.js）
+﻿# 依赖（three 固定 0.160.1，打包器依赖其中的 three.module.min.js）
 node_modules/
 
 # 调试截图与一次性产物
 *.png
 _backup*.html
 _archive/
+
+# 构建中间产物（build2.js 每次生成，不入库）
+shanghai-metro/entry.js
+shanghai-metro/dist.js
+shanghai-metro/dist.mjs
 
 # 系统噪声
 Thumbs.db
