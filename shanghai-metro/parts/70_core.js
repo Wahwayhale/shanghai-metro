@@ -148,6 +148,7 @@ function updateGame(dt) {
       overSpeed: !!G.atpWarn,
       ato: G.ato,
       sigMode: G.sigMode,
+      coupler: G.coupler || null,
       lineColor: line.color,
       lineBadge: line.badge,
       lineName: line.name,

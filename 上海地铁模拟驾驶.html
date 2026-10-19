@@ -7337,9 +7337,43 @@ class CabDisplay {
     x.fillStyle = st.lineColor;
     x.beginPath(); x.arc(96 + 444 * st.progress, 295, 7, 0, TAU); x.fill();
     x.fillStyle = '#5c7386'; x.font = '500 12px "Microsoft YaHei",sans-serif';
-    x.fillText(st.fromZh, 96, 320);
-    x.textAlign = 'right'; x.fillText(st.toZh, 540, 320);
+    x.fillText(st.fromZh, 96, 318);
+    x.textAlign = 'right'; x.fillText(st.toZh, 540, 318);
     x.textAlign = 'left';
+
+    /* ---- 车钩力仪表（多质点动力学的可视化） ----
+       放在线路条上方独立一行，避免压住站名。
+       横轴以 0 为中心：向右为拉伸（起动时后车拖曳），向左为压缩（制动时后车顶上）。
+       量程 ±160 kN，超过 120 kN 转红。这是驾驶室里唯一能「看见」车钩的地方。 */
+    const cp = st.coupler || { tension: 0, compression: 0 };
+    const cpVal = Math.abs(cp.compression) > Math.abs(cp.tension) ? cp.compression : cp.tension;
+    const cpMax = 160;
+    const barX = 300, barY = 330, barW = 240, barH = 10;
+    x.fillStyle = '#0d1720'; x.fillRect(barX, barY, barW, barH);
+    x.strokeStyle = '#1c2f42'; x.lineWidth = 1; x.strokeRect(barX, barY, barW, barH);
+
+    const mid = barX + barW / 2;
+    const norm = clamp(cpVal / cpMax, -1, 1);
+    const fillW = Math.abs(norm) * (barW / 2);
+    const cc = Math.abs(cpVal) > 120 ? '#ff6b5a' : Math.abs(cpVal) > 60 ? '#ffb020' : '#6ec7ff';
+    x.fillStyle = cc;
+    if (norm >= 0) x.fillRect(mid, barY, fillW, barH);
+    else x.fillRect(mid - fillW, barY, fillW, barH);
+    /* 零位与 ±50% 刻度 */
+    x.fillStyle = '#3a5570'; x.fillRect(mid - 1, barY - 2, 2, barH + 4);
+    x.fillStyle = '#1c2f42';
+    for (const f of [-0.5, 0.5]) x.fillRect(mid + (barW / 2) * f, barY, 1, barH);
+
+    /* 标签与读数：都放左侧（右侧会被 560px 画布裁掉） */
+    x.font = '500 12px "Microsoft YaHei",sans-serif';
+    x.fillStyle = '#5c7386';
+    x.fillText('车钩', 96, barY + 9);
+    x.fillStyle = cc;
+    x.font = '700 13px ui-monospace,monospace';
+    x.textAlign = 'right';
+    x.fillText(Math.abs(cpVal) < 2 ? '—' : (cpVal > 0 ? '+' : '') + Math.round(cpVal) + ' kN', barX - 6, barY + 9);
+    x.textAlign = 'left';
+
     this.t2.needsUpdate = true;
   }
   drawSpeedo(st) {
@@ -8364,11 +8398,23 @@ function playerTrainLen() {
 
    对外的接口保证与单质点一致：G.s / G.v 仍是车头质点，
    由第 0 节车驱动，其余车跟随 —— 这样现有 ATO / 停站 / ATP 逻辑完全不用改。
+
+   ---------------------------------------------------------------
+   本文件刻意写成「零浏览器依赖」：只用到 CAR_PITCH 与 BODY 两个常量，
+   构造时可以全部走入参，因此 node 里直接 require 就能单测（见
+   tests/unit/bodychain.test.js）。这是全项目第一个可脱离浏览器测试的模块。
    ================================================================ */
 
 class BodyChain {
+  /**
+   * @param {object} [cfg]  覆盖 BODY 的参数；node 环境下可传 { pitch, ... } 全部自给
+   * @param {number} [cfg.pitch] 车辆定距（默认取全局 CAR_PITCH）
+   */
   constructor(cfg) {
-    const B = cfg || BODY;
+    const B = cfg || (typeof BODY !== 'undefined' ? BODY : null);
+    if (!B) throw new Error('BodyChain 需要配置：请传入 cfg 或在页面环境下加载 BODY 常量');
+    this.pitch = B.pitch != null ? B.pitch
+      : (typeof CAR_PITCH !== 'undefined' ? CAR_PITCH : 23.15);
     this.n = B.n;
     this.m = new Array(this.n).fill(B.mass);
     this.motor = B.motor.slice();
@@ -8389,7 +8435,7 @@ class BodyChain {
   /** 以车头里程 s、速度 v 初始化静态编组（车尾在前方 dir 的反方向） */
   reset(s, v = 0, dir = 1) {
     for (let i = 0; i < this.n; i++) {
-      this.s[i] = s - dir * i * CAR_PITCH * (this.n > 1 ? 1 : 0);
+      this.s[i] = s - dir * i * this.pitch * (this.n > 1 ? 1 : 0);
       this.v[i] = v;
       this.stretch[i] = 0;
       this.couplerF[i] = 0;
@@ -8425,7 +8471,7 @@ class BodyChain {
        平衡间距 = CAR_PITCH；实际间距超出 → 拉伸，不足 → 压缩。 */
     const F = new Array(Math.max(0, n - 1)).fill(0);
     for (let i = 0; i < n - 1; i++) {
-      const gap = (this.s[i] - this.s[i + 1]) - CAR_PITCH;
+      const gap = (this.s[i] - this.s[i + 1]) - this.pitch;
       const inSlack = Math.abs(gap) <= this.slack;
       const dv = this.v[i] - this.v[i + 1];
       if (inSlack) {
@@ -8466,7 +8512,7 @@ class BodyChain {
 
     /* 记录形变供可视化 */
     for (let i = 0; i < n - 1; i++) {
-      const gap = (this.s[i] - this.s[i + 1]) - CAR_PITCH;
+      const gap = (this.s[i] - this.s[i + 1]) - this.pitch;
       const slack = gap >= 0 ? this.slack : -this.slack;
       this.stretch[i] = Math.abs(gap) <= this.slack ? 0 : gap - slack;
       this.couplerF[i] = F[i];
@@ -8484,14 +8530,14 @@ class BodyChain {
 
   /** 把车链整体平移到新的车头里程（用于传送/AI 同步） */
   relocate(s, dir = 1) {
-    for (let i = 0; i < this.n; i++) this.s[i] = s - dir * i * CAR_PITCH;
+    for (let i = 0; i < this.n; i++) this.s[i] = s - dir * i * this.pitch;
   }
 
   /** 每节车相对刚性编组位置的纵向偏差（正 = 落后），供 Train 摆位用 */
   offsets() {
     const out = new Array(this.n);
     for (let i = 0; i < this.n; i++) {
-      out[i] = (this.s[0] - this.s[i]) - i * CAR_PITCH;
+      out[i] = (this.s[0] - this.s[i]) - i * this.pitch;
     }
     return out;
   }
@@ -8896,6 +8942,7 @@ function updateGame(dt) {
       overSpeed: !!G.atpWarn,
       ato: G.ato,
       sigMode: G.sigMode,
+      coupler: G.coupler || null,
       lineColor: line.color,
       lineBadge: line.badge,
       lineName: line.name,

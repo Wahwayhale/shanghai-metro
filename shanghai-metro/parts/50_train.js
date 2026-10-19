@@ -204,9 +204,43 @@ class CabDisplay {
     x.fillStyle = st.lineColor;
     x.beginPath(); x.arc(96 + 444 * st.progress, 295, 7, 0, TAU); x.fill();
     x.fillStyle = '#5c7386'; x.font = '500 12px "Microsoft YaHei",sans-serif';
-    x.fillText(st.fromZh, 96, 320);
-    x.textAlign = 'right'; x.fillText(st.toZh, 540, 320);
+    x.fillText(st.fromZh, 96, 318);
+    x.textAlign = 'right'; x.fillText(st.toZh, 540, 318);
     x.textAlign = 'left';
+
+    /* ---- 车钩力仪表（多质点动力学的可视化） ----
+       放在线路条上方独立一行，避免压住站名。
+       横轴以 0 为中心：向右为拉伸（起动时后车拖曳），向左为压缩（制动时后车顶上）。
+       量程 ±160 kN，超过 120 kN 转红。这是驾驶室里唯一能「看见」车钩的地方。 */
+    const cp = st.coupler || { tension: 0, compression: 0 };
+    const cpVal = Math.abs(cp.compression) > Math.abs(cp.tension) ? cp.compression : cp.tension;
+    const cpMax = 160;
+    const barX = 300, barY = 330, barW = 240, barH = 10;
+    x.fillStyle = '#0d1720'; x.fillRect(barX, barY, barW, barH);
+    x.strokeStyle = '#1c2f42'; x.lineWidth = 1; x.strokeRect(barX, barY, barW, barH);
+
+    const mid = barX + barW / 2;
+    const norm = clamp(cpVal / cpMax, -1, 1);
+    const fillW = Math.abs(norm) * (barW / 2);
+    const cc = Math.abs(cpVal) > 120 ? '#ff6b5a' : Math.abs(cpVal) > 60 ? '#ffb020' : '#6ec7ff';
+    x.fillStyle = cc;
+    if (norm >= 0) x.fillRect(mid, barY, fillW, barH);
+    else x.fillRect(mid - fillW, barY, fillW, barH);
+    /* 零位与 ±50% 刻度 */
+    x.fillStyle = '#3a5570'; x.fillRect(mid - 1, barY - 2, 2, barH + 4);
+    x.fillStyle = '#1c2f42';
+    for (const f of [-0.5, 0.5]) x.fillRect(mid + (barW / 2) * f, barY, 1, barH);
+
+    /* 标签与读数：都放左侧（右侧会被 560px 画布裁掉） */
+    x.font = '500 12px "Microsoft YaHei",sans-serif';
+    x.fillStyle = '#5c7386';
+    x.fillText('车钩', 96, barY + 9);
+    x.fillStyle = cc;
+    x.font = '700 13px ui-monospace,monospace';
+    x.textAlign = 'right';
+    x.fillText(Math.abs(cpVal) < 2 ? '—' : (cpVal > 0 ? '+' : '') + Math.round(cpVal) + ' kN', barX - 6, barY + 9);
+    x.textAlign = 'left';
+
     this.t2.needsUpdate = true;
   }
   drawSpeedo(st) {

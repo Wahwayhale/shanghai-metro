@@ -12,11 +12,23 @@
 
    对外的接口保证与单质点一致：G.s / G.v 仍是车头质点，
    由第 0 节车驱动，其余车跟随 —— 这样现有 ATO / 停站 / ATP 逻辑完全不用改。
+
+   ---------------------------------------------------------------
+   本文件刻意写成「零浏览器依赖」：只用到 CAR_PITCH 与 BODY 两个常量，
+   构造时可以全部走入参，因此 node 里直接 require 就能单测（见
+   tests/unit/bodychain.test.js）。这是全项目第一个可脱离浏览器测试的模块。
    ================================================================ */
 
 class BodyChain {
+  /**
+   * @param {object} [cfg]  覆盖 BODY 的参数；node 环境下可传 { pitch, ... } 全部自给
+   * @param {number} [cfg.pitch] 车辆定距（默认取全局 CAR_PITCH）
+   */
   constructor(cfg) {
-    const B = cfg || BODY;
+    const B = cfg || (typeof BODY !== 'undefined' ? BODY : null);
+    if (!B) throw new Error('BodyChain 需要配置：请传入 cfg 或在页面环境下加载 BODY 常量');
+    this.pitch = B.pitch != null ? B.pitch
+      : (typeof CAR_PITCH !== 'undefined' ? CAR_PITCH : 23.15);
     this.n = B.n;
     this.m = new Array(this.n).fill(B.mass);
     this.motor = B.motor.slice();
@@ -37,7 +49,7 @@ class BodyChain {
   /** 以车头里程 s、速度 v 初始化静态编组（车尾在前方 dir 的反方向） */
   reset(s, v = 0, dir = 1) {
     for (let i = 0; i < this.n; i++) {
-      this.s[i] = s - dir * i * CAR_PITCH * (this.n > 1 ? 1 : 0);
+      this.s[i] = s - dir * i * this.pitch * (this.n > 1 ? 1 : 0);
       this.v[i] = v;
       this.stretch[i] = 0;
       this.couplerF[i] = 0;
@@ -73,7 +85,7 @@ class BodyChain {
        平衡间距 = CAR_PITCH；实际间距超出 → 拉伸，不足 → 压缩。 */
     const F = new Array(Math.max(0, n - 1)).fill(0);
     for (let i = 0; i < n - 1; i++) {
-      const gap = (this.s[i] - this.s[i + 1]) - CAR_PITCH;
+      const gap = (this.s[i] - this.s[i + 1]) - this.pitch;
       const inSlack = Math.abs(gap) <= this.slack;
       const dv = this.v[i] - this.v[i + 1];
       if (inSlack) {
@@ -114,7 +126,7 @@ class BodyChain {
 
     /* 记录形变供可视化 */
     for (let i = 0; i < n - 1; i++) {
-      const gap = (this.s[i] - this.s[i + 1]) - CAR_PITCH;
+      const gap = (this.s[i] - this.s[i + 1]) - this.pitch;
       const slack = gap >= 0 ? this.slack : -this.slack;
       this.stretch[i] = Math.abs(gap) <= this.slack ? 0 : gap - slack;
       this.couplerF[i] = F[i];
@@ -132,14 +144,14 @@ class BodyChain {
 
   /** 把车链整体平移到新的车头里程（用于传送/AI 同步） */
   relocate(s, dir = 1) {
-    for (let i = 0; i < this.n; i++) this.s[i] = s - dir * i * CAR_PITCH;
+    for (let i = 0; i < this.n; i++) this.s[i] = s - dir * i * this.pitch;
   }
 
   /** 每节车相对刚性编组位置的纵向偏差（正 = 落后），供 Train 摆位用 */
   offsets() {
     const out = new Array(this.n);
     for (let i = 0; i < this.n; i++) {
-      out[i] = (this.s[0] - this.s[i]) - i * CAR_PITCH;
+      out[i] = (this.s[0] - this.s[i]) - i * this.pitch;
     }
     return out;
   }
