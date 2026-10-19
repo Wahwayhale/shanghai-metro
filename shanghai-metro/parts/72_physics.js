@@ -59,61 +59,38 @@ function physics(dt) {
     }
   }
 
-  // 手柄 → 牵引/制动
-  let traction = 0, brake = 0;
-  if (G.eb) brake = 1;
-  else if (G.atpBrake) { brake = 1; traction = 0; }
-  else if (G.lever > 0.005) traction = G.lever;
-  else if (G.lever < -0.005) brake = -G.lever;
-
-  // 受电弓 / 牵引故障：牵引封锁或减半
-  if (G.fault && G.fault.type === 'pantograph' && traction > 0) {
-    traction = 0;
-    if (!G.fault.warned) {
+  // 手柄 + 故障 + 车门联锁 → 牵引/制动分档（纯函数，见 58_dynamics.js）
+  const split = splitTraction({
+    lever: G.lever, eb: G.eb, atpBrake: G.atpBrake,
+    doorsOpen: G.doorsOpen, doorT: G.doorT,
+    fault: G.fault, doorWarned: G.doorWarned
+  });
+  let traction = split.traction;
+  let brake = split.brake;
+  /* 纯函数只报告「哪些事件发生了」，提示与音效仍在这里做，保持行为不变 */
+  for (const ev of split.events) {
+    if (ev === 'fault:pantograph') {
       G.fault.warned = true;
       toast('受电弓无电流 · 牵引封锁，按 L 重启', 'bad', 5200);
       AUDIO.beep(true);
-    }
-  }
-  if (G.fault && G.fault.type === 'traction') {
-    traction *= 0.5;
-  }
-  if (G.fault && G.fault.type === 'brake') brake *= 0.7;
-
-  // 车门故障：未隔离则牵引封锁
-  if (G.fault && G.fault.type === 'door' && traction > 0) {
-    traction = 0;
-    if (!G.fault.warned) {
+    } else if (ev === 'fault:door') {
       G.fault.warned = true;
       toast(`${G.fault.name}未关闭 · 牵引被封锁，按 L 隔离`, 'bad', 5200);
       AUDIO.beep(true);
+    } else if (ev === 'interlock:door') {
+      toast('车门未关闭，牵引被封锁', 'warn'); AUDIO.beep(); G.doorWarned = true;
     }
   }
+  if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
 
-  // 车门联锁
-  if ((G.doorsOpen || G.doorT > 0.02) && traction > 0) {
-    traction = 0;
-    if (!G.doorWarned) { toast('车门未关闭，牵引被封锁', 'warn'); AUDIO.beep(); G.doorWarned = true; }
-  } else if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
-
-  let a = 0;
-  let force = 0;
-  if (traction > 0) {
-    let aT = ACC_MAX * traction;
-    if (v > POWER_V) aT *= POWER_V / v;
-    // 载荷修正
-    aT *= 0.94;
-    a += aT;
-    force = aT * 230000;
-  }
-  if (brake > 0) {
-    const aB = (G.eb ? BRK_EMG : BRK_SRV) * brake * (indoor ? 1 : weatherGrip());
-    a -= aB;
-  }
-  // 基本阻力 + 坡道
-  const res = 0.018 + 0.00045 * v + 0.00007 * v * v;
-  a -= Math.sign(v || 0) * res;
-  a -= 9.81 * path.gradeAt(G.s);
+  // 牵引/制动 + 阻力 + 坡道 → 加速度（纯函数）
+  const dyn = accelFromTraction({
+    traction, brake, v, eb: G.eb,
+    grip: indoor ? 1 : weatherGrip(),
+    grade: path.gradeAt(G.s)
+  });
+  let a = dyn.a;
+  let force = dyn.force;
 
   /* ---- 多质点车钩：车头加速度由车链解算，后车通过车钩反作用于车头 ----
      这才是真的多质点：车头不再由单质点公式直接积分，而是取车链第 0 节车的
