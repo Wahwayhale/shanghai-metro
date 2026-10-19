@@ -5128,10 +5128,19 @@ function initMaterials(renderer, theme) {
   MAT.darkMetal = new THREE.MeshStandardMaterial({ color: 0x2b3237, roughness: 0.5, metalness: 0.7 });
   MAT.metal = new THREE.MeshStandardMaterial({ color: 0x9aa4aa, roughness: 0.35, metalness: 0.85, envMapIntensity: 1.0 });
   MAT.white = new THREE.MeshStandardMaterial({ color: 0xeef1f1, roughness: 0.5, metalness: 0.05 });
+  /* 玻璃：加一层清漆（clearcoat）制造真实玻璃特有的「双层高光」，
+     再用极弱的法线波纹打破完美平整（真实玻璃并不绝对平整）。
+     都是 GPU 侧开销，不新增 mesh、不新增 pass。 */
   MAT.psdGlass = new THREE.MeshPhysicalMaterial({
-    color: 0xcfe6ee, roughness: 0.04, metalness: 0.12, transparent: true, opacity: 0.13,
-    envMapIntensity: 1.6, side: THREE.DoubleSide, depthWrite: false
+    color: 0xcfe6ee, roughness: 0.035, metalness: 0.10, transparent: true, opacity: 0.14,
+    envMapIntensity: 1.9, side: THREE.DoubleSide, depthWrite: false,
+    clearcoat: 1.0, clearcoatRoughness: 0.04, reflectivity: 0.55
   });
+  MAT.psdGlass.normalMap = setAniso(texNormalMap('n_glass', 128, 128, (x, y) => {
+    /* 极缓慢的起伏，幅度很小，只让反射略微扭曲 */
+    return fbm2(x, y, 131, 2) * 0.06;
+  }, 1.6));
+  MAT.psdGlass.normalScale = new THREE.Vector2(0.35, 0.35);
   MAT.water = new THREE.MeshStandardMaterial({ color: 0x0c2230, roughness: 0.08, metalness: 0.9, envMapIntensity: 1.4 });
   MAT.tree = new THREE.MeshStandardMaterial({ color: 0x1e3320, roughness: 0.95 });
   MAT.trunk = new THREE.MeshStandardMaterial({ color: 0x322a24, roughness: 0.9 });
@@ -7927,9 +7936,23 @@ class Train {
     const lower = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.06, loH, 0.22), noseMat);
     lower.position.set(0, 1.05 + loH / 2, zF - 0.06);
     g.add(lower);
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.06, upH, 0.22), noseMat);
-    upper.position.set(0, upY, zF - 0.06);
-    g.add(upper);
+    /* 上脸板：方正车型保持垂直；圆润车型改为向后上方倾斜的斜面，
+       这样侧视轮廓是一条曲线而不是一堵直墙。
+       关键：这一块只覆盖挡风玻璃「上方」，玻璃开口完全不受影响。 */
+    const RAKE = sq ? 0 : 0.58;            // 后掠角（弧度）
+    if (sq) {
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.06, upH, 0.22), noseMat);
+      upper.position.set(0, upY, zF - 0.06);
+      g.add(upper);
+    } else {
+      const plateLen = 1.02;               // 斜面板长度
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.06, plateLen, 0.20), noseMat);
+      /* 斜面板下沿对齐玻璃上沿（约 y=3.02, z=zF-0.02），
+         上沿后掠到 (y≈3.87, z≈zF-0.56) */
+      upper.position.set(0, 3.45, zF - 0.29);
+      upper.rotation.x = -RAKE;
+      g.add(upper);
+    }
     for (const sx of [-1, 1]) {
       const pillar = new THREE.Mesh(new THREE.BoxGeometry(sq ? 0.26 : 0.34, 1.48, 0.22), noseMat);
       pillar.position.set(sx * (sq ? 1.37 : 1.33), 2.32, zF - 0.06);
@@ -7940,9 +7963,17 @@ class Train {
     mask.position.set(0, 2.32, zF + 0.005);
     g.add(mask);
     // 挡风玻璃
+    /* 挡风玻璃：与屏蔽门玻璃同源做法 —— 清漆层 + 微弱波纹法线。
+       注意：司机视角下这块玻璃会被隐藏（noseGlass.visible=false），
+       所以只影响外部/追车视角观感，不影响驾驶视野。 */
     const glass = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), new THREE.MeshPhysicalMaterial({
-      color: 0x0d1a22, roughness: 0.05, metalness: 0.9, transparent: true, opacity: 0.62, envMapIntensity: 2.0
+      color: 0x0d1a22, roughness: 0.045, metalness: 0.86, transparent: true, opacity: 0.60,
+      envMapIntensity: 2.3, clearcoat: 1.0, clearcoatRoughness: 0.035, reflectivity: 0.6
     }));
+    if (typeof MAT !== 'undefined' && MAT.psdGlass && MAT.psdGlass.normalMap) {
+      glass.material.normalMap = MAT.psdGlass.normalMap;
+      glass.material.normalScale = new THREE.Vector2(0.5, 0.5);
+    }
     glass.position.set(0, 2.32, zF + 0.02);
     glass.rotation.x = sq ? -0.015 : -0.04;
     g.add(glass);
@@ -8003,7 +8034,9 @@ class Train {
     // 目的地屏
     const destMat = new THREE.MeshBasicMaterial({ map: texDestination(line, opts.dest || line.stations[line.stations.length - 1], true), toneMapped: false });
     const dest = new THREE.Mesh(new THREE.PlaneGeometry(sq ? 2.05 : 1.55, sq ? 0.34 : 0.39), destMat);
-    dest.position.set(0, sq ? 3.52 : 3.42, zF + (sq ? 0.11 : 0.13));
+    /* 贴在斜面板表面上：y=3.42 处斜面 z ≈ zF-0.25，再沿法线外推一点 */
+    dest.position.set(0, sq ? 3.52 : 3.42, sq ? zF + 0.11 : zF - 0.21);
+    if (!sq) dest.rotation.x = -0.58;
     g.add(dest);
     // 线路号
     const bc = document.createElement('canvas'); bc.width = 128; bc.height = 128;
@@ -8013,7 +8046,9 @@ class Train {
     bx.fillText(line.badge, 64, 68);
     const badgeTex = toTex(bc);
     const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.36), new THREE.MeshBasicMaterial({ map: badgeTex, transparent: false }));
-    badge.position.set(-1.2, 3.4, zF + 0.12); g.add(badge);
+    badge.position.set(-1.2, sq ? 3.4 : 3.40, sq ? zF + 0.12 : zF - 0.19);
+    if (!sq) badge.rotation.x = -0.58;
+    g.add(badge);
     // 车钩
     const coupler = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.7), new THREE.MeshStandardMaterial({ color: 0x363c40, roughness: 0.7, metalness: 0.6 }));
     coupler.position.set(0, 0.86, zF + 0.28); g.add(coupler);
@@ -8021,10 +8056,11 @@ class Train {
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x2c3235, roughness: 0.8 }));
     skirt.position.set(0, 0.5, zF + 0.12); g.add(skirt);
     // 侧面过渡
+    /* 前脸两侧竖棱：原来是两块带旋转的方盒（近看是斜切面），
+       改成圆角盒，让前脸到车侧的过渡是一条圆弧。 */
     for (const s of [-1, 1]) {
-      const corner = new THREE.Mesh(new THREE.BoxGeometry(0.26, 2.6, 0.4), noseMat);
-      corner.position.set(s * (CAR_W / 2 - 0.13), 2.36, zF - 0.2);
-      corner.rotation.y = s * 0.16;
+      const corner = new THREE.Mesh(new RoundedBoxGeometry(0.30, 2.62, 0.46, 3, 0.13), noseMat);
+      corner.position.set(s * (CAR_W / 2 - 0.15), 2.36, zF - 0.20);
       g.add(corner);
     }
   }

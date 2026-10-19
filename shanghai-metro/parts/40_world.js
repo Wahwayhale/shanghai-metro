@@ -107,10 +107,19 @@ function initMaterials(renderer, theme) {
   MAT.darkMetal = new THREE.MeshStandardMaterial({ color: 0x2b3237, roughness: 0.5, metalness: 0.7 });
   MAT.metal = new THREE.MeshStandardMaterial({ color: 0x9aa4aa, roughness: 0.35, metalness: 0.85, envMapIntensity: 1.0 });
   MAT.white = new THREE.MeshStandardMaterial({ color: 0xeef1f1, roughness: 0.5, metalness: 0.05 });
+  /* 玻璃：加一层清漆（clearcoat）制造真实玻璃特有的「双层高光」，
+     再用极弱的法线波纹打破完美平整（真实玻璃并不绝对平整）。
+     都是 GPU 侧开销，不新增 mesh、不新增 pass。 */
   MAT.psdGlass = new THREE.MeshPhysicalMaterial({
-    color: 0xcfe6ee, roughness: 0.04, metalness: 0.12, transparent: true, opacity: 0.13,
-    envMapIntensity: 1.6, side: THREE.DoubleSide, depthWrite: false
+    color: 0xcfe6ee, roughness: 0.035, metalness: 0.10, transparent: true, opacity: 0.14,
+    envMapIntensity: 1.9, side: THREE.DoubleSide, depthWrite: false,
+    clearcoat: 1.0, clearcoatRoughness: 0.04, reflectivity: 0.55
   });
+  MAT.psdGlass.normalMap = setAniso(texNormalMap('n_glass', 128, 128, (x, y) => {
+    /* 极缓慢的起伏，幅度很小，只让反射略微扭曲 */
+    return fbm2(x, y, 131, 2) * 0.06;
+  }, 1.6));
+  MAT.psdGlass.normalScale = new THREE.Vector2(0.35, 0.35);
   MAT.water = new THREE.MeshStandardMaterial({ color: 0x0c2230, roughness: 0.08, metalness: 0.9, envMapIntensity: 1.4 });
   MAT.tree = new THREE.MeshStandardMaterial({ color: 0x1e3320, roughness: 0.95 });
   MAT.trunk = new THREE.MeshStandardMaterial({ color: 0x322a24, roughness: 0.9 });
