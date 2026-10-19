@@ -211,6 +211,8 @@ function buildStation(route, line, st, idx, theme) {
     // 黄色安全线 + 盲道
     pbox(g, 0.62, 0.02, 138, MAT.safety, side * (PLAT_HALF - 1.05), pt + 0.012, 0);
     pbox(g, 0.1, 0.02, 138, MAT.safety, side * (PLAT_HALF - 0.42), pt + 0.012, 0);
+    // 站台边缘圆角（原来是直角，近看像一块切糕）
+    pbox(g, 0.10, 0.10, 138, MAT.concreteDark, side * (PLAT_HALF - 0.24), pt - 0.24, 0);
     // 站台边缘灯带
     pbox(g, 0.05, 0.05, 138, new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 2.4, 2.0), toneMapped: false }),
       side * (PLAT_HALF - 0.16), pt - 0.1, 0);
@@ -282,6 +284,19 @@ function buildStation(route, line, st, idx, theme) {
     }
     cols.instanceMatrix.needsUpdate = true; cols.frustumCulled = false;
     g.add(cols);
+    /* 柱础与柱帽：原来是一根光溜溜的圆台直接插进地面和顶板，
+       真实站台的柱子上下都有收分的底座与柱帽。各加一圈实例化圆台。 */
+    const colBase = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.56, 0.62, 0.24, 14), MAT.concrete, colCount);
+    const colCap = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.52, 0.60, 0.20, 14), MAT.concrete, colCount);
+    const dcap = new THREE.Object3D();
+    for (let i = 0; i < colCount; i++) {
+      const z = -60 + i * 10;
+      dcap.position.set(0, pt + 0.12, z); dcap.updateMatrix(); colBase.setMatrixAt(i, dcap.matrix);
+      dcap.position.set(0, H - 0.10, z); dcap.updateMatrix(); colCap.setMatrixAt(i, dcap.matrix);
+    }
+    colBase.instanceMatrix.needsUpdate = true; colBase.frustumCulled = false;
+    colCap.instanceMatrix.needsUpdate = true; colCap.frustumCulled = false;
+    g.add(colBase, colCap);
     /* 顶部灯带（站台正上方两条） */
     const lightN = 46;
     const lights = new THREE.InstancedMesh(UNIT_BOX, MAT.strip, lightN * 2);

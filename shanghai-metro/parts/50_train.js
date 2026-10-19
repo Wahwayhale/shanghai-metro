@@ -356,12 +356,48 @@ class Train {
     const g = new THREE.Group();
     const line = this.line;
     const mats = this.sideMats;
-    // 侧墙
-    const sideGeo = new THREE.PlaneGeometry(CAR_LEN, 2.85);
-    const right = new THREE.Mesh(sideGeo, mats.right);
-    right.position.set(CAR_W / 2, 2.42, 0); right.rotation.y = PI / 2;
-    const left = new THREE.Mesh(sideGeo, mats.left);
-    left.position.set(-CAR_W / 2, 2.42, 0); left.rotation.y = -PI / 2;
+    // 侧墙：鼓形断面（不再是平板）
+    /* 真实地铁车体是「中间最宽、上下收窄」的鼓形。原来两片 PlaneGeometry
+       完全平直，从 3/4 视角看侧面像一块板。
+       这里用网格重建曲面，但 **保持 UV 与原来完全一致**：
+       右侧 u=0 对应 z=+CAR_LEN/2（原 PlaneGeometry 绕 Y 转 +90° 的结果），
+       左侧相反。否则车门的贴图会左右镜像。 */
+    const sideMesh = (sign) => {
+      const NX = 24, NY = 12;                 // 沿车长 / 沿高度分段
+      const H = 2.85, Y0 = 1.0;               // 与原来 PlaneGeometry(CAR_LEN, 2.85) 对齐
+      const pos = [], uv = [], idx = [];
+      for (let iz = 0; iz <= NX; iz++) {
+        const zt = iz / NX;                   // 0..1
+        /* 右侧 u=0 在 z=+len/2；左侧 u=0 在 z=-len/2 */
+        const z = (sign > 0 ? 0.5 - zt : zt - 0.5) * CAR_LEN;
+        for (let iy = 0; iy <= NY; iy++) {
+          const v = iy / NY;
+          const y = Y0 + v * H;
+          /* 鼓形：中段最宽，上下各收 0.055 / 0.075 */
+          const k = Math.abs(2 * v - 1);
+          const inset = (v < 0.5 ? 0.055 : 0.075) * Math.pow(k, 1.7);
+          pos.push(sign * (CAR_W / 2 - inset), y, z);
+          uv.push(zt, v);
+        }
+      }
+      for (let iz = 0; iz < NX; iz++) {
+        for (let iy = 0; iy < NY; iy++) {
+          const a = iz * (NY + 1) + iy;
+          const b = a + NY + 1;
+          /* 左右两侧绕序相反，保证法线都朝外 */
+          if (sign > 0) idx.push(a, b, a + 1, a + 1, b, b + 1);
+          else idx.push(a, a + 1, b, a + 1, b + 1, b);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      return new THREE.Mesh(geo, sign > 0 ? mats.right : mats.left);
+    };
+    const right = sideMesh(1);
+    const left = sideMesh(-1);
     g.add(right, left);
 
     // 车顶

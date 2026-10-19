@@ -338,6 +338,34 @@ function tunnelRanges(route) {
   return runs;
 }
 
+/* 沿线路生成一条「面向下」的发光带（隧道灯带）。
+   原来是 THREE.Line（1 像素线宽），在 1080p 以上会细到看不见，
+   而且在弯道里会因线段角度变化而闪烁。改成实心带状几何：
+   每个采样点向左右各扩展 width/2，相邻两点之间连成两个三角形。 */
+function ceilingRibbon(route, a, b, width, yOff, mat, step) {
+  const pos = [];
+  const idx = [];
+  const st = step || 2;
+  let n = 0;
+  for (let i = a; i <= b; i += st) {
+    const p = route.P[i], u = route.U[i], r = route.R[i];
+    const cx = p.x + u.x * yOff, cy = p.y + u.y * yOff, cz = p.z + u.z * yOff;
+    const hw = width / 2;
+    pos.push(cx - r.x * hw, cy - r.y * hw, cz - r.z * hw);
+    pos.push(cx + r.x * hw, cy + r.y * hw, cz + r.z * hw);
+    if (n > 0) {
+      const k = (n - 1) * 2;
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+
 function buildTunnels(route, group) {
   const R = TUNNEL_R, spring = 3.1, rise = 2.35;
   const prof = [[-R, -0.42], [-R, spring]];
@@ -353,14 +381,12 @@ function buildTunnels(route, group) {
     const m = extrudeAlong(route, run.a, run.b, prof, MAT.tunnel, { step: 2, uScale: 7, vScale: 7 });
     group.add(m);
 
-    // 顶部灯带
-    const stripPts = [];
-    for (let i = run.a; i <= run.b; i += 2) {
-      const p = route.P[i].clone().add(new THREE.Vector3(0, 1, 0)).addScaledVector(route.U[i], TUNNEL_R - 0.55);
-      stripPts.push(p);
-    }
-    const stripGeo = new THREE.BufferGeometry().setFromPoints(stripPts);
-    const strip = new THREE.Line(stripGeo, new THREE.LineBasicMaterial({ color: new THREE.Color(2.2, 2.1, 1.7), toneMapped: false, fog: false }));
+    // 顶部灯带：实心带状（原来是 1px 的 Line，高分屏下会消失）
+    const stripMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(2.2, 2.1, 1.7), toneMapped: false, fog: false, side: THREE.DoubleSide
+    });
+    const strip = ceilingRibbon(route, run.a, run.b, 0.22, TUNNEL_R - 0.55, stripMat, 2);
+    strip.frustumCulled = false;
     group.add(strip);
 
     // 环向灯（每 22m）
