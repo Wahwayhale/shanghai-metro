@@ -2,6 +2,9 @@
    AI 列车：本务之外的其它列车
    —— 对向车（另一条正线）、同向车（本务前方，可被追踪）
    —— 按站停站、按曲线限速、跟车保持间隔、终端折返
+
+   决策逻辑已抽到 54_aibody.js（aiUpdate，纯函数、零 Three.js 依赖）。
+   本文件只负责：构造 Three.js 车辆、把决策结果同步到车体、布置场景。
    ===================================================================== */
 const AI_BRK = 0.95;        // AI 常用制动
 const AI_ACC = 1.0;         // AI 牵引
@@ -39,6 +42,9 @@ class AiTrain {
     this.phase = 0;
     this.s0 = this.s; this.v0 = this.v; this.idx0 = this.idx;
     this.dir0 = this.dir; this.lat0 = this.lateral;
+    /* 决策用的常量包（与全局常量一致，便于单测覆盖） */
+    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH };
+    this._events = [];
   }
 
   reset() {
@@ -80,127 +86,16 @@ class AiTrain {
 
   update(dt) {
     if (this.dead) return;
-    const P = this.path;
-    const n = P.stations.length;
-
-    /* ---- 停站 / 折返 ---- */
-    if (this.state === 'dwell') {
-      this.dwellT += dt;
-      if (this.holdT > 0) this.holdT = Math.max(0, this.holdT - dt);
-      if (this.dwellT >= this.dwellNeed && this.holdT <= 0) {
-        this.idx += this.dir;
-        this.state = 'run';
-        this.dwellT = 0;
-      }
-    } else if (this.state === 'turnback') {
-      this.dwellT += dt;
-      if (this.dwellT > 34) {
-        this.dir *= -1;
-        this.lateral *= -1;
-        this.train.lateral = this.lateral;
-        this.train.dir = this.dir;
-        this.s = clamp(this.s, 30, P.length - 30);
-        this.idx = this.dir > 0 ? this.nearestStationIdx() + 1 : this.nearestStationIdx() - 1;
-        this.state = 'run';
-        this.dwellT = 0;
-        this.v = 0;
-      }
+    /* 决策逻辑在 54_aibody.js（纯函数，可脱离浏览器测试）；
+       这里只负责把结果同步到 Three.js 车辆上。 */
+    const r = aiUpdate(this, dt, this.leader(), this._C);
+    this._events = r.events;
+    if (this.train) {
+      this.train.lateral = this.lateral;
+      this.train.dir = this.dir;
+      this.train.setDoorT(this.doorT);
+      this.train.update(this.s, this.v, dt);
     }
-
-    /* ---- 目标站 ---- */
-    if (this.state === 'run') {
-      if (this.idx < 0 || this.idx >= n) {
-        this.state = 'turnback';
-        this.dwellT = 0;
-        this.v = 0;
-      }
-    }
-
-    let vT = this.vmaxMs;
-
-    if (this.state === 'run') {
-      const tgt = P.stations[clamp(this.idx, 0, n - 1)];
-      const d = this.gapToStop(this.idx);
-
-      // 区间限速
-      const vLim = Math.min(this.vmax, P.atpLimit(this.s, this.v)) * KMH;
-      vT = Math.min(vT, vLim);
-
-      // 停车曲线：远段按制动曲线，近段线性收敛到停车标（跳停时不施加）
-      if (this.stops && !this.skip) {
-        let vStop = 0;
-        if (d > 0) {
-          vStop = Math.sqrt(2 * 0.82 * Math.max(0, d - 0.35));
-          if (d < 6) vStop = Math.min(vStop, clamp(d * 0.45, 0, 1.6));
-        }
-        vT = Math.min(vT, vStop);
-      }
-
-      // 跟车
-      const ld = this.leader();
-      if (ld && ld.gap < 420) {
-        vT = Math.min(vT, Math.sqrt(2 * AI_BRK * Math.max(0, ld.gap - 30)));
-        if (ld.gap < 60) vT = Math.min(vT, ld.v * 0.9);
-      }
-
-      // 跳停：通过站台后放行
-      if (this.skip && d <= 0.5 && d > -30) {
-        this.skip = false;
-        this.idx += this.dir;
-      }
-
-      // 已越过停车标太多，直接放行到下一站
-      if (this.stops && d < -6 && !this.skip) {
-        this.idx += this.dir;
-        if (this.idx < 0 || this.idx >= n) { this.state = 'turnback'; this.dwellT = 0; this.v = 0; }
-      }
-
-      // 停稳判定：站台范围内停住即办客
-      if (this.stops && Math.abs(d) <= 6 && this.v < 0.3) {
-        this.v = 0;
-        this.s = tgt.stopS;
-        if (this.skip) {
-          this.skip = false;
-          this.idx += this.dir;
-          this.state = 'run';
-        } else {
-          this.state = 'dwell';
-          this.dwellT = 0;
-          this.dwellNeed = 26 + (this.seed % 5) * 3;
-          this.doorT = 0;
-        }
-      }
-
-      // 越过终点
-      if (!this.stops && (this.s > P.length - 20 || this.s < 20)) {
-        this.state = 'turnback';
-        this.dwellT = 0;
-      }
-    } else {
-      vT = 0;
-    }
-
-    /* ---- 速度积分 ---- */
-    const dv = vT - this.v;
-    let a = 0;
-    if (vT < 0.06 && this.v > 0.02) a = -1.0;          // 停车目标：直接制动到底
-    else if (Math.abs(dv) > 0.08) a = dv > 0 ? Math.min(AI_ACC, 0.25 + dv * 0.4) : -Math.min(1.1, 0.22 + (-dv) * 0.55);
-    this.v = clamp(this.v + a * dt, 0, this.vmaxMs);
-    if (this.state === 'dwell' || this.state === 'turnback') this.v = 0;
-    this.s += this.v * this.dir * dt;
-    this.phase += dt;
-
-    /* ---- 车门（停站时开合，仅视觉） ---- */
-    if (this.state === 'dwell') {
-      const t = clamp(this.dwellT / 3, 0, 1);
-      const closing = this.dwellT > this.dwellNeed - 3.5;
-      this.doorT = closing ? clamp((this.dwellNeed - this.dwellT) / 3.5, 0, 1) : t;
-    } else {
-      this.doorT = 0;
-    }
-
-    this.train.setDoorT(this.doorT);
-    this.train.update(this.s, this.v, dt);
   }
 
   nearestStationIdx() {
