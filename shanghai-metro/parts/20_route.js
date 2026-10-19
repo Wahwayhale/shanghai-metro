@@ -221,6 +221,46 @@ class RoutePath {
     return new THREE.Vector3().lerpVectors(this.P[i], this.P[i + 1], t)
       .addScaledVector(this.R[i], lateral).addScaledVector(new THREE.Vector3(0, 1, 0), vert);
   }
+
+  /* ----------------------------------------------------------------
+     道岔横移：进路反位时，列车在渡线区间从一条正线横移到另一条。
+     由 IX 在折返过程中登记，平时为空数组（零开销）。
+     ---------------------------------------------------------------- */
+  clearCrossovers() { this.xo = []; }
+  addCrossover(s0, s1, delta) {
+    if (!(s1 > s0)) return;
+    (this.xo || (this.xo = [])).push({ s0, s1, delta });
+  }
+  /** 该里程处的累计横向偏移（基准 lateral + 已通过的渡线位移） */
+  lateralAt(s, base = 0) {
+    const xs = this.xo;
+    if (!xs || !xs.length) return base;
+    let lat = base;
+    for (let i = 0; i < xs.length; i++) {
+      const t = xs[i];
+      if (s <= t.s0) continue;
+      if (s >= t.s1) { lat += t.delta; continue; }
+      lat += t.delta * smoothstep((s - t.s0) / (t.s1 - t.s0));
+    }
+    return lat;
+  }
+  /** 含横向偏移的位姿。横移段用差分重算切向，车身跟着转向而不是横向侧滑。 */
+  poseAt(s, lateral = 0) {
+    const f = this.frameAt(s);
+    if (!this.xo || !this.xo.length) {
+      return { pos: f.pos.clone().addScaledVector(f.right, lateral), tan: f.tan, right: f.right, up: f.up };
+    }
+    const pos = f.pos.clone().addScaledVector(f.right, this.lateralAt(s, lateral));
+    const h = 2.0;
+    const sa = clamp(s - h, 0, this.length), sb = clamp(s + h, 0, this.length);
+    const fa = this.frameAt(sa), fb = this.frameAt(sb);
+    const pa = fa.pos.clone().addScaledVector(fa.right, this.lateralAt(sa, lateral));
+    const pb = fb.pos.clone().addScaledVector(fb.right, this.lateralAt(sb, lateral));
+    const tan = pb.clone().sub(pa).normalize();
+    if (!isFinite(tan.x)) return { pos, tan: f.tan, right: f.right, up: f.up };
+    const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), tan).normalize();
+    return { pos, tan, right, up: new THREE.Vector3().crossVectors(tan, right).normalize() };
+  }
   tangentAt(s) {
     const i = clamp(Math.round(s / this.ds), 0, this.N);
     return this.T[i].clone();

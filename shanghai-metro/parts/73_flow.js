@@ -220,12 +220,24 @@ function startTurnback() {
   G.mode = 'turnback';
   G.finishTimer = -1;
   G.ato = false; G.lever = 0; G.eb = false;
+
+  /* B 渡线反位 → 列车在渡线区间从本线横移到对向线。
+     IX.buildCrossover 里渡线几何从 a1 = -TRACK_LAT 连到 b1 = +TRACK_LAT，
+     本务线横向偏移也是 -TRACK_LAT，所以顺着 s 增加方向横移量取 +2·TRACK_LAT。
+     列车动车的终点必须越过 B 渡线，否则不会真正换线。 */
+  const tB = (typeof IX !== 'undefined' && IX.turnouts) ? IX.turnouts.find(t => t.key === 'B') : null;
+  const xoEnd = tB ? tB.s + 30 : null;
+  const moveTarget = Math.min(path.length - 20, (tB ? Math.max(last.stopS + 80, xoEnd + 45) : last.stopS + 80));
+  path.clearCrossovers();
+  if (tB) path.addCrossover(tB.s - 30, tB.s + 30, 2 * TRACK_LAT);
+
   G.turnback = {
     phase: 'move', t: 0, v: 0, s: G.s,
-    target: Math.min(path.length - 20, last.stopS + 80)
+    target: moveTarget,
+    crossover: tB ? { s0: tB.s - 30, s1: tB.s + 30, ok: moveTarget > xoEnd } : null
   };
-  toast('终端折返 · B 进路已锁闭，列车动车至折返线', 'info', 4600);
-  AUDIO.announce('终点站折返，列车动车至折返线，请注意安全。');
+  toast('终端折返 · B 进路已锁闭，列车动车经渡线至折返线', 'info', 4600);
+  AUDIO.announce('终点站折返，列车经渡线进入折返线，请注意安全。');
   updateHUD(true);
 }
 

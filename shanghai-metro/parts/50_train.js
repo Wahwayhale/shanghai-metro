@@ -882,13 +882,16 @@ class Train {
       const cs = dir > 0
         ? s - 11.4 - i * CAR_PITCH - lag
         : s + 11.4 + i * CAR_PITCH + lag;
-      const f = this.route.frameAt(cs);
+      const usePose = typeof this.route.poseAt === 'function';
+      const f = usePose ? this.route.poseAt(cs, this.lateral) : this.route.frameAt(cs);
       const tan = dir > 0 ? f.tan.clone() : f.tan.clone().negate();
       // 用水平基准重建正交基，避免插值基向量带来的滚转抖动
       const right = new THREE.Vector3().crossVectors(WORLD_UP, tan).normalize();
       const up = new THREE.Vector3().crossVectors(tan, right).normalize();
       const car = this.cars[i];
-      car.group.position.copy(f.pos).addScaledVector(f.right, this.lateral);
+      // poseAt 已把横向偏移算进 pos；未实现时退化为旧算法
+      if (usePose) car.group.position.copy(f.pos);
+      else car.group.position.copy(f.pos).addScaledVector(f.right, this.lateral);
       car.group.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, up, tan));
       car.group.updateMatrixWorld();
     }

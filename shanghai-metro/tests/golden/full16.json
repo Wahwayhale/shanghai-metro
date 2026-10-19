@@ -1,0 +1,44 @@
+{
+  "stops": 5,
+  "results": [
+    {
+      "zh": "华夏中路",
+      "err": 0.154,
+      "stopScore": 100,
+      "arrT": 186.76,
+      "depDelay": -110.84
+    },
+    {
+      "zh": "罗山路",
+      "err": 0.156,
+      "stopScore": 100,
+      "arrT": 397.84,
+      "depDelay": -139.76
+    },
+    {
+      "zh": "周浦东",
+      "err": 0.1604,
+      "stopScore": 100,
+      "arrT": 560.86,
+      "depDelay": -396.74
+    },
+    {
+      "zh": "鹤沙航城",
+      "err": 0.1579,
+      "stopScore": 100,
+      "arrT": 697.74,
+      "depDelay": -619.86
+    },
+    {
+      "zh": "航头东",
+      "err": 0.1444,
+      "stopScore": 100,
+      "arrT": 837.16,
+      "depDelay": 0
+    }
+  ],
+  "maxErr": 0.1604,
+  "avgStopScore": 100,
+  "energy": 232.569,
+  "vMax": 117.57
+}
