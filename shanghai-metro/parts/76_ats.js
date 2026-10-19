@@ -20,12 +20,12 @@ const ATS = {
       const no = b.dataset.no, cmd = b.dataset.cmd;
       const ai = aiTrains.find(a => a.carNo === no);
       if (!ai) return;
-      const secs = cmd === 'hold' ? 90 : 0;
-      ai.command(cmd, secs);
+      /* 命令语义来自 59_atslog.js，避免秒数/文案散落在 UI 里 */
+      const act = atsCommand(cmd);
+      if (!act) return;
+      ai.command(act.cmd, act.secs);
       AUDIO.beep();
-      if (cmd === 'hold') toast(`${no} 次 · 调度扣车 90 秒`, 'warn', 2800);
-      else if (cmd === 'go') toast(`${no} 次 · 调度放行`, 'good', 2400);
-      else toast(`${no} 次 · 下一站跳停`, 'info', 2600);
+      toast(act.text(no), act.level, 2800);
       this.renderList(true);
     });
   },
@@ -133,48 +133,29 @@ const ATS = {
   renderList(force) {
     const box = $('atsList');
     if (!box || !path) return;
-    const sts = path.stations;
     const now = G.clock || 0;
     $('atsClock').textContent = fmtClock(now);
-    $('atsSub').textContent = `${line ? line.name : ''} · 上行 · ${aiTrains.length + 1} 列在网 · ${path.length.toFixed(0)} m`;
-
-    const rows = [];
-    rows.push({
-      no: '本务', sub: 'DRIVER', me: true,
-      from: G.targetIdx > 0 ? sts[G.targetIdx - 1].zh : '始发',
-      to: sts[G.targetIdx] ? sts[G.targetIdx].zh : '',
-      v: G.v * 3.6,
-      state: G.eb ? 'eb' : G.doorsOpen ? 'dwell' : 'run',
-      hold: 0, ops: ''
+    /* 文案与行数据来自 59_atslog.js（纯逻辑，可单测）；这里只拼 HTML */
+    $('atsSub').textContent = atsSubtitle({
+      line, aiCount: aiTrains.length, pathLen: path.length
     });
 
-    for (const ai of aiTrains) {
-      if (ai.dead) continue;
-      const ti = clamp(ai.idx, 0, sts.length - 1);
-      const fi = clamp(ai.idx - ai.dir, 0, sts.length - 1);
-      rows.push({
-        no: ai.carNo, sub: ai.dir > 0 ? '上行' : '下行', me: false,
-        from: sts[fi].zh, to: sts[ti].zh,
-        v: ai.v * 3.6,
-        state: ai.state,
-        hold: ai.holdT,
-        ops: `<button class="ats-btn hold" data-no="${ai.carNo}" data-cmd="hold">扣车</button>` +
-          `<button class="ats-btn" data-no="${ai.carNo}" data-cmd="go">放行</button>` +
-          `<button class="ats-btn skip" data-no="${ai.carNo}" data-cmd="skip">跳停</button>`
-      });
-    }
+    const rows = atsRows({ G, aiTrains, stations: path.stations });
 
     box.innerHTML = rows.map(r => {
-      let tag, cls;
-      if (r.state === 'eb') { tag = '紧急'; cls = 'hold'; }
-      else if (r.hold > 0.5) { tag = '扣车 ' + Math.round(r.hold) + 's'; cls = 'hold'; }
-      else if (r.state === 'dwell') { tag = '停站'; cls = 'dwell'; }
-      else if (r.state === 'turnback') { tag = '折返'; cls = 'dwell'; }
-      else { tag = '运行'; cls = 'run'; }
+      const { tag, cls } = atsTag(r);
+      /* 本务行没有 ops；AI 行按 ops 里的命令名生成按钮 */
+      const opsHtml = r.ops === null
+        ? '<span style="font-size:9px;color:#5f7280">值乘中</span>'
+        : r.ops.map(cmd => {
+          const label = cmd === 'hold' ? '扣车' : cmd === 'go' ? '放行' : '跳停';
+          const extra = cmd === 'hold' ? ' hold' : cmd === 'skip' ? ' skip' : '';
+          return `<button class="ats-btn${extra}" data-no="${r.no}" data-cmd="${cmd}">${label}</button>`;
+        }).join('');
       return `<div class="ats-row${r.me ? ' me' : ''}">
         <div class="ats-no">${r.no}<i>${r.sub}</i></div>
         <div class="ats-mid"><b>${r.from} → ${r.to}</b><span>${Math.round(r.v)} km/h · <span class="ats-tag ${cls}">${tag}</span></span></div>
-        <div class="ats-ops">${r.ops || '<span style="font-size:9px;color:#5f7280">值乘中</span>'}</div>
+        <div class="ats-ops">${opsHtml}</div>
       </div>`;
     }).join('');
     if (force) this.draw();
