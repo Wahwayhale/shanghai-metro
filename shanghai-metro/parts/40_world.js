@@ -34,6 +34,13 @@ function initMaterials(renderer, theme) {
     return h;
   }, 3.2));
   MAT.tunnel.normalScale = new THREE.Vector2(1.1, 1.1);
+  /* 隧道壁粗糙度：整体 0.94，混入竖向水痕（更光滑）与斑驳 */
+  MAT.tunnel.roughnessMap = setAniso(texRoughMap('r_tunnel', 256, 256, (x, y) => {
+    const base = 0.90 + fbm2(x, y, 71, 3) * 0.10;
+    const streak = Math.sin(x * 0.11 + fbm2(x, y, 83, 2) * 6.0);
+    return base - (streak > 0.75 ? 0.28 : 0);
+  }));
+  MAT.tunnel.roughness = 1.0;
 
   MAT.stationWall = new THREE.MeshStandardMaterial({
     map: setAniso(texConcrete('#93979a', 0.06, 0)), roughness: 0.82, metalness: 0.04,
@@ -65,6 +72,11 @@ function initMaterials(renderer, theme) {
     return hash2(x >> 1, y >> 1, 7) * 0.7 + fbm2(x, y, 5, 2) * 0.3;
   }, 4.5));
   MAT.ballast.normalScale = new THREE.Vector2(1.4, 1.4);
+  /* 道砟粗糙度：整体 0.9~1.0，碎石颗粒间有明暗 */
+  MAT.ballast.roughnessMap = setAniso(texRoughMap('r_ballast', 128, 128, (x, y) => {
+    return 0.86 + hash2(x >> 1, y >> 1, 19) * 0.14;
+  }));
+  MAT.ballast.roughness = 1.0;
 
   MAT.rail = new THREE.MeshStandardMaterial({ color: 0xd7dade, roughness: 0.28, metalness: 0.92, envMapIntensity: 1.2 });
   MAT.sleeper = new THREE.MeshStandardMaterial({ color: 0x9a9d9c, roughness: 0.9, metalness: 0.05 });
@@ -79,6 +91,16 @@ function initMaterials(renderer, theme) {
     return h;
   }, 2.2));
   MAT.platform.normalScale = new THREE.Vector2(0.9, 0.9);
+  /* 站台地面粗糙度：砖面 0.72，砖缝积灰更涩，局部磨亮 */
+  MAT.platform.roughnessMap = setAniso(texRoughMap('r_platform', 256, 256, (x, y) => {
+    const gx = Math.abs((x % 32) - 0.5), gy = Math.abs((y % 32) - 0.5);
+    const inJoint = gx < 1.0 || gy < 1.0;
+    const wear = fbm2(x, y, 97, 2);
+    let r = inJoint ? 0.94 : 0.68 + wear * 0.18;
+    if (wear > 0.78) r -= 0.22;          // 被踩亮的地方
+    return r;
+  }));
+  MAT.platform.roughness = 1.0;
   MAT.tactile = new THREE.MeshStandardMaterial({ map: setAniso(texTactile()), roughness: 0.8, metalness: 0.02, color: 0xffffff });
   MAT.tactile.map.repeat.set(2, 90);
   MAT.safety = new THREE.MeshStandardMaterial({ color: 0xe8b93a, roughness: 0.7, metalness: 0.05 });

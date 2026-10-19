@@ -132,7 +132,7 @@ function importSave(text) {
 const SETTINGS_KEY = 'sm_settings';
 const SETTINGS_DEFAULTS = {
   tod: 'dusk', weather: 'clear', diff: 'normal',
-  quality: 'medium', voice: 'on', shakeOn: true, volume: 0.7
+  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7
 };
 
 function loadSettings() {
@@ -415,7 +415,7 @@ function boot() {
     return;
   }
   initRenderer();
-  G.quality = 'medium';
+  G.quality = 'high';
   G.mode = 'menu';
   line = LINES[ROUTES[0].line];
   /* 设置持久化：在 bindMenu 之前应用，按钮选中态才能对齐已存设置。

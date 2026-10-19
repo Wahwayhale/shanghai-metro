@@ -66,6 +66,35 @@ function texNormalMap(key, W, H, heightFn, strength) {
   return tex;
 }
 
+/* 程序化粗糙度贴图：把「哪里光滑、哪里粗糙」写成灰度。
+   three.js 的 roughnessMap 取 GREEN 通道，灰度写入即可。
+   和法线贴图一样必须 NoColorSpace（它是数据贴图，不是颜色）。
+   用途：让表面出现「用旧了」的不均匀感 —— 隧道壁有光滑的水痕、
+   站台地砖边角被磨亮、道砟整体粗糙但颗粒间有明暗。 */
+function texRoughMap(key, W, H, fn) {
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const d = img.data;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const v = Math.max(0, Math.min(1, fn(x, y)));
+      const g = Math.round(v * 255);
+      const i = (y * W + x) * 4;
+      d[i] = g; d[i + 1] = g; d[i + 2] = g; d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  tex.colorSpace = THREE.NoColorSpace;
+  TEX_CACHE.set(key, tex);
+  return tex;
+}
+
 /* 确定性哈希噪声：同一个坐标永远得到同一个值，便于平铺 */
 function hash2(x, y, seed) {
   let h = x * 374761393 + y * 668265263 + (seed || 0) * 1442695040;
