@@ -1,0 +1,30 @@
+const puppeteer=require('puppeteer-core');const path=require('path');
+const EDGE='C://Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const base = require('./testenv').ROOT;
+const file='file:///'+path.resolve(base+'/上海地铁模拟驾驶.html').replace(/\\/g,'/');
+const VOICES=[{name:'Microsoft Xiaoxiao Online (Natural) - Chinese (Mainland)',lang:'zh-CN',localService:false,voiceURI:'xs'}];
+(async()=>{
+const b=await puppeteer.launch({executablePath:EDGE,headless:'new',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'],defaultViewport:{width:1280,height:720}});
+const p=await b.newPage();
+const errs=[];p.on('pageerror',e=>errs.push(e.message));
+await p.evaluateOnNewDocument((vs)=>{
+  window.__cap=[];
+  const obs=()=>{const e=document.getElementById('paCaption');if(e){new MutationObserver(()=>window.__cap.push({at:Math.round(performance.now()),on:e.classList.contains('on'),zh:e.querySelector('b').textContent.slice(0,12)})).observe(e,{attributes:true,attributeFilter:['class']});}};
+  document.addEventListener('DOMContentLoaded',obs);
+  const fake={speak(u){setTimeout(()=>u.onstart&&u.onstart(),5);setTimeout(()=>u.onend&&u.onend(),1200);},cancel(){},getVoices(){return vs.map(v=>Object.assign({},v));},onvoiceschanged:null};
+  Object.defineProperty(window,'speechSynthesis',{value:fake,configurable:true});
+},VOICES);
+await p.goto(file,{waitUntil:'load',timeout:90000});
+await new Promise(r=>setTimeout(r,1800));
+await p.click('#startBtn');await new Promise(r=>setTimeout(r,400));
+const cls0=await p.evaluate(()=>document.getElementById('paCaption').className);
+await p.evaluate(()=>{const S=window.__sim;S.AUDIO.announce('测试字幕中文','Test subtitle english',{chime:false});});
+await new Promise(r=>setTimeout(r,200));
+console.log('AFTER200',await p.evaluate(()=>document.getElementById('paCaption').className));
+await new Promise(r=>setTimeout(r,1500));
+console.log('AFTER1700',await p.evaluate(()=>document.getElementById('paCaption').className));
+await new Promise(r=>setTimeout(r,3000));
+console.log('AFTER4700',await p.evaluate(()=>document.getElementById('paCaption').className));
+console.log('LOG',JSON.stringify(await p.evaluate(()=>window.__cap)));
+console.log('ERR',errs.slice(0,3));
+await b.close();})().catch(e=>{console.error('FATAL',e);process.exit(1)});

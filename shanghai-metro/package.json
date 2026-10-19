@@ -1,0 +1,17 @@
+{
+  "name": "shanghai-metro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "上海地铁模拟驾驶 —— Three.js 单文件离线 WebGL 模拟器",
+  "scripts": {
+    "build": "node build2.js",
+    "smoke": "node smoke.js",
+    "test": "node smoke.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  }
+}

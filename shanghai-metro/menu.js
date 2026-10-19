@@ -1,0 +1,15 @@
+const puppeteer=require('puppeteer-core');const path=require('path');
+const EDGE='C://Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const base = require('./testenv').ROOT;
+const file='file:///'+path.resolve(base+'/上海地铁模拟驾驶.html').replace(/\\/g,'/');
+(async()=>{const b=await puppeteer.launch({executablePath:EDGE,headless:'new',args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox'],defaultViewport:{width:1440,height:810}});
+const p=await b.newPage();p.on('pageerror',e=>console.log('ERR',e.message));
+await p.goto(file,{waitUntil:'load',timeout:90000});await new Promise(r=>setTimeout(r,9000));
+await p.screenshot({path:base+'/shanghai-metro/m1.png'});
+await p.evaluate(()=>{document.querySelectorAll('.route-card')[2].click()});
+await new Promise(r=>setTimeout(r,3000));
+await p.screenshot({path:base+'/shanghai-metro/m2.png'});
+await p.evaluate(()=>{document.getElementById('todGroup').children[2].click()});
+await new Promise(r=>setTimeout(r,3500));
+await p.screenshot({path:base+'/shanghai-metro/m3.png'});
+console.log('ok');await b.close();})().catch(e=>{console.error(e);process.exit(1)});
