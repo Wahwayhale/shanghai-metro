@@ -21,7 +21,12 @@ const DYN_DEFAULTS = {
   ACC_MAX: 1.45,     // m/s² 牵引
   POWER_V: 18.0,     // m/s 恒功率转折点
   BRK_SRV: 1.0,      // m/s² 常用制动
-  BRK_EMG: 1.35      // m/s² 紧急制动
+  BRK_EMG: 1.35,     // m/s² 紧急制动
+  MASS: 230000,      // 6 节编组总质量 kg
+  MOTOR_RATIO: 0.66, // 动轴承担的车重比例（黏着重量）
+  MU_DRY: 0.33,      // 干燥轨面黏着系数
+  SLIP_PENALTY: 0.85,// 空转后动摩擦低于静摩擦
+  REGEN_EFF: 0.75    // 再生制动回馈效率（含变流/线路损耗）
 };
 
 /**
@@ -89,7 +94,12 @@ function splitTraction(o) {
 function accelFromTraction(o, c) {
   const C = Object.assign({}, DYN_DEFAULTS, c || {});
   const v = o.v || 0;
-  let a = 0, force = 0;
+  const mass = o.mass || C.MASS;
+  const mu = o.mu != null ? o.mu
+    : C.MU_DRY * (o.grip == null ? 1 : o.grip);
+  /* 黏着极限：动轴承担的重量 × μ。超过它，轮对开始空转。 */
+  const adhesion = mu * mass * (o.motorRatio || C.MOTOR_RATIO) * 9.81;
+  let a = 0, force = 0, slip = false, slipRatio = 0;
 
   if (o.traction > 0) {
     let aT = C.ACC_MAX * o.traction;
@@ -97,11 +107,25 @@ function accelFromTraction(o, c) {
     if (v > C.POWER_V) aT *= C.POWER_V / v;
     /* 载荷修正：满载乘客 → 加速度略降 */
     aT *= 0.94;
+    /* 轮轨黏着：指令牵引力超过黏着极限时，实际只能用到极限值，
+       且动摩擦（空转）低于静摩擦，加速度出现平台。 */
+    const fCmd = aT * mass;
+    if (fCmd > adhesion) {
+      slip = true;
+      force = adhesion * C.SLIP_PENALTY;
+      aT = force / mass;
+      slipRatio = Math.min(1, (fCmd / Math.max(1, adhesion) - 1) * 2 + 0.05);
+    } else {
+      force = fCmd;
+    }
     a += aT;
-    force = aT * 230000;
   }
   if (o.brake > 0) {
-    const aB = (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip);
+    /* 制动同样受黏着限制（紧急制动在低 μ 下会延长） */
+    const aB = Math.min(
+      (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip),
+      mu * 9.81 * 0.98
+    );
     a -= aB;
   }
   /* 基本阻力（Davis 式简化）+ 坡道 */
@@ -109,7 +133,28 @@ function accelFromTraction(o, c) {
   a -= Math.sign(v || 0) * res;
   a -= 9.81 * (o.grade || 0);
 
-  return { a, force };
+  return { a, force, slip, slipRatio, adhesion, mu };
+}
+
+/**
+ * 一步能量：牵引电耗与再生回馈（kWh）。
+ * 纯函数，便于用解析解校验积分误差（P3-2）。
+ *
+ * @param {object} o
+ * @param {number} o.force      实际牵引力 N
+ * @param {number} o.regenForce 实际再生制动力 N
+ * @param {number} o.v          m/s
+ * @param {number} o.dt         秒
+ * @param {number} [o.regenEff] 回馈效率
+ * @returns {{traction:number, regen:number}}
+ */
+function energyStep(o) {
+  const dt = Math.max(0, o.dt || 0);
+  const v = Math.max(0, o.v || 0);
+  const eff = o.regenEff == null ? DYN_DEFAULTS.REGEN_EFF : o.regenEff;
+  const traction = Math.max(0, o.force || 0) * v * dt / 3.6e6;
+  const regen = Math.max(0, o.regenForce || 0) * v * dt / 3.6e6 * eff;
+  return { traction, regen };
 }
 
 /**
@@ -133,5 +178,5 @@ function integrateSpeed(o) {
 /* 页面环境无需导出（打包成 IIFE 后同作用域可见）；
    node 环境通过 module.exports 暴露，供单测直接 require */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed };
+  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed, energyStep };
 }

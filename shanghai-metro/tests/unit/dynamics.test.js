@@ -10,7 +10,7 @@
    ------------------------------------------------------------------ */
 const path = require('path');
 const {
-  DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed
+  DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed, energyStep
 } = require(path.join(__dirname, '..', '..', 'parts', '58_dynamics.js'));
 
 let pass = 0, fail = 0;
@@ -122,8 +122,60 @@ ok('低速且有制动 → 直接归零',
 
 /* ========== 参数可覆盖（不依赖全局常量） ========== */
 {
-  const custom = accelFromTraction({ traction: 1, brake: 0, v: 0 }, { ACC_MAX: 3.0 });
+  const custom = accelFromTraction({ traction: 1, brake: 0, v: 0, mu: 1.0 }, { ACC_MAX: 3.0 });
   ok('常量可被入参覆盖', custom.a > 2.5, custom.a);
+}
+
+/* ========== P3-1 轮轨黏着 / 空转 ========== */
+{
+  const dry = accelFromTraction({ traction: 1, brake: 0, v: 0, mu: 0.33 });
+  ok('干燥轨面全牵引不空转', dry.slip === false, dry);
+  ok('干燥轨面加速度 ≈ 1.36 m/s²', near(dry.a, DYN_DEFAULTS.ACC_MAX * 0.94, 0.02), dry.a);
+
+  const rain = accelFromTraction({ traction: 1, brake: 0, v: 0, mu: 0.18 });
+  ok('雨天 μ=0.18 满牵引触发空转', rain.slip === true, rain);
+  ok('空转时牵引力被黏着极限压住',
+    rain.force < dry.force && rain.force <= rain.adhesion, { force: rain.force, adh: rain.adhesion });
+  ok('空转时加速度出现平台（显著低于干燥）', rain.a < dry.a - 0.25, { rain: rain.a, dry: dry.a });
+
+  /* 平台：牵引手柄继续加大，加速度不再增加 */
+  const r80 = accelFromTraction({ traction: 0.8, brake: 0, v: 0, mu: 0.18 });
+  const r95 = accelFromTraction({ traction: 0.95, brake: 0, v: 0, mu: 0.18 });
+  const r100 = accelFromTraction({ traction: 1.0, brake: 0, v: 0, mu: 0.18 });
+  ok('0.8 手柄尚未空转', r80.slip === false, r80);
+  ok('超过黏着后 0.95 与 1.0 加速度相同（平台）',
+    near(r95.a, r100.a, 1e-9), { a95: r95.a, a100: r100.a });
+  ok('平台段加速度低于 0.8 手柄', r100.a < r80.a - 0.05, { a80: r80.a, a100: r100.a });
+
+  /* 低黏着下制动也受限 */
+  const icy = accelFromTraction({ traction: 0, brake: 1, v: 5, eb: true, mu: 0.05 });
+  ok('极低黏着时紧急制动被限制在 μg', icy.a > -0.6, icy.a);
+}
+
+/* ========== P3-2 能量积分与再生回馈 ========== */
+{
+  /* 恒定牵引力 200 kN、10 m/s、60 s：
+     解析值 = 200000 × 10 × 60 / 3.6e6 = 33.333 kWh */
+  const F = 200000, v = 10, dt = 0.001, T = 60;
+  let eT = 0, eR = 0;
+  for (let t = 0; t < T; t += dt) {
+    const e = energyStep({ force: F, v, dt });
+    eT += e.traction;
+  }
+  const analytic = F * v * T / 3.6e6;
+  ok('牵引能耗积分与解析解偏差 < 0.1%',
+    Math.abs(eT - analytic) / analytic < 1e-3, { eT, analytic });
+  ok('恒定牵引 200 kN / 10 m/s / 60 s ≈ 33.33 kWh', near(eT, 33.333, 0.01), eT);
+
+  /* 再生：100 kN 制动力、15 m/s、30 s、效率 0.85 */
+  for (let t = 0; t < 30; t += dt) {
+    const e = energyStep({ regenForce: 100000, v: 15, dt, regenEff: 0.85 });
+    eR += e.regen;
+  }
+  const analyticR = 100000 * 15 * 30 / 3.6e6 * 0.85;
+  ok('再生回馈积分与解析解偏差 < 0.1%',
+    Math.abs(eR - analyticR) / analyticR < 1e-3, { eR, analyticR });
+  ok('回馈小于牵引（效率损失）', eR < 100000 * 15 * 30 / 3.6e6, eR);
 }
 
 /* ========== 批量工况：1000 次加速度计算 ========== */

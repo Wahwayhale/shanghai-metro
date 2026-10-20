@@ -121,13 +121,25 @@ function physics(dt) {
   if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
 
   // 牵引/制动 + 阻力 + 坡道 → 加速度（纯函数）
+  const muNow = indoor ? 0.33 : weatherMu();
   const dyn = accelFromTraction({
     traction, brake, v, eb: G.eb,
+    mu: muNow,
     grip: indoor ? 1 : weatherGrip(),
     grade: path.gradeAt(G.s)
   });
   let a = dyn.a;
   let force = dyn.force;
+
+  /* 空转提示：只在进入空转的那一帧报一次，避免每帧刷屏 */
+  G.slipping = !!dyn.slip;
+  if (dyn.slip && !G._slipWarned) {
+    G._slipWarned = true;
+    toast(`轮对空转 · 黏着系数 ${muNow.toFixed(2)}，牵引力受限`, 'warn', 4200);
+    AUDIO.beep(true);
+  } else if (!dyn.slip) {
+    G._slipWarned = false;
+  }
 
   /* ---- 多质点车钩：车头加速度由车链解算，后车通过车钩反作用于车头 ----
      这才是真的多质点：车头不再由单质点公式直接积分，而是取车链第 0 节车的
@@ -150,8 +162,14 @@ function physics(dt) {
     train.chainOffsets = ch.offsets();
     train.chainCoupler = ch.summary();
     G.coupler = train.chainCoupler;
-    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死 */
-    G.v = vNew;
+    /* 车钩力峰值（P3-4）：与加速度方向对应——起动拉伸、制动压缩 */
+    if (!G.couplerPeak) G.couplerPeak = { tension: 0, compression: 0 };
+    if (G.coupler.tension > G.couplerPeak.tension) G.couplerPeak.tension = G.coupler.tension;
+    if (G.coupler.compression < G.couplerPeak.compression) G.couplerPeak.compression = G.coupler.compression;
+    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死。
+       车链解算在制动末端可能给出微小负速度（车厢回弹），车头不允许倒行。 */
+    G.v = Math.max(0, vNew);
+    if (G.v < 0.02 && brake > 0.02) G.v = 0;
   } else {
     const nv = v + a * dt;
     if (nv < 0 && brake > 0.01) { G.v = 0; }
@@ -166,8 +184,20 @@ function physics(dt) {
   G.s += G.v * dt;
   G.s = clamp(G.s, 0, path.length - 12);
 
-  // 能耗
-  if (force > 0) G.energy += force * Math.max(0, G.v) * dt / 3.6e6;
+  // 能耗（P3-2）：牵引电耗与再生回馈分开累计，净能耗 = 牵引 - 回馈
+  const massNow = 230000;
+  let regenForce = 0;
+  if (brake > 0.01 && !G.eb && v > 0.6) {
+    /* 常用制动优先用电制动；受黏着限制，紧急制动不走回馈。
+       低速段回馈快速衰减（真实列车约 10 km/h 以下转空气制动）。 */
+    const fade = clamp((v - 0.6) / 3.0, 0, 1);
+    regenForce = Math.min(massNow * BRK_SRV * brake, massNow * muNow * 9.81 * 0.98) * fade;
+  }
+  const es = energyStep({ force, regenForce, v: G.v, dt });
+  G.energyTraction += es.traction;
+  G.regen += es.regen;
+  G.energy = Math.max(0, G.energyTraction - G.regen);
+  G.regenOn = regenForce > 0;
 
   // 停站判定
   if (st) {

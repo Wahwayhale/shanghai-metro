@@ -6,6 +6,9 @@
 const IX = {
   turnouts: [],        // { s, pos, t, target, blades:[], lamp }
   routes: [],
+  table: null,         // P3-3 进路表 / 敌对矩阵
+  locks: [],
+  occupiedRes: [],
   active: 'main',
   locked: {},
   group: null,
@@ -30,9 +33,54 @@ const IX = {
       { id: 'revB', name: '终点折返', sub: 'B 渡线反位', states: { A: 0, B: 1 }, conflicts: ['main', 'revA', 'both'] },
       { id: 'both', name: '两端折返', sub: 'A/B 渡线同时反位', states: { A: 1, B: 1 }, conflicts: ['main', 'revA', 'revB'] }
     ];
+    /* 进路表与敌对矩阵（P3-3）：每站一条正线通过 + 两端折返，
+       浏览器侧只做动画与按钮，判定统一走 55_routes.js 的纯函数。 */
+    this.table = (typeof buildRouteTable === 'function')
+      ? buildRouteTable({
+        stations: route.stations.map(s => ({ idx: s.index, zh: s.zh, stopS: s.stopS })),
+        turnouts: this.turnouts.map(t => ({ key: t.key, s: t.s }))
+      })
+      : null;
+    this.locks = [];
+    this.occupiedRes = [];
     this.active = 'main';
     this.applyRoute('main', true);
     this.renderIx();
+  },
+
+  /* UI 的 4 个按钮 → 进路表 id。main 是「当前站正线通过」的别名 */
+  routeTableId(uiId) {
+    if (!this.table || !this.table.byId) return null;
+    if (uiId === 'main') {
+      const idx = (typeof G !== 'undefined' && G.targetIdx != null) ? G.targetIdx : 0;
+      return this.table.byId[`S${idx}-main`] ? `S${idx}-main` : null;
+    }
+    return this.table.byId[uiId] ? uiId : null;
+  },
+
+  occupiedResources() {
+    const occ = [];
+    const near = (s, t) => Math.abs(s - t.s) < 75;
+    for (const t of this.turnouts) {
+      let busy = (typeof G !== 'undefined' && G.mode === 'driving' && near(G.s, t));
+      if (!busy) {
+        for (const ai of (typeof aiTrains !== 'undefined' ? aiTrains : [])) {
+          if (!ai.dead && near(ai.s, t)) { busy = true; break; }
+        }
+      }
+      if (busy) occ.push('ix:' + t.key);
+    }
+    return occ;
+  },
+
+  /* 列车在渡线区段时锁闭当前进路；出清后解锁 */
+  syncLocks() {
+    if (!this.table) return;
+    this.occupiedRes = this.occupiedResources();
+    const rid = this.routeTableId(this.active);
+    this.locks = [];
+    const r = rid ? this.table.byId[rid] : null;
+    if (r && r.resources.some(x => this.occupiedRes.indexOf(x) >= 0)) this.locks.push(rid);
   },
 
   buildCrossover(route, s, key) {
@@ -123,6 +171,7 @@ const IX = {
   },
 
   update(dt) {
+    this.syncLocks();
     let moving = false;
     for (const t of this.turnouts) {
       if (Math.abs(t.t - t.target) < 0.001) continue;
@@ -163,13 +212,19 @@ const IX = {
     head.innerHTML = `<span>联锁进路</span><i>道岔 ${tA ? (tA.t > 0.5 ? 'A:反' : 'A:直') : ''} ${tB ? (tB.t > 0.5 ? 'B:反' : 'B:直') : ''} · ${occupied ? '区段占用' : '区段空闲'}</i>`;
     box.appendChild(head);
     const active = this.routes.find(r => r.id === this.active);
-    const conflicts = active && active.conflicts && active.conflicts.length
-      ? active.conflicts.map(id => (this.routes.find(r => r.id === id) || {}).name).filter(Boolean).join(' / ')
+    const rid = this.routeTableId(this.active);
+    const matrix = (this.table && rid && this.table.matrix[rid]) ? this.table.matrix[rid] : [];
+    const conflicts = matrix.length
+      ? matrix.map(id => (this.table.byId[id] || {}).name).filter(Boolean).join(' / ')
       : '无';
     const sub = document.createElement('div');
     sub.className = 'ats-ix-head';
     sub.innerHTML = `<span>敌对进路</span><i>${conflicts}</i>`;
     box.appendChild(sub);
+    const info = document.createElement('div');
+    info.className = 'ats-ix-head';
+    info.innerHTML = `<span>进路表</span><i>${this.table ? this.table.routes.length : 0} 条 · 锁闭 ${(this.locks || []).length}</i>`;
+    box.appendChild(info);
     for (const r of this.routes) {
       const b = document.createElement('button');
       b.className = 'ats-ix-btn' + (this.active === r.id ? ' on' : '');
@@ -189,7 +244,19 @@ const IX = {
       if (!b) return;
       const id = b.dataset.ix;
       if (!this.routes.find(r => r.id === id)) return;
-      if (id !== this.active && this.occupied()) {
+      if (id === this.active) return;
+      /* 先过敌对/占用检查（纯函数），失败给出具体原因 */
+      if (this.table && typeof checkRouteRequest === 'function') {
+        this.syncLocks();
+        const reqId = this.routeTableId(id);
+        const chk = reqId ? checkRouteRequest(this.table, reqId, this.locks, this.occupiedRes) : { ok: true };
+        if (!chk.ok) {
+          toast(`进路不能排列 · ${chk.reason}`, 'warn', 4600);
+          AUDIO.beep(true);
+          return;
+        }
+      }
+      if (this.occupied()) {
         toast('道岔区段有车占用 · 进路锁闭，禁止转换', 'warn', 3800);
         AUDIO.beep(true);
         return;

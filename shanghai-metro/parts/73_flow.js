@@ -13,7 +13,9 @@ function resetService() {
   G.stopState = 'dwell';
   G.stopErr = 0; G.stopScore = 0;
   G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-  G.energy = 0; G.finishTimer = -1;
+  G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false;
+  G.slipping = false; G._slipWarned = false;
+  G.couplerPeak = { tension: 0, compression: 0 }; G.finishTimer = -1;
   G.announced = {};
   G.camMode = 0; G.yaw = 0; G.pitch = -0.02;
   G.ato = false; G.atoState = 'run'; G.atoTimer = 0; G.atpBrake = false; G.doorWarned = false;
@@ -178,7 +180,9 @@ async function performTransfer(lineName) {
     G.clock = st.schArr;
     G.doorAt = {}; G.announced = {};
     G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-    G.energy = 0; G.speedLog = [];
+    G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false; G.speedLog = [];
+    G.slipping = false; G._slipWarned = false;
+    G.couplerPeak = { tension: 0, compression: 0 };
     G.finishTimer = -1; G.ato = false; G.atoState = 'run';
     G.exam = false; G.examTasks = []; G.fault = null; G.faultCount = 0;
     G.sigMode = 'cbtc'; G.walk = null; G.turnback = null;
@@ -323,6 +327,9 @@ function finishService() {
   $('resStop').innerHTML = (stops.length ? (stops.reduce((a, r) => a + Math.abs(r.err), 0) / stops.length).toFixed(2) : '—') + '<small>m</small>';
   $('resPunc').innerHTML = Math.round(avgPunc) + '<small>%</small>';
   $('resKwh').innerHTML = Math.round(G.energy) + '<small>kWh</small>';
+  const cpk = G.couplerPeak || { tension: 0, compression: 0 };
+  $('resEnergy').innerHTML = `牵引 ${Math.round(G.energyTraction || 0)} kWh · 回馈 ${Math.round(G.regen || 0)} kWh · 净 ${Math.round(G.energy || 0)} kWh`
+    + `<br>车钩峰值 拉 ${Math.round(cpk.tension)} kN / 压 ${Math.abs(Math.round(cpk.compression))} kN`;
   const pen = $('resPenalty');
   if (pen) pen.innerHTML = (G.penalties > 0 ? '-' + G.penalties : '0') + '<small>分</small>';
   let rows = `<div class="stop-line head"><span>车站</span><span>停车偏差</span><span>发车偏差</span><span>得分</span></div>`;

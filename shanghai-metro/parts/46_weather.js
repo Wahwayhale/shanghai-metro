@@ -112,3 +112,11 @@ function updateWeather(dt) {
 function weatherGrip() {
   return (WEATHER[weatherNow] || WEATHER.clear).grip;
 }
+
+/* 轮轨黏着系数（P3-1）：雨天钢轨有水膜，μ 从 0.33 掉到 0.18。
+   与 grip 的区别：grip 是旧的「制动力折扣」，这里给牵引/制动共用的绝对黏着。 */
+function weatherMu() {
+  if (weatherNow === 'rain') return 0.18;
+  if (weatherNow === 'fog') return 0.22;
+  return 0.33;
+}

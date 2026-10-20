@@ -190,6 +190,8 @@ function sessionCommitLeg() {
     punc: Math.round(punc),
     stopErr: Math.round(stopErr * 100) / 100,
     energy: Math.round(G.energy * 10) / 10,
+    energyTraction: Math.round((G.energyTraction || 0) * 10) / 10,
+    regen: Math.round((G.regen || 0) * 10) / 10,
     distanceKm: Math.round(sessionDistanceKm() * 10) / 10,
     penalties: G.penalties,
     faults: s.legFaults,
@@ -280,6 +282,7 @@ function sessionShowFinal(early) {
   $('resStop').innerHTML = score.totals.avgStopErr.toFixed(2) + '<small>m</small>';
   $('resPunc').innerHTML = score.parts.punc + '<small>%</small>';
   $('resKwh').innerHTML = Math.round(score.totals.energy) + '<small>kWh</small>';
+  $('resEnergy').innerHTML = `牵引 ${Math.round(score.totals.energyTraction)} kWh · 回馈 ${Math.round(score.totals.regen)} kWh · 净 ${Math.round(score.totals.energy)} kWh`;
   const pen = s.log.reduce((a, r) => a + (r.penalties || 0), 0);
   $('resPenalty').innerHTML = (pen > 0 ? '-' + pen : '0') + '<small>分</small>';
   $('resSession').style.display = '';

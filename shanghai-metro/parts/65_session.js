@@ -181,6 +181,8 @@ function scoreSession(legs, extra) {
   const stopErr = Math.abs(avg('stopErr'));
   const stop = sessClamp(100 - 26 * stopErr, 0, 100);
   const energy = sum('energy');
+  const energyTraction = sum('energyTraction');
+  const regen = sum('regen');
   const distanceKm = sum('distanceKm');
   const kwhPerKm = energy / Math.max(0.5, distanceKm);
   /* 能耗基准随线路最高速度走（120 km/h 的磁浮/16 号线每公里电耗更高），
@@ -213,6 +215,8 @@ function scoreSession(legs, extra) {
     totals: {
       legs: list.length,
       energy: Math.round(energy * 10) / 10,
+      energyTraction: Math.round(energyTraction * 10) / 10,
+      regen: Math.round(regen * 10) / 10,
       distanceKm: Math.round(distanceKm * 10) / 10,
       faults, faultsFixed, crowds, crowdsServed,
       avgStopErr: Math.round(stopErr * 100) / 100,

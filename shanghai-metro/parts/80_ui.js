@@ -529,6 +529,14 @@ window.__sim = {
   showTransferPanel, clampWalk,
   get signals() { return signals; },
   get IX() { return IX; },
+  get interlockTable() { return IX.table || null; },
+  get interlockLocks() { return IX.locks || []; },
+  interlockCheck(id) {
+    if (!IX.table || typeof checkRouteRequest !== 'function') return { ok: false, reason: '无进路表' };
+    const rid = IX.routeTableId(id);
+    return rid ? checkRouteRequest(IX.table, rid, IX.locks || [], IX.occupiedRes || [])
+      : { ok: false, reason: '未知进路' };
+  },
   get sigMeshes() { return sigLampMeshes; },
   snapCam() { updateCamera(0, true); },
   snapTrain() { if (train) train.update(G.s, G.v, 0); },

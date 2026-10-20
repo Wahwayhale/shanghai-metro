@@ -357,7 +357,8 @@
   kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
     border-radius:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
     border-bottom-width:2px;font-size:10px;font-family:ui-monospace,Menlo,monospace;color:#dfe8ee;font-weight:600}
-  .modal-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .modal-actions{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:-2px;
+    padding-top:12px;background:linear-gradient(180deg,rgba(10,14,18,0),rgba(10,14,18,.96) 32%)}
   .btn{border:1px solid var(--stroke-2);background:rgba(255,255,255,.05);color:#dbe6ed;font-family:inherit;
     font-size:12.5px;font-weight:600;padding:11px 18px;border-radius:9px;cursor:pointer;transition:.15s}
   .btn:hover{background:rgba(255,255,255,.1)}
@@ -375,6 +376,8 @@
   .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
   .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
   .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .energy-note{font-size:10px;color:#7f939f;letter-spacing:.03em;margin:-12px 0 14px;text-align:right}
+  .energy-note b{color:#3ddc97;font-weight:600}
   .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
     padding:10px 12px;margin:0 0 10px;font-size:11px;color:#b9ccd7}
   .sess-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
@@ -683,6 +686,7 @@
         <div class="stat-cell"><i>牵引能耗</i><b id="resKwh">—<small>kWh</small></b></div>
         <div class="stat-cell"><i>不当操作减分</i><b id="resPenalty">0<small>分</small></b></div>
       </div>
+      <div class="energy-note" id="resEnergy"></div>
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
       <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
@@ -7855,6 +7859,14 @@ function weatherGrip() {
   return (WEATHER[weatherNow] || WEATHER.clear).grip;
 }
 
+/* 轮轨黏着系数（P3-1）：雨天钢轨有水膜，μ 从 0.33 掉到 0.18。
+   与 grip 的区别：grip 是旧的「制动力折扣」，这里给牵引/制动共用的绝对黏着。 */
+function weatherMu() {
+  if (weatherNow === 'rain') return 0.18;
+  if (weatherNow === 'fog') return 0.22;
+  return 0.33;
+}
+
 
 /* ===== 47_city_proto.js ===== */
 /* =====================================================================
@@ -8310,6 +8322,9 @@ function nextSignalAhead() {
 const IX = {
   turnouts: [],        // { s, pos, t, target, blades:[], lamp }
   routes: [],
+  table: null,         // P3-3 进路表 / 敌对矩阵
+  locks: [],
+  occupiedRes: [],
   active: 'main',
   locked: {},
   group: null,
@@ -8334,9 +8349,54 @@ const IX = {
       { id: 'revB', name: '终点折返', sub: 'B 渡线反位', states: { A: 0, B: 1 }, conflicts: ['main', 'revA', 'both'] },
       { id: 'both', name: '两端折返', sub: 'A/B 渡线同时反位', states: { A: 1, B: 1 }, conflicts: ['main', 'revA', 'revB'] }
     ];
+    /* 进路表与敌对矩阵（P3-3）：每站一条正线通过 + 两端折返，
+       浏览器侧只做动画与按钮，判定统一走 55_routes.js 的纯函数。 */
+    this.table = (typeof buildRouteTable === 'function')
+      ? buildRouteTable({
+        stations: route.stations.map(s => ({ idx: s.index, zh: s.zh, stopS: s.stopS })),
+        turnouts: this.turnouts.map(t => ({ key: t.key, s: t.s }))
+      })
+      : null;
+    this.locks = [];
+    this.occupiedRes = [];
     this.active = 'main';
     this.applyRoute('main', true);
     this.renderIx();
+  },
+
+  /* UI 的 4 个按钮 → 进路表 id。main 是「当前站正线通过」的别名 */
+  routeTableId(uiId) {
+    if (!this.table || !this.table.byId) return null;
+    if (uiId === 'main') {
+      const idx = (typeof G !== 'undefined' && G.targetIdx != null) ? G.targetIdx : 0;
+      return this.table.byId[`S${idx}-main`] ? `S${idx}-main` : null;
+    }
+    return this.table.byId[uiId] ? uiId : null;
+  },
+
+  occupiedResources() {
+    const occ = [];
+    const near = (s, t) => Math.abs(s - t.s) < 75;
+    for (const t of this.turnouts) {
+      let busy = (typeof G !== 'undefined' && G.mode === 'driving' && near(G.s, t));
+      if (!busy) {
+        for (const ai of (typeof aiTrains !== 'undefined' ? aiTrains : [])) {
+          if (!ai.dead && near(ai.s, t)) { busy = true; break; }
+        }
+      }
+      if (busy) occ.push('ix:' + t.key);
+    }
+    return occ;
+  },
+
+  /* 列车在渡线区段时锁闭当前进路；出清后解锁 */
+  syncLocks() {
+    if (!this.table) return;
+    this.occupiedRes = this.occupiedResources();
+    const rid = this.routeTableId(this.active);
+    this.locks = [];
+    const r = rid ? this.table.byId[rid] : null;
+    if (r && r.resources.some(x => this.occupiedRes.indexOf(x) >= 0)) this.locks.push(rid);
   },
 
   buildCrossover(route, s, key) {
@@ -8427,6 +8487,7 @@ const IX = {
   },
 
   update(dt) {
+    this.syncLocks();
     let moving = false;
     for (const t of this.turnouts) {
       if (Math.abs(t.t - t.target) < 0.001) continue;
@@ -8467,13 +8528,19 @@ const IX = {
     head.innerHTML = `<span>联锁进路</span><i>道岔 ${tA ? (tA.t > 0.5 ? 'A:反' : 'A:直') : ''} ${tB ? (tB.t > 0.5 ? 'B:反' : 'B:直') : ''} · ${occupied ? '区段占用' : '区段空闲'}</i>`;
     box.appendChild(head);
     const active = this.routes.find(r => r.id === this.active);
-    const conflicts = active && active.conflicts && active.conflicts.length
-      ? active.conflicts.map(id => (this.routes.find(r => r.id === id) || {}).name).filter(Boolean).join(' / ')
+    const rid = this.routeTableId(this.active);
+    const matrix = (this.table && rid && this.table.matrix[rid]) ? this.table.matrix[rid] : [];
+    const conflicts = matrix.length
+      ? matrix.map(id => (this.table.byId[id] || {}).name).filter(Boolean).join(' / ')
       : '无';
     const sub = document.createElement('div');
     sub.className = 'ats-ix-head';
     sub.innerHTML = `<span>敌对进路</span><i>${conflicts}</i>`;
     box.appendChild(sub);
+    const info = document.createElement('div');
+    info.className = 'ats-ix-head';
+    info.innerHTML = `<span>进路表</span><i>${this.table ? this.table.routes.length : 0} 条 · 锁闭 ${(this.locks || []).length}</i>`;
+    box.appendChild(info);
     for (const r of this.routes) {
       const b = document.createElement('button');
       b.className = 'ats-ix-btn' + (this.active === r.id ? ' on' : '');
@@ -8493,7 +8560,19 @@ const IX = {
       if (!b) return;
       const id = b.dataset.ix;
       if (!this.routes.find(r => r.id === id)) return;
-      if (id !== this.active && this.occupied()) {
+      if (id === this.active) return;
+      /* 先过敌对/占用检查（纯函数），失败给出具体原因 */
+      if (this.table && typeof checkRouteRequest === 'function') {
+        this.syncLocks();
+        const reqId = this.routeTableId(id);
+        const chk = reqId ? checkRouteRequest(this.table, reqId, this.locks, this.occupiedRes) : { ok: true };
+        if (!chk.ok) {
+          toast(`进路不能排列 · ${chk.reason}`, 'warn', 4600);
+          AUDIO.beep(true);
+          return;
+        }
+      }
+      if (this.occupied()) {
         toast('道岔区段有车占用 · 进路锁闭，禁止转换', 'warn', 3800);
         AUDIO.beep(true);
         return;
@@ -10106,6 +10185,156 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 
+/* ===== 55_routes.js ===== */
+/* =====================================================================
+   进路表与敌对矩阵（P3-3）
+   ---------------------------------------------------------------------
+   纯逻辑：给一条线路的每座车站生成「正线通过」进路，加上两端渡线的
+   折返进路，按「区段资源」计算敌对关系。浏览器侧（49_interlock.js）
+   只负责道岔动画与按钮，判定全部走这里，便于 node 单测。
+
+   为什么用资源集合而不是手写敌对表：
+   - 手写表在 27 个站 + 2 处渡线时既长又容易漏；
+   - 资源集合能自动回答「两条进路为什么敌对」（共用哪一段）；
+   - 以后加侧线/存车线，只要给进路多挂一个资源即可。
+   ===================================================================== */
+
+const ROUTE_DEFAULTS = {
+  stationHalf: 190,   // 车站进路覆盖的里程半宽（m）
+  turnoutHalf: 60     // 渡线进路覆盖的里程半宽（m）
+};
+
+/**
+ * 生成整条线路的进路表。
+ *
+ * @param {object} o
+ * @param {Array} o.stations  [{ idx, zh, stopS }]
+ * @param {Array} o.turnouts  [{ key:'A'|'B', s }]
+ * @returns {{routes:Array, byId:Object, matrix:Object}}
+ *   route: { id, name, sub, kind:'station'|'turnback', resources:[], fromS, toS, conflicts:[] }
+ */
+function buildRouteTable(o) {
+  const opt = o || {};
+  const stations = (opt.stations || []).filter(s => s && s.stopS != null);
+  const turnouts = opt.turnouts || [];
+  const sh = opt.stationHalf || ROUTE_DEFAULTS.stationHalf;
+  const th = opt.turnoutHalf || ROUTE_DEFAULTS.turnoutHalf;
+  const routes = [];
+
+  /* 每站一条正线通过进路；首末站额外占用端部渡线资源 */
+  for (const st of stations) {
+    const res = [`sec:${st.idx}`];
+    const tA = turnouts.find(t => t.key === 'A');
+    const tB = turnouts.find(t => t.key === 'B');
+    const isFirst = st.idx === stations[0].idx;
+    const isLast = st.idx === stations[stations.length - 1].idx;
+    if (isFirst && tA) res.push('ix:A');
+    if (isLast && tB) res.push('ix:B');
+    routes.push({
+      id: `S${st.idx}-main`,
+      name: `${st.zh || '车站'} 正线通过`,
+      sub: isFirst ? '首站 · 经 A 渡线直向' : isLast ? '末站 · 经 B 渡线直向' : '站内正线',
+      kind: 'station',
+      resources: res,
+      fromS: st.stopS - sh,
+      toS: st.stopS + sh,
+      conflicts: []
+    });
+  }
+
+  /* 两端折返进路 */
+  for (const t of turnouts) {
+    if (t.key !== 'A' && t.key !== 'B') continue;
+    routes.push({
+      id: t.key === 'A' ? 'revA' : 'revB',
+      name: t.key === 'A' ? '起点折返' : '终点折返',
+      sub: `${t.key} 渡线反位`,
+      kind: 'turnback',
+      resources: [`ix:${t.key}`],
+      fromS: t.s - th,
+      toS: t.s + th,
+      conflicts: []
+    });
+  }
+  if (turnouts.some(t => t.key === 'A') && turnouts.some(t => t.key === 'B')) {
+    routes.push({
+      id: 'both',
+      name: '两端折返',
+      sub: 'A/B 渡线同时反位',
+      kind: 'turnback',
+      resources: ['ix:A', 'ix:B'],
+      fromS: -Infinity,
+      toS: Infinity,
+      conflicts: []
+    });
+  }
+
+  /* 敌对矩阵：资源交集非空即敌对 */
+  const byId = {};
+  for (const r of routes) byId[r.id] = r;
+  for (let i = 0; i < routes.length; i++) {
+    for (let j = i + 1; j < routes.length; j++) {
+      const a = routes[i], b = routes[j];
+      const shared = a.resources.filter(x => b.resources.indexOf(x) >= 0);
+      if (!shared.length) continue;
+      a.conflicts.push(b.id);
+      b.conflicts.push(a.id);
+    }
+  }
+  const matrix = {};
+  for (const r of routes) matrix[r.id] = r.conflicts.slice();
+
+  return { routes, byId, matrix };
+}
+
+/**
+ * 请求排列一条进路。
+ *
+ * @param {object} table   buildRouteTable 的返回值
+ * @param {string} id      目标进路
+ * @param {Array}  locks   已锁闭的进路 id（列车占用中）
+ * @param {Array}  occupied 被占用的资源 id
+ * @returns {{ok:boolean, reason?:string, route?:object}}
+ */
+function checkRouteRequest(table, id, locks, occupied) {
+  if (!table || !table.byId || !table.byId[id]) {
+    return { ok: false, reason: '未知进路' };
+  }
+  const route = table.byId[id];
+  const locked = locks || [];
+  for (const lid of locked) {
+    if (lid === id) continue;
+    const other = table.byId[lid];
+    if (!other) continue;
+    const shared = route.resources.filter(x => other.resources.indexOf(x) >= 0);
+    if (shared.length) {
+      return {
+        ok: false,
+        reason: `与锁闭进路「${other.name}」敌对（共用 ${shared.join('、')}）`,
+        conflicts: other.id
+      };
+    }
+  }
+  const occ = occupied || [];
+  const busy = route.resources.filter(x => occ.indexOf(x) >= 0);
+  if (busy.length) {
+    return { ok: false, reason: `区段被占用：${busy.join('、')}` };
+  }
+  return { ok: true, route };
+}
+
+/* 供 49_interlock.js 使用的单例状态（纯数据，不碰 DOM） */
+function makeInterlockState() {
+  return { locks: [], occupied: [] };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    ROUTE_DEFAULTS, buildRouteTable, checkRouteRequest, makeInterlockState
+  };
+}
+
+
 /* ===== 56_bodies.js ===== */
 /* ================================================================
    多质点车钩动力学（P2-4）
@@ -10666,7 +10895,12 @@ const DYN_DEFAULTS = {
   ACC_MAX: 1.45,     // m/s² 牵引
   POWER_V: 18.0,     // m/s 恒功率转折点
   BRK_SRV: 1.0,      // m/s² 常用制动
-  BRK_EMG: 1.35      // m/s² 紧急制动
+  BRK_EMG: 1.35,     // m/s² 紧急制动
+  MASS: 230000,      // 6 节编组总质量 kg
+  MOTOR_RATIO: 0.66, // 动轴承担的车重比例（黏着重量）
+  MU_DRY: 0.33,      // 干燥轨面黏着系数
+  SLIP_PENALTY: 0.85,// 空转后动摩擦低于静摩擦
+  REGEN_EFF: 0.75    // 再生制动回馈效率（含变流/线路损耗）
 };
 
 /**
@@ -10734,7 +10968,12 @@ function splitTraction(o) {
 function accelFromTraction(o, c) {
   const C = Object.assign({}, DYN_DEFAULTS, c || {});
   const v = o.v || 0;
-  let a = 0, force = 0;
+  const mass = o.mass || C.MASS;
+  const mu = o.mu != null ? o.mu
+    : C.MU_DRY * (o.grip == null ? 1 : o.grip);
+  /* 黏着极限：动轴承担的重量 × μ。超过它，轮对开始空转。 */
+  const adhesion = mu * mass * (o.motorRatio || C.MOTOR_RATIO) * 9.81;
+  let a = 0, force = 0, slip = false, slipRatio = 0;
 
   if (o.traction > 0) {
     let aT = C.ACC_MAX * o.traction;
@@ -10742,11 +10981,25 @@ function accelFromTraction(o, c) {
     if (v > C.POWER_V) aT *= C.POWER_V / v;
     /* 载荷修正：满载乘客 → 加速度略降 */
     aT *= 0.94;
+    /* 轮轨黏着：指令牵引力超过黏着极限时，实际只能用到极限值，
+       且动摩擦（空转）低于静摩擦，加速度出现平台。 */
+    const fCmd = aT * mass;
+    if (fCmd > adhesion) {
+      slip = true;
+      force = adhesion * C.SLIP_PENALTY;
+      aT = force / mass;
+      slipRatio = Math.min(1, (fCmd / Math.max(1, adhesion) - 1) * 2 + 0.05);
+    } else {
+      force = fCmd;
+    }
     a += aT;
-    force = aT * 230000;
   }
   if (o.brake > 0) {
-    const aB = (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip);
+    /* 制动同样受黏着限制（紧急制动在低 μ 下会延长） */
+    const aB = Math.min(
+      (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip),
+      mu * 9.81 * 0.98
+    );
     a -= aB;
   }
   /* 基本阻力（Davis 式简化）+ 坡道 */
@@ -10754,7 +11007,28 @@ function accelFromTraction(o, c) {
   a -= Math.sign(v || 0) * res;
   a -= 9.81 * (o.grade || 0);
 
-  return { a, force };
+  return { a, force, slip, slipRatio, adhesion, mu };
+}
+
+/**
+ * 一步能量：牵引电耗与再生回馈（kWh）。
+ * 纯函数，便于用解析解校验积分误差（P3-2）。
+ *
+ * @param {object} o
+ * @param {number} o.force      实际牵引力 N
+ * @param {number} o.regenForce 实际再生制动力 N
+ * @param {number} o.v          m/s
+ * @param {number} o.dt         秒
+ * @param {number} [o.regenEff] 回馈效率
+ * @returns {{traction:number, regen:number}}
+ */
+function energyStep(o) {
+  const dt = Math.max(0, o.dt || 0);
+  const v = Math.max(0, o.v || 0);
+  const eff = o.regenEff == null ? DYN_DEFAULTS.REGEN_EFF : o.regenEff;
+  const traction = Math.max(0, o.force || 0) * v * dt / 3.6e6;
+  const regen = Math.max(0, o.regenForce || 0) * v * dt / 3.6e6 * eff;
+  return { traction, regen };
 }
 
 /**
@@ -10778,7 +11052,7 @@ function integrateSpeed(o) {
 /* 页面环境无需导出（打包成 IIFE 后同作用域可见）；
    node 环境通过 module.exports 暴露，供单测直接 require */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed };
+  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed, energyStep };
 }
 
 
@@ -11336,6 +11610,8 @@ function scoreSession(legs, extra) {
   const stopErr = Math.abs(avg('stopErr'));
   const stop = sessClamp(100 - 26 * stopErr, 0, 100);
   const energy = sum('energy');
+  const energyTraction = sum('energyTraction');
+  const regen = sum('regen');
   const distanceKm = sum('distanceKm');
   const kwhPerKm = energy / Math.max(0.5, distanceKm);
   /* 能耗基准随线路最高速度走（120 km/h 的磁浮/16 号线每公里电耗更高），
@@ -11368,6 +11644,8 @@ function scoreSession(legs, extra) {
     totals: {
       legs: list.length,
       energy: Math.round(energy * 10) / 10,
+      energyTraction: Math.round(energyTraction * 10) / 10,
+      regen: Math.round(regen * 10) / 10,
       distanceKm: Math.round(distanceKm * 10) / 10,
       faults, faultsFixed, crowds, crowdsServed,
       avgStopErr: Math.round(stopErr * 100) / 100,
@@ -11624,6 +11902,8 @@ function sessionCommitLeg() {
     punc: Math.round(punc),
     stopErr: Math.round(stopErr * 100) / 100,
     energy: Math.round(G.energy * 10) / 10,
+    energyTraction: Math.round((G.energyTraction || 0) * 10) / 10,
+    regen: Math.round((G.regen || 0) * 10) / 10,
     distanceKm: Math.round(sessionDistanceKm() * 10) / 10,
     penalties: G.penalties,
     faults: s.legFaults,
@@ -11714,6 +11994,7 @@ function sessionShowFinal(early) {
   $('resStop').innerHTML = score.totals.avgStopErr.toFixed(2) + '<small>m</small>';
   $('resPunc').innerHTML = score.parts.punc + '<small>%</small>';
   $('resKwh').innerHTML = Math.round(score.totals.energy) + '<small>kWh</small>';
+  $('resEnergy').innerHTML = `牵引 ${Math.round(score.totals.energyTraction)} kWh · 回馈 ${Math.round(score.totals.regen)} kWh · 净 ${Math.round(score.totals.energy)} kWh`;
   const pen = s.log.reduce((a, r) => a + (r.penalties || 0), 0);
   $('resPenalty').innerHTML = (pen > 0 ? '-' + pen : '0') + '<small>分</small>';
   $('resSession').style.display = '';
@@ -11951,7 +12232,9 @@ const G = {
   clock: 0, targetIdx: 0, stopState: 'run',
   stopErr: 0, stopScore: 0,
   results: [], penalties: 0, atpViol: 0, ebCount: 0,
-  energy: 0, trainNo: '02014',
+  energy: 0, energyTraction: 0, regen: 0, regenOn: false,
+  slipping: false, _slipWarned: false,
+  couplerPeak: { tension: 0, compression: 0 }, trainNo: '02014',
   lastSoundDoor: -1,
   camMode: 0, yaw: 0, pitch: -0.02,
   orbit: { az: 0.7, el: 0.26, dist: 34 },
@@ -13105,13 +13388,25 @@ function physics(dt) {
   if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
 
   // 牵引/制动 + 阻力 + 坡道 → 加速度（纯函数）
+  const muNow = indoor ? 0.33 : weatherMu();
   const dyn = accelFromTraction({
     traction, brake, v, eb: G.eb,
+    mu: muNow,
     grip: indoor ? 1 : weatherGrip(),
     grade: path.gradeAt(G.s)
   });
   let a = dyn.a;
   let force = dyn.force;
+
+  /* 空转提示：只在进入空转的那一帧报一次，避免每帧刷屏 */
+  G.slipping = !!dyn.slip;
+  if (dyn.slip && !G._slipWarned) {
+    G._slipWarned = true;
+    toast(`轮对空转 · 黏着系数 ${muNow.toFixed(2)}，牵引力受限`, 'warn', 4200);
+    AUDIO.beep(true);
+  } else if (!dyn.slip) {
+    G._slipWarned = false;
+  }
 
   /* ---- 多质点车钩：车头加速度由车链解算，后车通过车钩反作用于车头 ----
      这才是真的多质点：车头不再由单质点公式直接积分，而是取车链第 0 节车的
@@ -13134,8 +13429,14 @@ function physics(dt) {
     train.chainOffsets = ch.offsets();
     train.chainCoupler = ch.summary();
     G.coupler = train.chainCoupler;
-    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死 */
-    G.v = vNew;
+    /* 车钩力峰值（P3-4）：与加速度方向对应——起动拉伸、制动压缩 */
+    if (!G.couplerPeak) G.couplerPeak = { tension: 0, compression: 0 };
+    if (G.coupler.tension > G.couplerPeak.tension) G.couplerPeak.tension = G.coupler.tension;
+    if (G.coupler.compression < G.couplerPeak.compression) G.couplerPeak.compression = G.coupler.compression;
+    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死。
+       车链解算在制动末端可能给出微小负速度（车厢回弹），车头不允许倒行。 */
+    G.v = Math.max(0, vNew);
+    if (G.v < 0.02 && brake > 0.02) G.v = 0;
   } else {
     const nv = v + a * dt;
     if (nv < 0 && brake > 0.01) { G.v = 0; }
@@ -13150,8 +13451,20 @@ function physics(dt) {
   G.s += G.v * dt;
   G.s = clamp(G.s, 0, path.length - 12);
 
-  // 能耗
-  if (force > 0) G.energy += force * Math.max(0, G.v) * dt / 3.6e6;
+  // 能耗（P3-2）：牵引电耗与再生回馈分开累计，净能耗 = 牵引 - 回馈
+  const massNow = 230000;
+  let regenForce = 0;
+  if (brake > 0.01 && !G.eb && v > 0.6) {
+    /* 常用制动优先用电制动；受黏着限制，紧急制动不走回馈。
+       低速段回馈快速衰减（真实列车约 10 km/h 以下转空气制动）。 */
+    const fade = clamp((v - 0.6) / 3.0, 0, 1);
+    regenForce = Math.min(massNow * BRK_SRV * brake, massNow * muNow * 9.81 * 0.98) * fade;
+  }
+  const es = energyStep({ force, regenForce, v: G.v, dt });
+  G.energyTraction += es.traction;
+  G.regen += es.regen;
+  G.energy = Math.max(0, G.energyTraction - G.regen);
+  G.regenOn = regenForce > 0;
 
   // 停站判定
   if (st) {
@@ -13511,7 +13824,9 @@ function resetService() {
   G.stopState = 'dwell';
   G.stopErr = 0; G.stopScore = 0;
   G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-  G.energy = 0; G.finishTimer = -1;
+  G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false;
+  G.slipping = false; G._slipWarned = false;
+  G.couplerPeak = { tension: 0, compression: 0 }; G.finishTimer = -1;
   G.announced = {};
   G.camMode = 0; G.yaw = 0; G.pitch = -0.02;
   G.ato = false; G.atoState = 'run'; G.atoTimer = 0; G.atpBrake = false; G.doorWarned = false;
@@ -13676,7 +13991,9 @@ async function performTransfer(lineName) {
     G.clock = st.schArr;
     G.doorAt = {}; G.announced = {};
     G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-    G.energy = 0; G.speedLog = [];
+    G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false; G.speedLog = [];
+    G.slipping = false; G._slipWarned = false;
+    G.couplerPeak = { tension: 0, compression: 0 };
     G.finishTimer = -1; G.ato = false; G.atoState = 'run';
     G.exam = false; G.examTasks = []; G.fault = null; G.faultCount = 0;
     G.sigMode = 'cbtc'; G.walk = null; G.turnback = null;
@@ -13821,6 +14138,9 @@ function finishService() {
   $('resStop').innerHTML = (stops.length ? (stops.reduce((a, r) => a + Math.abs(r.err), 0) / stops.length).toFixed(2) : '—') + '<small>m</small>';
   $('resPunc').innerHTML = Math.round(avgPunc) + '<small>%</small>';
   $('resKwh').innerHTML = Math.round(G.energy) + '<small>kWh</small>';
+  const cpk = G.couplerPeak || { tension: 0, compression: 0 };
+  $('resEnergy').innerHTML = `牵引 ${Math.round(G.energyTraction || 0)} kWh · 回馈 ${Math.round(G.regen || 0)} kWh · 净 ${Math.round(G.energy || 0)} kWh`
+    + `<br>车钩峰值 拉 ${Math.round(cpk.tension)} kN / 压 ${Math.abs(Math.round(cpk.compression))} kN`;
   const pen = $('resPenalty');
   if (pen) pen.innerHTML = (G.penalties > 0 ? '-' + G.penalties : '0') + '<small>分</small>';
   let rows = `<div class="stop-line head"><span>车站</span><span>停车偏差</span><span>发车偏差</span><span>得分</span></div>`;
@@ -14213,7 +14533,9 @@ function updateHUD(force = false) {
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';
+  else if (G.slipping) status = '轮对空转 · 黏着受限';
   else if (G.slowzone && G.clock < G.slowzone.until) status = `临时限速 ${G.slowzone.limit} km/h`;
+  else if (G.regenOn && G.v > 1) status = '再生制动 · 能量回馈';
   else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
   else if (G.stopState === 'dwell') status = '停站作业';
   else if (G.stopState === 'stop') status = '停稳';
@@ -15195,6 +15517,14 @@ window.__sim = {
   showTransferPanel, clampWalk,
   get signals() { return signals; },
   get IX() { return IX; },
+  get interlockTable() { return IX.table || null; },
+  get interlockLocks() { return IX.locks || []; },
+  interlockCheck(id) {
+    if (!IX.table || typeof checkRouteRequest !== 'function') return { ok: false, reason: '无进路表' };
+    const rid = IX.routeTableId(id);
+    return rid ? checkRouteRequest(IX.table, rid, IX.locks || [], IX.occupiedRes || [])
+      : { ok: false, reason: '未知进路' };
+  },
   get sigMeshes() { return sigLampMeshes; },
   snapCam() { updateCamera(0, true); },
   snapTrain() { if (train) train.update(G.s, G.v, 0); },
