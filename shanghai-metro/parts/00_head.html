@@ -85,6 +85,7 @@
   .rc-career{margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#0a1206;
     background:var(--line);padding:2px 6px;border-radius:5px;vertical-align:1px}
   .rc-career.rev{background:rgba(255,255,255,.08);color:#c3d4de;border:1px solid rgba(255,255,255,.16);padding:1px 5px}
+  .rc-career.day{background:rgba(140,198,63,.14);color:#c9f07a;border:1px solid rgba(140,198,63,.35);padding:1px 5px}
   .rc-seg{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
   .rc-title{font-size:17px;font-weight:700;letter-spacing:-.01em}
   .rc-title small{display:block;margin:4px 0 0;font-size:11px;color:#8799a5;font-weight:500;letter-spacing:.02em}
@@ -142,6 +143,9 @@
   .hud-clock i.late{color:var(--amber)}
   .hud-clock i.early{color:#6fd3ff}
   .hud-clock i.bad{color:#ff6b5a}
+  .hud-duty{font-style:normal;font-size:9.5px;letter-spacing:.06em;color:#c9f07a;margin-left:9px;
+    padding:2px 7px;border-radius:6px;background:rgba(140,198,63,.14);border:1px solid rgba(140,198,63,.28)}
+  .hud-duty.hidden{display:none}
 
   .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
   .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
@@ -371,6 +375,30 @@
   .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
   .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
   .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
+    padding:10px 12px;margin:0 0 10px;font-size:11px;color:#b9ccd7}
+  .sess-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+  .sess-head b{font-size:12.5px;color:#dbe7ee;letter-spacing:.03em}
+  .sess-head span{font-size:9.5px;color:#7f939f}
+  .sess-parts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.07);
+    border-radius:8px;overflow:hidden;margin-bottom:8px}
+  .sess-parts div{background:#10161b;padding:7px 6px;text-align:center}
+  .sess-parts i{display:block;font-style:normal;font-size:9px;color:#7f939f;letter-spacing:.04em}
+  .sess-parts b{display:block;font-size:14px;color:#c9f07a;font-variant-numeric:tabular-nums;margin-top:2px}
+  .sess-next{font-size:10.5px;color:#ffd479;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.22);
+    border-radius:7px;padding:5px 8px;margin-bottom:8px}
+  .sess-legs{border:1px solid rgba(255,255,255,.07);border-radius:8px;overflow:hidden}
+  .sess-leg{display:grid;grid-template-columns:24px 1fr 40px 52px 56px 42px;gap:6px;padding:5px 7px;
+    border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums;color:#a9bcc8}
+  .sess-leg:last-child{border-bottom:0}
+  .sess-leg.head{background:rgba(255,255,255,.05);color:#7f939f;font-size:9px;letter-spacing:.04em}
+  .sess-leg .seg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sess-foot{margin-top:7px;font-size:9px;color:#6b8290;text-align:right}
+  .resume-day{display:block;width:100%;margin-bottom:10px;padding:12px 16px;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:700;color:#08110a;background:linear-gradient(180deg,#d6ff8a,#9bcf3e);
+    border:0;box-shadow:0 10px 26px rgba(140,198,63,.25);transition:.15s}
+  .resume-day span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#31421a;letter-spacing:.03em}
+  .resume-day:hover{transform:translateY(-1px);filter:brightness(1.06)}
   .stop-line{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr;gap:8px;padding:8px 12px;font-size:11px;color:#9aacb8;
     border-bottom:1px solid rgba(255,255,255,.05)}
   .stop-line:last-child{border-bottom:0}
@@ -482,6 +510,7 @@
         </div>
       </div>
       <div class="start-wrap">
+        <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
       </div>
     </div>
@@ -505,7 +534,7 @@
   <!-- ===================== HUD ===================== -->
   <div id="hud">
     <div class="hud-top">
-      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em></div>
+      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em><i class="hud-duty hidden" id="hudDuty"></i></div>
       <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span><i id="hudPunc">正点</i></div>
     </div>
 
@@ -571,11 +600,15 @@
         <div class="m-row"><span>编组</span><b>6 节 A 型车 · 定员 1860 人</b></div>
         <div class="m-row"><span>计划发车</span><b id="brDepart">08:12:00</b></div>
         <div class="m-row"><span>运行时分</span><b id="brTimes">上海地铁官方首末班车推导</b></div>
+        <div class="m-row"><span>运营时段</span><b id="brDay">单趟值乘</b></div>
+        <div class="m-row"><span>运营时长</span>
+          <div class="seg" id="shiftGroup"><button data-v="60">1 小时</button><button data-v="120" class="on">2 小时</button><button data-v="180">3 小时</button></div>
+        </div>
         <div class="m-row"><span>区间里程</span><b id="brDist">11.5 km</b></div>
         <div class="m-row"><span>停车站数</span><b id="brStops">7 站</b></div>
         <div class="m-row"><span>自动驾驶</span><b>ATO 自动运行 · 自动停站开门（按 A）</b></div>
         <div class="m-row"><span>值乘模式</span>
-          <div class="seg" id="modeGroup"><button data-v="normal" class="on">普通值乘</button><button data-v="exam">执照考试</button></div>
+          <div class="seg" id="modeGroup"><button data-v="day">运营日</button><button data-v="single" class="on">单趟</button><button data-v="exam">执照考试</button></div>
         </div>
       </div>
       <div class="keys-grid">
@@ -628,6 +661,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn acc" id="pResume">继续驾驶</button>
+        <button class="btn" id="pSaveQuit">保存并退出</button>
         <button class="btn" id="pRestart">重新开始本次任务</button>
         <button class="btn" id="pQuit">返回线路选择</button>
       </div>
@@ -641,7 +675,7 @@
       <h3 style="margin-top:6px" id="resTitle">值乘结束</h3>
       <div class="grade">
         <div class="letter" id="resGrade">A</div>
-        <div class="g-meta">总评分<br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
+        <div class="g-meta"><span id="resScoreLabel">总评分</span><br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
       </div>
       <div class="stat-grid">
         <div class="stat-cell"><i>停站精度</i><b id="resStop">—<small>m</small></b></div>
@@ -652,6 +686,7 @@
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
       <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <div id="resSession" class="sess-result" style="display:none"></div>
       <div class="stop-table" id="resTable"></div>
       <div class="modal-actions">
         <button class="btn acc" id="resAgain">再次值乘</button>

@@ -7,17 +7,19 @@
     "build": "node build2.js",
     "build:readable": "node build2.js --readable",
     "smoke": "node tests/smoke.js",
-    "test": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js && node tests/smoke.js && node tests/regress_modules.js && node tests/regress_crossover.js && node tests/regress_bodies.js && node tests/golden.js",
+    "test": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/session.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js && node tests/smoke.js && node tests/regress_modules.js && node tests/regress_crossover.js && node tests/regress_bodies.js && node tests/golden.js",
     "test:smoke": "node tests/smoke.js",
     "test:modules": "node tests/regress_modules.js",
     "test:golden": "node tests/golden.js",
     "golden:update": "node tests/golden.js --update",
     "test:crossover": "node tests/regress_crossover.js",
     "test:bodies": "node tests/regress_bodies.js",
-    "test:unit": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js",
+    "test:unit": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/session.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js",
     "test:timetable": "node tests/unit/timetable.test.js",
     "test:schedule": "node tests/unit/schedule.test.js",
-    "test:punc": "node tests/regress_punc.js"
+    "test:session": "node tests/unit/session.test.js",
+    "test:punc": "node tests/regress_punc.js",
+    "test:day": "node tests/regress_session.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.0.0"

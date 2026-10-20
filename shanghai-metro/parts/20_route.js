@@ -288,9 +288,11 @@ class RoutePath {
     }
     return lim;
   }
-  buildSchedule() {
+  /* startOverride：运营日交班后要按「实际交班时刻」重新排本务时刻，
+     不能再用交路定义里的首班车时间。 */
+  buildSchedule(startOverride) {
     const st = this.stations;
-    const startSec = parseClock(this.def.start);
+    const startSec = (startOverride != null) ? startOverride : parseClock(this.def.start);
     const order = st.map((s, i) => i).filter(i => st[i].served !== false);
     const first = order[0];
     const off = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[this.def.id])

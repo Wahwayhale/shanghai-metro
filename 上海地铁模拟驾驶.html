@@ -85,6 +85,7 @@
   .rc-career{margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#0a1206;
     background:var(--line);padding:2px 6px;border-radius:5px;vertical-align:1px}
   .rc-career.rev{background:rgba(255,255,255,.08);color:#c3d4de;border:1px solid rgba(255,255,255,.16);padding:1px 5px}
+  .rc-career.day{background:rgba(140,198,63,.14);color:#c9f07a;border:1px solid rgba(140,198,63,.35);padding:1px 5px}
   .rc-seg{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
   .rc-title{font-size:17px;font-weight:700;letter-spacing:-.01em}
   .rc-title small{display:block;margin:4px 0 0;font-size:11px;color:#8799a5;font-weight:500;letter-spacing:.02em}
@@ -142,6 +143,9 @@
   .hud-clock i.late{color:var(--amber)}
   .hud-clock i.early{color:#6fd3ff}
   .hud-clock i.bad{color:#ff6b5a}
+  .hud-duty{font-style:normal;font-size:9.5px;letter-spacing:.06em;color:#c9f07a;margin-left:9px;
+    padding:2px 7px;border-radius:6px;background:rgba(140,198,63,.14);border:1px solid rgba(140,198,63,.28)}
+  .hud-duty.hidden{display:none}
 
   .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
   .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
@@ -371,6 +375,30 @@
   .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
   .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
   .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
+    padding:10px 12px;margin:0 0 10px;font-size:11px;color:#b9ccd7}
+  .sess-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+  .sess-head b{font-size:12.5px;color:#dbe7ee;letter-spacing:.03em}
+  .sess-head span{font-size:9.5px;color:#7f939f}
+  .sess-parts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.07);
+    border-radius:8px;overflow:hidden;margin-bottom:8px}
+  .sess-parts div{background:#10161b;padding:7px 6px;text-align:center}
+  .sess-parts i{display:block;font-style:normal;font-size:9px;color:#7f939f;letter-spacing:.04em}
+  .sess-parts b{display:block;font-size:14px;color:#c9f07a;font-variant-numeric:tabular-nums;margin-top:2px}
+  .sess-next{font-size:10.5px;color:#ffd479;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.22);
+    border-radius:7px;padding:5px 8px;margin-bottom:8px}
+  .sess-legs{border:1px solid rgba(255,255,255,.07);border-radius:8px;overflow:hidden}
+  .sess-leg{display:grid;grid-template-columns:24px 1fr 40px 52px 56px 42px;gap:6px;padding:5px 7px;
+    border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums;color:#a9bcc8}
+  .sess-leg:last-child{border-bottom:0}
+  .sess-leg.head{background:rgba(255,255,255,.05);color:#7f939f;font-size:9px;letter-spacing:.04em}
+  .sess-leg .seg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sess-foot{margin-top:7px;font-size:9px;color:#6b8290;text-align:right}
+  .resume-day{display:block;width:100%;margin-bottom:10px;padding:12px 16px;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:700;color:#08110a;background:linear-gradient(180deg,#d6ff8a,#9bcf3e);
+    border:0;box-shadow:0 10px 26px rgba(140,198,63,.25);transition:.15s}
+  .resume-day span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#31421a;letter-spacing:.03em}
+  .resume-day:hover{transform:translateY(-1px);filter:brightness(1.06)}
   .stop-line{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr;gap:8px;padding:8px 12px;font-size:11px;color:#9aacb8;
     border-bottom:1px solid rgba(255,255,255,.05)}
   .stop-line:last-child{border-bottom:0}
@@ -482,6 +510,7 @@
         </div>
       </div>
       <div class="start-wrap">
+        <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
       </div>
     </div>
@@ -505,7 +534,7 @@
   <!-- ===================== HUD ===================== -->
   <div id="hud">
     <div class="hud-top">
-      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em></div>
+      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em><i class="hud-duty hidden" id="hudDuty"></i></div>
       <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span><i id="hudPunc">正点</i></div>
     </div>
 
@@ -571,11 +600,15 @@
         <div class="m-row"><span>编组</span><b>6 节 A 型车 · 定员 1860 人</b></div>
         <div class="m-row"><span>计划发车</span><b id="brDepart">08:12:00</b></div>
         <div class="m-row"><span>运行时分</span><b id="brTimes">上海地铁官方首末班车推导</b></div>
+        <div class="m-row"><span>运营时段</span><b id="brDay">单趟值乘</b></div>
+        <div class="m-row"><span>运营时长</span>
+          <div class="seg" id="shiftGroup"><button data-v="60">1 小时</button><button data-v="120" class="on">2 小时</button><button data-v="180">3 小时</button></div>
+        </div>
         <div class="m-row"><span>区间里程</span><b id="brDist">11.5 km</b></div>
         <div class="m-row"><span>停车站数</span><b id="brStops">7 站</b></div>
         <div class="m-row"><span>自动驾驶</span><b>ATO 自动运行 · 自动停站开门（按 A）</b></div>
         <div class="m-row"><span>值乘模式</span>
-          <div class="seg" id="modeGroup"><button data-v="normal" class="on">普通值乘</button><button data-v="exam">执照考试</button></div>
+          <div class="seg" id="modeGroup"><button data-v="day">运营日</button><button data-v="single" class="on">单趟</button><button data-v="exam">执照考试</button></div>
         </div>
       </div>
       <div class="keys-grid">
@@ -628,6 +661,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn acc" id="pResume">继续驾驶</button>
+        <button class="btn" id="pSaveQuit">保存并退出</button>
         <button class="btn" id="pRestart">重新开始本次任务</button>
         <button class="btn" id="pQuit">返回线路选择</button>
       </div>
@@ -641,7 +675,7 @@
       <h3 style="margin-top:6px" id="resTitle">值乘结束</h3>
       <div class="grade">
         <div class="letter" id="resGrade">A</div>
-        <div class="g-meta">总评分<br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
+        <div class="g-meta"><span id="resScoreLabel">总评分</span><br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
       </div>
       <div class="stat-grid">
         <div class="stat-cell"><i>停站精度</i><b id="resStop">—<small>m</small></b></div>
@@ -652,6 +686,7 @@
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
       <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <div id="resSession" class="sess-result" style="display:none"></div>
       <div class="stop-table" id="resTable"></div>
       <div class="modal-actions">
         <button class="btn acc" id="resAgain">再次值乘</button>
@@ -4575,9 +4610,11 @@ class RoutePath {
     }
     return lim;
   }
-  buildSchedule() {
+  /* startOverride：运营日交班后要按「实际交班时刻」重新排本务时刻，
+     不能再用交路定义里的首班车时间。 */
+  buildSchedule(startOverride) {
     const st = this.stations;
-    const startSec = parseClock(this.def.start);
+    const startSec = (startOverride != null) ? startOverride : parseClock(this.def.start);
     const order = st.map((s, i) => i).filter(i => st[i].served !== false);
     const first = order[0];
     const off = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[this.def.id])
@@ -10558,6 +10595,21 @@ function ttTimeAtPosition(service, s) {
   return stops[stops.length - 1].dep;
 }
 
+/* 整张运行图平移 delta 秒（含全部车次与停站时刻）。
+   运营日的下一段要精确从「交班时刻」发车，而运行图是按发车间隔网格
+   生成的，不一定正好落在该时刻，所以整表对齐一次。 */
+function ttShiftTimetable(tt, delta) {
+  if (!tt || !tt.services || !delta) return tt;
+  tt.fromSec += delta;
+  tt.toSec += delta;
+  for (const svc of tt.services) {
+    svc.startSec += delta;
+    svc.endSec += delta;
+    for (const sp of svc.stops) { sp.arr += delta; sp.dep += delta; }
+  }
+  return tt;
+}
+
 /* 克隆一个车次并整体平移 offset 秒。
    P1-3 用它给 AI 车生成「以自己当前位置为准」的班次：
    AI 的初始位置是场景布置决定的，不能为了对时刻表把车挪走，
@@ -10584,7 +10636,8 @@ if (typeof module !== 'undefined' && module.exports) {
     TT_DEFAULTS,
     ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
     ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
-    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition, ttShiftService
+    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition,
+    ttShiftService, ttShiftTimetable
   };
 }
 
@@ -11099,6 +11152,786 @@ class AudioEngine {
 const AUDIO = new AudioEngine();
 
 
+/* ===== 65_session.js ===== */
+/* =====================================================================
+   运营日（P2）：时段编排 / 事件时间轴 / 运营结算 / 存档
+   ---------------------------------------------------------------------
+   本文件是纯逻辑，不依赖 THREE / DOM，可在 node 里直接 require 单测。
+
+   设计要点：
+   1. 一局 = 一个运营时段（默认约 2 小时），由若干「值乘段」组成。
+      每段是一个单程交路；段间有折返/交接时间（slack）。
+   2. 事件按「种子 + 难度 + 段内相对时刻」生成，同一 seed 必然得到
+      同一串事件——不依赖 Math.random，可复现、可回归。
+   3. 结算按段汇总：准点率、停站误差、能耗、故障处置、乘客满意度，
+      每个分项都能追溯到逐段记录，便于对账。
+   ===================================================================== */
+
+const SESSION_SCHEMA = 1;
+const SESSION_TARGET_SEC = 2 * 3600;   // 目标运营时段长度
+
+/* 三档难度：事件数量、段间余量、段数修正 */
+const SESSION_DIFF = {
+  easy:   { label: '见习', faults: 0, crowds: 1, slowzones: 0, dispatch: 1, slack: 360, legBonus: -1 },
+  normal: { label: '常规', faults: 2, crowds: 1, slowzones: 1, dispatch: 2, slack: 300, legBonus: 0 },
+  hard:   { label: '高峰', faults: 3, crowds: 2, slowzones: 2, dispatch: 2, slack: 240, legBonus: 1 }
+};
+
+/* 与 72_physics.js 的 FAULT_TYPES 权重保持一致（纯逻辑层不引用渲染文件） */
+const SESSION_FAULT_TYPES = [
+  { type: 'door', w: 0.34 },
+  { type: 'traction', w: 0.24 },
+  { type: 'signal', w: 0.20 },
+  { type: 'pantograph', w: 0.12 },
+  { type: 'brake', w: 0.10 }
+];
+
+function sessClamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+/* mulberry32：与项目里 RNG 同一套算法，但独立命名避免与全局冲突 */
+function sessMulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function sessInt(rng, a, b) { return a + Math.floor(rng() * (b - a + 1)); }
+
+function sessPickFault(rng) {
+  let r = rng();
+  for (const f of SESSION_FAULT_TYPES) {
+    r -= f.w;
+    if (r <= 0) return f.type;
+  }
+  return SESSION_FAULT_TYPES[0].type;
+}
+
+/* 故障文案：与 72_physics.FAULT_TYPES 的 make() 保持同样字段 */
+function sessFaultInfo(type, rng) {
+  if (type === 'door') {
+    const car = sessInt(rng, 2, 5);
+    return { type, name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 切除该车门' };
+  }
+  if (type === 'traction') return { type, name: '牵引逆变器', brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' };
+  if (type === 'signal') return { type, name: '车载 ATP', brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' };
+  if (type === 'pantograph') return { type, name: '受电弓', brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' };
+  return { type, name: '制动系统', brief: '制动缓解不良', hint: '制动力下降，按 L 复位' };
+}
+
+/* ---------------------------------------------------------------------
+   buildSessionPlan：生成整局运营时段
+   ---------------------------------------------------------------------
+   o {
+     seed, diff, legSeconds, reverseAllowed, legCount?
+   }
+   返回 {
+     schema, seed, diff, legSeconds, legCount, legs[], events[], totalSec
+   }
+   --------------------------------------------------------------------- */
+function buildSessionPlan(o) {
+  const opt = o || {};
+  const diff = SESSION_DIFF[opt.diff] ? opt.diff : 'normal';
+  const cfg = SESSION_DIFF[diff];
+  const seed = (opt.seed == null ? 20261020 : opt.seed) >>> 0;
+  const rng = sessMulberry32(seed ^ 0x9E3779B9);
+  const legSeconds = Math.round(sessClamp(opt.legSeconds || 900, 180, 7200));
+  const reverseAllowed = opt.reverseAllowed !== false;
+
+  /* 段数：尽量铺满目标时段（默认 2 小时），受难度修正；最短 2 段、最长 6 段 */
+  const targetSec = Math.max(600, opt.targetSec || SESSION_TARGET_SEC);
+  let legCount = opt.legCount;
+  if (!legCount) {
+    legCount = Math.round(targetSec / (legSeconds + cfg.slack));
+    legCount += cfg.legBonus;
+  }
+  legCount = Math.round(sessClamp(legCount, 2, 6));
+
+  const legs = [];
+  const events = [];
+  let cursor = 0;
+  for (let i = 0; i < legCount; i++) {
+    const dir = (!reverseAllowed || i % 2 === 0) ? 1 : -1;
+    legs.push({
+      i, dir,
+      startSec: cursor,
+      endSec: cursor + legSeconds,
+      slack: cfg.slack,
+      name: `第 ${i + 1} 段`
+    });
+    cursor += legSeconds + cfg.slack;
+  }
+
+  /* 事件分配：尽量一张一弛，不要把三条故障塞进同一段 */
+  const legOrder = [...Array(legCount).keys()];
+  const shuffled = legOrder.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = sessInt(rng, 0, i);
+    const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+  }
+  const pickLegs = n => shuffled.slice(0, Math.min(n, legCount));
+
+  const add = (legIndex, atSec, kind, extra) => {
+    events.push(Object.assign({
+      id: `L${legIndex}-${kind}-${events.length}`,
+      legIndex, atSec: Math.round(atSec), kind
+    }, extra || {}));
+  };
+
+  for (const li of pickLegs(cfg.faults)) {
+    const type = sessPickFault(rng);
+    const info = sessFaultInfo(type, rng);
+    add(li, legSeconds * (0.22 + rng() * 0.4), 'fault', { faultType: info.type, faultName: info.name });
+  }
+  for (const li of pickLegs(cfg.crowds)) {
+    add(li, legSeconds * (0.32 + rng() * 0.45), 'crowd', { surge: sessInt(rng, 10, 18) });
+  }
+  for (const li of pickLegs(cfg.slowzones)) {
+    add(li, legSeconds * (0.2 + rng() * 0.5), 'slowzone', {
+      limit: sessInt(rng, 30, 45) | 0,
+      duration: sessInt(rng, 90, 150)
+    });
+  }
+  /* 调度指令：首段发车后一条，中段一条（"中场有 ATS 调度指令"） */
+  add(0, 35 + rng() * 40, 'dispatch', { text: '调度：注意前方区间，按图行车' });
+  if (cfg.dispatch > 1) {
+    const mid = Math.floor(legCount / 2);
+    add(mid, legSeconds * 0.5, 'dispatch', { text: '调度：中段客流上升，注意停站时间' });
+  }
+
+  events.sort((a, b) => (a.legIndex - b.legIndex) || (a.atSec - b.atSec));
+
+  return {
+    schema: SESSION_SCHEMA,
+    seed, diff, legSeconds, legCount,
+    legs, events,
+    totalSec: cursor
+  };
+}
+
+/* 某一时刻该段已经/即将触发的事件（绝对时刻） */
+function sessEventsAt(plan, legIndex, legStart, now) {
+  if (!plan || !plan.events) return [];
+  return plan.events.filter(e => e.legIndex === legIndex && legStart + e.atSec <= now);
+}
+
+/* ---------------------------------------------------------------------
+   scoreSession：运营结算
+   ---------------------------------------------------------------------
+   legs: [{
+     punc, stopErr, energy, distanceKm,
+     faults, faultsFixed, crowds, crowdsServed
+   }]
+   返回 { score, grade, parts, totals, legs }
+   --------------------------------------------------------------------- */
+function scoreSession(legs, extra) {
+  const list = (legs || []).filter(Boolean);
+  const n = Math.max(1, list.length);
+  const sum = k => list.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const avg = k => sum(k) / n;
+
+  const punc = sessClamp(avg('punc'), 0, 100);
+  const stopErr = Math.abs(avg('stopErr'));
+  const stop = sessClamp(100 - 26 * stopErr, 0, 100);
+  const energy = sum('energy');
+  const distanceKm = sum('distanceKm');
+  const kwhPerKm = energy / Math.max(0.5, distanceKm);
+  /* 能耗基准随线路最高速度走（120 km/h 的磁浮/16 号线每公里电耗更高），
+     高于基准每 1 kWh/km 扣 8 分；只用于同一线路内的驾驶习惯比较。 */
+  const vmax = (extra && extra.vmax) || 80;
+  const refKwhPerKm = 5.5 + 0.03 * vmax;
+  const energyScore = sessClamp(100 - (kwhPerKm - refKwhPerKm) * 8, 0, 100);
+  const faults = sum('faults');
+  const faultsFixed = sum('faultsFixed');
+  const faultScore = faults > 0 ? sessClamp(100 * faultsFixed / faults, 0, 100) : 100;
+  const crowds = sum('crowds');
+  const crowdsServed = sum('crowdsServed');
+  const satisfaction = sessClamp(100 - (crowds - crowdsServed) * 12 - (faults - faultsFixed) * 18, 0, 100);
+
+  const score = Math.round(
+    0.40 * punc + 0.22 * stop + 0.13 * energyScore + 0.15 * faultScore + 0.10 * satisfaction
+  );
+  const grade = score >= 93 ? 'S' : score >= 84 ? 'A' : score >= 72 ? 'B' : score >= 58 ? 'C' : 'D';
+
+  return {
+    score: sessClamp(score, 0, 100),
+    grade,
+    parts: {
+      punc: Math.round(punc),
+      stop: Math.round(stop),
+      energy: Math.round(energyScore),
+      fault: Math.round(faultScore),
+      satisfaction: Math.round(satisfaction)
+    },
+    totals: {
+      legs: list.length,
+      energy: Math.round(energy * 10) / 10,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      faults, faultsFixed, crowds, crowdsServed,
+      avgStopErr: Math.round(stopErr * 100) / 100,
+      kwhPerKm: Math.round(kwhPerKm * 100) / 100
+    },
+    legs: list.map((r, i) => ({
+      i: i + 1,
+      punc: Math.round(Number(r.punc) || 0),
+      stopErr: Math.round((Number(r.stopErr) || 0) * 100) / 100,
+      energy: Math.round((Number(r.energy) || 0) * 10) / 10,
+      distanceKm: Math.round((Number(r.distanceKm) || 0) * 10) / 10,
+      faults: Number(r.faults) || 0,
+      faultsFixed: Number(r.faultsFixed) || 0,
+      crowds: Number(r.crowds) || 0,
+      crowdsServed: Number(r.crowdsServed) || 0
+    }))
+  };
+}
+
+/* ---------------------------------------------------------------------
+   存档：只做结构校验与版本迁移，不碰 localStorage（由 UI 层负责）
+   --------------------------------------------------------------------- */
+function sessionToSave(session) {
+  if (!session) return null;
+  return {
+    v: SESSION_SCHEMA,
+    routeId: session.routeId,
+    routeIdx: session.routeIdx,
+    seed: session.seed,
+    diff: session.diff,
+    legIndex: session.legIndex,
+    legCount: session.legCount,
+    pendingStart: session.pendingStart,
+    legStart: session.legStart,
+    phase: session.phase || 'driving',
+    log: session.log || [],
+    dispatch: session.dispatch || [],
+    plan: session.plan || null,
+    snap: session.snap || null,
+    savedAt: Date.now()
+  };
+}
+
+function sessionFromSave(text) {
+  let d;
+  try { d = typeof text === 'string' ? JSON.parse(text) : text; } catch (e) { return { ok: false, reason: '不是合法的 JSON' }; }
+  if (!d || typeof d !== 'object') return { ok: false, reason: '内容为空' };
+  if (d.v !== SESSION_SCHEMA) return { ok: false, reason: `不支持的运营日存档版本：${d.v}` };
+  if (!d.plan || !Array.isArray(d.plan.legs) || !Array.isArray(d.plan.events)) return { ok: false, reason: '缺少时段编排' };
+  const plan = d.plan;
+  if (!SESSION_DIFF[plan.diff] || typeof d.legIndex !== 'number') return { ok: false, reason: '运营日数据不完整' };
+  return { ok: true, data: d };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    SESSION_SCHEMA, SESSION_TARGET_SEC, SESSION_DIFF, SESSION_FAULT_TYPES,
+    sessClamp, sessMulberry32, sessInt, sessPickFault, sessFaultInfo,
+    buildSessionPlan, sessEventsAt, scoreSession, sessionToSave, sessionFromSave
+  };
+}
+
+
+/* ===== 66_session_game.js ===== */
+/* =====================================================================
+   运营日运行时（P2）
+   ---------------------------------------------------------------------
+   纯逻辑在 65_session.js；本文件负责把它接进游戏：
+   - 开局建时段、逐段值乘、段间交接
+   - 事件时间轴的实际触发（故障/大客流/临时限速/调度指令）
+   - 运营结算与逐段对账
+   - 中途存档 / 继续运营日（localStorage: sm_session）
+   ===================================================================== */
+
+const SESSION_KEY = 'sm_session';
+const SESSION_DIR_NAME = '运营日';
+
+function sessionActive() {
+  return !!(G.session && G.session.plan);
+}
+
+function sessionLegLabel() {
+  const s = G.session;
+  if (!s) return '';
+  return `${SESSION_DIR_NAME} ${Math.min(s.legIndex + 1, s.legCount)}/${s.legCount}`;
+}
+
+/* ---------------------------------------------------------------- 开局 */
+/* 在 buildService 之后、beginDriving 之前调用：用本务车次的全程时长
+   估算一局能跑几段，并生成事件时间轴。 */
+function sessionStart(routeIdx) {
+  if (typeof buildSessionPlan !== 'function') return null;
+  const svc = path && path.playerService;
+  const legSeconds = svc ? Math.max(180, Math.round(svc.endSec - svc.startSec)) : 900;
+  const reverseAllowed = !(routeDef.loop || routeDef.stopPlan);
+  const seed = (G.sessionSeed != null)
+    ? (G.sessionSeed >>> 0)
+    : ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0);
+  const plan = buildSessionPlan({
+    seed, diff: G.diff, legSeconds, reverseAllowed,
+    targetSec: (G.sessionMinutes || 120) * 60,
+    legCount: G.sessionLegs || undefined
+  });
+  G.session = {
+    schema: SESSION_SCHEMA,
+    routeId: routeDef.id,
+    routeIdx,
+    seed,
+    diff: G.diff,
+    plan,
+    legIndex: 0,
+    legCount: plan.legCount,
+    legStart: path.startSec,
+    pendingStart: path.startSec,
+    events: [],
+    cursor: 0,
+    log: [],
+    dispatch: [],
+    legFaults: 0, legFaultsFixed: 0,
+    legCrowds: 0, legCrowdsServed: 0, crowdStation: -1,
+    phase: 'driving',
+    snap: null
+  };
+  sessionBeginLeg(0);
+  return G.session;
+}
+
+/* 进入某一段：把该段事件换算成绝对时刻，清段内计数 */
+function sessionBeginLeg(i) {
+  const s = G.session;
+  if (!s) return;
+  s.legIndex = i;
+  s.legStart = path.startSec;
+  s.pendingStart = path.startSec;
+  s.events = s.plan.events
+    .filter(e => e.legIndex === i)
+    .map(e => Object.assign({}, e, { at: s.legStart + e.atSec }));
+  s.cursor = 0;
+  s.legFaults = 0; s.legFaultsFixed = 0;
+  s.legCrowds = 0; s.legCrowdsServed = 0; s.crowdStation = -1;
+  s.phase = 'driving';
+  sessionSave(false);
+  sessionUpdateHud();
+}
+
+function sessionUpdateHud() {
+  const el = $('hudDuty');
+  if (!el) return;
+  if (!sessionActive()) { el.textContent = ''; el.classList.add('hidden'); return; }
+  const s = G.session;
+  el.classList.remove('hidden');
+  el.textContent = `${SESSION_DIR_NAME} ${s.legIndex + 1}/${s.legCount} · ${(SESSION_DIFF[s.diff] || {}).label || s.diff}`;
+}
+
+/* ---------------------------------------------------------------- 事件 */
+function sessionFaultText(type) {
+  if (type === 'door') return { brief: '车门未关闭', hint: '按 L 切除该车门' };
+  if (type === 'traction') return { brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' };
+  if (type === 'signal') return { brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' };
+  if (type === 'pantograph') return { brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' };
+  return { brief: '制动缓解不良', hint: '制动力下降，按 L 复位' };
+}
+
+function sessionFire(e) {
+  const s = G.session;
+  if (!s || !e) return;
+  if (e.kind === 'fault') {
+    if (G.fault) return;                      // 同一时间只处理一条故障
+    const tx = sessionFaultText(e.faultType);
+    G.fault = { type: e.faultType, name: e.faultName || tx.brief, warned: false };
+    G.faultCount++;
+    s.legFaults++;
+    if (e.faultType === 'signal') G.sigMode = 'fixed';
+    toast(`⚠ ${e.faultName || tx.brief} · ${tx.hint}`, 'bad', 6800);
+    AUDIO.beep(true);
+    AUDIO.announce(`${tx.brief}，请司机处理。`);
+    updateHUD(true);
+    return;
+  }
+  if (e.kind === 'crowd') {
+    const idx = G.targetIdx;
+    const so = stationObjFor(idx);
+    if (so && so.crowd) {
+      so.crowd.waitingCount = Math.min(so.crowd.N - 2, so.crowd.waitingCount + (e.surge || 12));
+      so.crowd.reset();
+    }
+    s.legCrowds++;
+    s.crowdStation = idx;
+    const zh = path.stations[idx] ? path.stations[idx].zh : '下一站';
+    toast(`大客流预警 · ${zh}，请关注乘降安全`, 'warn', 6800);
+    AUDIO.announce(`${zh}站客流较大，请司机注意乘降安全。`);
+    return;
+  }
+  if (e.kind === 'slowzone') {
+    G.slowzone = { until: G.clock + (e.duration || 120), limit: e.limit || 40 };
+    toast(`临时限速 ${G.slowzone.limit} km/h · 持续 ${Math.round(e.duration || 120)} 秒`, 'warn', 6000);
+    AUDIO.announce(`前方临时限速，限速${G.slowzone.limit}公里。`);
+    return;
+  }
+  if (e.kind === 'dispatch') {
+    s.dispatch.push({ at: Math.round(G.clock), text: e.text || '按图行车' });
+    toast(`调度指令 · ${e.text || '按图行车'}`, 'info', 7000);
+    AUDIO.announce(e.text || '调度指令，请按图行车。');
+  }
+}
+
+/* 每帧推进事件时间轴；不依赖 Math.random，种子固定则序列固定 */
+function sessionTick() {
+  if (!sessionActive() || G.mode !== 'driving') return;
+  const s = G.session;
+  while (s.cursor < s.events.length && G.clock + 1e-6 >= s.events[s.cursor].at) {
+    const e = s.events[s.cursor];
+    /* 故障未处置完时先挂起后续事件，避免「第二条故障被静默丢弃」 */
+    if (e.kind === 'fault' && G.fault) return;
+    s.cursor++;
+    sessionFire(e);
+  }
+  if (G.slowzone && G.clock >= G.slowzone.until) {
+    G.slowzone = null;
+    toast('临时限速已解除', 'good', 3000);
+  }
+}
+
+/* 大客流站点办客（开门）时记为已服务 */
+function sessionCrowdServed(idx) {
+  const s = G.session;
+  if (!s || s.crowdStation !== idx) return;
+  s.legCrowdsServed++;
+  s.crowdStation = -1;
+}
+
+/* ---------------------------------------------------------------- 结算 */
+function sessionDistanceKm() {
+  if (!path || !path.stations.length) return 0;
+  const a = path.stations[0].stopS;
+  const b = path.stations[path.stations.length - 1].stopS;
+  return Math.abs(b - a) / 1000;
+}
+
+function sessionCommitLeg() {
+  const s = G.session;
+  if (!s || s.phase !== 'driving') return null;
+  const stops = G.results.filter(r => r.idx > 0);
+  const punc = stops.length ? stops.reduce((a, r) => a + (r.punc || 0), 0) / stops.length : 0;
+  const errs = stops.map(r => (r.err === 99 ? 5 : Math.abs(r.err || 0)));
+  const stopErr = errs.length ? errs.reduce((a, v) => a + v, 0) / errs.length : 0;
+  const rec = {
+    leg: s.legIndex + 1,
+    dir: G.reverse ? -1 : 1,
+    from: path.stations[0] ? path.stations[0].zh : '',
+    to: path.stations[path.stations.length - 1] ? path.stations[path.stations.length - 1].zh : '',
+    startClock: Math.round(s.legStart),
+    endClock: Math.round(G.clock),
+    punc: Math.round(punc),
+    stopErr: Math.round(stopErr * 100) / 100,
+    energy: Math.round(G.energy * 10) / 10,
+    distanceKm: Math.round(sessionDistanceKm() * 10) / 10,
+    penalties: G.penalties,
+    faults: s.legFaults,
+    faultsFixed: s.legFaultsFixed,
+    crowds: s.legCrowds,
+    crowdsServed: s.legCrowdsServed
+  };
+  s.log.push(rec);
+  s.phase = 'intermission';
+  return rec;
+}
+
+function sessionFmtClock(sec) {
+  if (typeof fmtClock === 'function') return fmtClock(sec);
+  const s = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
+function sessionFmtDuration(sec) {
+  const m = Math.max(0, Math.round(sec / 60));
+  if (m < 60) return `${m} 分`;
+  return `${Math.floor(m / 60)} 小时 ${m % 60} 分`;
+}
+
+function sessionResultHtml(score, final) {
+  const s = G.session;
+  if (!s) return '';
+  const t0 = s.log.length ? s.log[0].startClock : s.legStart;
+  const t1 = s.log.length ? s.log[s.log.length - 1].endClock : G.clock;
+  const parts = final ? `
+    <div class="sess-parts">
+      <div><i>准点</i><b>${score.parts.punc}</b></div>
+      <div><i>停站</i><b>${score.parts.stop}</b></div>
+      <div><i>能耗</i><b>${score.parts.energy}</b></div>
+      <div><i>故障处置</i><b>${score.parts.fault}</b></div>
+      <div><i>满意度</i><b>${score.parts.satisfaction}</b></div>
+    </div>` : '';
+  const rows = s.log.map(r => `<div class="sess-leg">
+      <span>${r.leg}</span>
+      <span class="seg">${r.from} → ${r.to}</span>
+      <span>${r.punc}%</span>
+      <span>${r.stopErr.toFixed(2)} m</span>
+      <span>${r.energy.toFixed(0)} kWh</span>
+      <span>${r.faults ? `${r.faultsFixed}/${r.faults}` : '—'}</span>
+    </div>`).join('');
+  const next = (!final && s.phase === 'intermission' && s.log.length < s.legCount)
+    ? `<div class="sess-next">下一段 ${sessionFmtClock(s.pendingStart)} 发车 · 交班余量 ${sessionFmtDuration(s.pendingStart - G.clock)}</div>`
+    : '';
+  return `<div class="sess-head"><b>${SESSION_DIR_NAME}</b><span>${(LINES[routeDef.line] || {}).name || ''} · ${s.legCount} 段 · ${sessionFmtClock(t0)}–${sessionFmtClock(t1)}</span></div>
+    ${parts}${next}
+    <div class="sess-legs">
+      <div class="sess-leg head"><span>段</span><span class="seg">区间</span><span>准点</span><span>停站</span><span>能耗</span><span>故障</span></div>
+      ${rows}
+    </div>
+    <div class="sess-foot">调度指令 ${s.dispatch.length} 条 · 种子 ${s.seed}</div>`;
+}
+
+function sessionShowIntermission(legScore, legGrade) {
+  const s = G.session;
+  if (!s) return;
+  const next = s.plan.legs[s.legIndex + 1];
+  s.pendingStart = Math.round(G.clock + (s.plan.legs[s.legIndex].slack || 300));
+  sessionSave(false);
+  $('resTitle').textContent = `第 ${s.legIndex + 1} 段完成 · 准备交班`;
+  $('resScoreLabel').textContent = '本段评分';
+  $('resGrade').textContent = legGrade;
+  $('resScore').textContent = legScore;
+  $('resSession').style.display = '';
+  $('resSession').innerHTML = sessionResultHtml(scoreSession(s.log, { vmax: path.vmax }), false);
+  $('resAgain').classList.add('hidden');
+  const rv = $('resReverse');
+  rv.classList.remove('hidden');
+  rv.textContent = next ? `开始下一段（第 ${s.legIndex + 2} 段）` : '开始下一段';
+  $('resMenu').textContent = '结束运营日并结算';
+  sessionUpdateHud();
+}
+
+function sessionShowFinal(early) {
+  const s = G.session;
+  if (!s) return;
+  if (!s.log.length) { sessionClearSave(); return; }
+  const score = scoreSession(s.log, { vmax: path.vmax });
+  $('resTitle').textContent = early ? '运营日提前结束 · 结算' : '运营日结算';
+  $('resScoreLabel').textContent = '运营总分';
+  $('resGrade').textContent = score.grade;
+  $('resScore').textContent = score.score;
+  $('resStop').innerHTML = score.totals.avgStopErr.toFixed(2) + '<small>m</small>';
+  $('resPunc').innerHTML = score.parts.punc + '<small>%</small>';
+  $('resKwh').innerHTML = Math.round(score.totals.energy) + '<small>kWh</small>';
+  const pen = s.log.reduce((a, r) => a + (r.penalties || 0), 0);
+  $('resPenalty').innerHTML = (pen > 0 ? '-' + pen : '0') + '<small>分</small>';
+  $('resSession').style.display = '';
+  $('resSession').innerHTML = sessionResultHtml(score, true);
+  $('resAgain').classList.add('hidden');
+  $('resReverse').classList.add('hidden');
+  $('resMenu').textContent = '返回线路选择';
+  if (typeof saveCareer === 'function' && routeDef) saveCareer(routeDef.id + ':day', score.score, score.grade);
+  s.phase = 'done';
+  sessionClearSave();
+  sessionUpdateHud();
+}
+
+/* 段间交接：重建下一方向交路，按下一段计划发车时刻开始 */
+async function sessionNextLeg() {
+  const s = G.session;
+  if (!s || s.phase !== 'intermission') return;
+  const next = s.plan.legs[s.legIndex + 1];
+  if (!next) { sessionShowFinal(false); return; }
+  s.pendingStart = Math.round(G.clock + (s.plan.legs[s.legIndex].slack || 300));
+  const dir = next.dir;
+  $('results').classList.add('hidden');
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = `第 ${next.i + 1} 段 · 正在准备${dir < 0 ? '反向' : '正向'}交路…`;
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  G.mode = 'loading';
+  try {
+    await buildService(s.routeIdx, dir < 0);
+    $('loading').classList.add('hidden');
+    G.turnback = null;
+    beginDriving();
+    sessionBeginLeg(next.i);
+    toast(`第 ${next.i + 1} 段开始 · ${sessionFmtClock(path.startSec)} 发车`, 'good', 4600);
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '交班失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+  }
+}
+
+function sessionFinishEarly() {
+  const s = G.session;
+  if (!s) return;
+  sessionShowFinal(true);
+}
+
+/* ---------------------------------------------------------------- 存档 */
+function sessionSnapshot() {
+  return {
+    clock: G.clock,
+    s: G.s,
+    targetIdx: G.targetIdx,
+    results: G.results.map(r => Object.assign({}, r)),
+    energy: G.energy,
+    penalties: G.penalties,
+    doorsOpen: G.doorsOpen,
+    stopState: G.stopState,
+    fault: G.fault ? Object.assign({}, G.fault) : null,
+    faultCount: G.faultCount,
+    legStart: G.session.legStart,
+    cursor: G.session.cursor,
+    legFaults: G.session.legFaults,
+    legFaultsFixed: G.session.legFaultsFixed,
+    legCrowds: G.session.legCrowds,
+    legCrowdsServed: G.session.legCrowdsServed,
+    crowdStation: G.session.crowdStation
+  };
+}
+
+function sessionSave(withSnap) {
+  const s = G.session;
+  if (!s) return;
+  s.snap = withSnap ? sessionSnapshot() : null;
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionToSave(s)));
+  } catch (e) {
+    console.warn('[session] 存档写入失败', e);
+  }
+}
+
+function sessionClearSave() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* 忽略 */ }
+}
+
+function sessionReadSave() {
+  let txt = null;
+  try { txt = localStorage.getItem(SESSION_KEY); } catch (e) { return null; }
+  if (!txt) return null;
+  const r = sessionFromSave(txt);
+  return r.ok ? r.data : null;
+}
+
+/* 继续运营日：phase=intermission 时直接开下一段；driving 时恢复快照 */
+async function sessionResume() {
+  const data = sessionReadSave();
+  if (!data) { toast('没有可继续的运营日存档', 'warn', 3000); return false; }
+  const plan = data.plan;
+  let legIndex = data.legIndex;
+  let pendingStart = data.pendingStart;
+  if (data.phase === 'intermission') {
+    legIndex = data.legIndex + 1;
+    if (legIndex >= plan.legCount) { toast('这段运营日已经结束', 'warn', 3000); return false; }
+    pendingStart = data.pendingStart;
+  }
+  const leg = plan.legs[legIndex];
+  if (!leg) { toast('运营日存档已损坏', 'bad', 4000); return false; }
+  /* 用 routeId 反查交路：路线表顺序可能因版本变化，不能依赖存下来的下标 */
+  const routeIdx = ROUTES.findIndex(r => r.id === data.routeId);
+  if (routeIdx < 0) { toast('存档对应的交路已不存在', 'bad', 4000); return false; }
+
+  G.session = {
+    schema: SESSION_SCHEMA,
+    routeId: data.routeId, routeIdx,
+    seed: data.seed, diff: data.diff, plan,
+    legIndex, legCount: plan.legCount,
+    legStart: pendingStart, pendingStart,
+    events: [], cursor: 0, log: data.log || [], dispatch: data.dispatch || [],
+    legFaults: 0, legFaultsFixed: 0, legCrowds: 0, legCrowdsServed: 0, crowdStation: -1,
+    phase: 'driving', snap: data.snap || null
+  };
+  G.diff = data.diff;
+  G.sessionSeed = data.seed;
+  G.routeIdx = routeIdx;
+  G.playMode = 'day';
+  G.exam = false;
+
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = '正在恢复运营日…';
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  G.mode = 'loading';
+  try {
+    await buildService(routeIdx, leg.dir < 0);
+    $('loading').classList.add('hidden');
+    beginDriving();
+    if (data.snap && data.phase !== 'intermission') {
+      sessionRestoreSnap(data.snap);
+    } else {
+      sessionBeginLeg(legIndex);
+      toast(`继续运营日 · 第 ${legIndex + 1}/${plan.legCount} 段`, 'good', 4200);
+    }
+    return true;
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '恢复失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+    return false;
+  }
+}
+
+function sessionRestoreSnap(snap) {
+  const s = G.session;
+  if (!s || !snap) return;
+  G.clock = snap.clock;
+  G.s = snap.s;
+  G.v = 0;
+  G.lever = 0;
+  G.targetIdx = snap.targetIdx;
+  G.results = snap.results || [];
+  G.energy = snap.energy || 0;
+  G.penalties = snap.penalties || 0;
+  G.fault = snap.fault || null;
+  G.faultCount = snap.faultCount || 0;
+  G.doorsOpen = !!snap.doorsOpen;
+  G.stopState = snap.stopState || 'dwell';
+  G.doorT = G.doorsOpen ? 1 : 0;
+  G.ato = false;
+  if (G.fault && G.fault.type === 'signal') G.sigMode = 'fixed';
+  train.carLag.fill(0);
+  train._lastV = 0;
+  train.update(G.s, 0, 0);
+  train.setDoorT(G.doorT);
+  const so = stationObjFor(G.targetIdx);
+  if (so) so.psdL.setOpen(G.doorsOpen ? 1 : 0);
+  /* 事件时刻以存档里的 legStart 为准，已触发过的事件跳过 */
+  s.legStart = snap.legStart || s.legStart;
+  s.events = s.plan.events.filter(e => e.legIndex === s.legIndex)
+    .map(e => Object.assign({}, e, { at: s.legStart + e.atSec }));
+  s.cursor = snap.cursor || 0;
+  s.legFaults = snap.legFaults || 0;
+  s.legFaultsFixed = snap.legFaultsFixed || 0;
+  s.legCrowds = snap.legCrowds || 0;
+  s.legCrowdsServed = snap.legCrowdsServed || 0;
+  s.crowdStation = snap.crowdStation == null ? -1 : snap.crowdStation;
+  s.phase = 'driving';
+  updateTimetable();
+  updateHUD(true);
+  sessionSave(true);
+  toast('运营日已恢复 · 继续驾驶', 'good', 3800);
+}
+
+/* 菜单里的「继续运营日」入口 */
+function sessionResumePrompt() {
+  const btn = $('resumeDay');
+  if (!btn) return;
+  const data = sessionReadSave();
+  const routeIdx = data ? ROUTES.findIndex(r => r.id === data.routeId) : -1;
+  const route = routeIdx >= 0 ? ROUTES[routeIdx] : null;
+  if (!data || !route) { btn.classList.add('hidden'); return; }
+  const legIndex = data.phase === 'intermission' ? data.legIndex + 1 : data.legIndex;
+  if (legIndex >= data.plan.legCount) { btn.classList.add('hidden'); return; }
+  const lineName = (LINES[route.line] || {}).name || '';
+  btn.innerHTML = `继续运营日 <span>${lineName} · 第 ${legIndex + 1}/${data.plan.legCount} 段 · ${sessionFmtClock(data.pendingStart)}</span>`;
+  btn.classList.remove('hidden');
+  btn.disabled = false;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const ok = await sessionResume();
+    if (!ok) btn.disabled = false;
+  };
+}
+
+
+
 /* ===== 70_core.js ===== */
 /* ================================================================
    核心状态 / 渲染基础设施 / 主循环
@@ -11130,7 +11963,10 @@ const G = {
   shakeOn: true, shakeAmp: 0.0022,
   fault: null, faultCount: 0, speedLog: [],
   sigMode: 'cbtc', exam: false, examTasks: [], examDone: 0, doorAt: {},
-  stopPlan: null, walk: null, turnback: null
+  stopPlan: null, walk: null, turnback: null,
+  /* 运营日（P2）：playMode 'single' | 'day'；session 由 66_session_game.js 维护 */
+  playMode: 'single', session: null, sessionSeed: null, sessionMinutes: 120,
+  sessionLegs: null, slowzone: null
 };
 
 let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
@@ -11426,6 +12262,8 @@ function updateGame(dt) {
     remain -= h;
   }
   G.clock += dt;
+  /* 运营日事件时间轴：到点触发故障/客流/限速/调度指令（P2-2） */
+  if (typeof sessionTick === 'function') sessionTick();
   if (G.finishTimer > 0) {
     G.finishTimer -= dt;
     if (G.finishTimer <= 0) finishService();
@@ -11770,6 +12608,8 @@ function togglePause(on) {
     G.mode = 'paused';
     $('pause').classList.remove('hidden');
     $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
+    const saveBtn = $('pSaveQuit');
+    if (saveBtn) saveBtn.classList.toggle('hidden', !(typeof sessionActive === 'function' && sessionActive()));
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } else if (G.mode === 'paused' && !on) {
     G.mode = 'driving';
@@ -11964,6 +12804,12 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在解算线路中心线…', 0.04);
   path = new RoutePath(routeDef, line);
 
+  /* 运营日（P2-1）：下一段按「交班时刻」而不是交路首班车时刻排点。
+     buildSchedule 会把 st.schArr/schDep 一起重排，HUD 时刻表与运行图口径一致。 */
+  const sessionStart = (typeof G.session !== 'undefined' && G.session && G.session.pendingStart != null)
+    ? G.session.pendingStart : null;
+  if (sessionStart != null) path.buildSchedule(sessionStart);
+
   /* ---------------- 运行图（P1-1） ----------------
      RoutePath 里已有单趟时刻表（buildSchedule 把 schArr/schDep 写在车站对象上），
      但它本质只能表示「一趟车」。这里用 57_timetable.js 的纯函数生成真正的
@@ -11991,6 +12837,12 @@ async function buildService(routeIdx, reverse) {
     for (const svc of path.timetable.services) {
       const d = Math.abs(svc.startSec - startSec);
       if (d < bd) { bd = d; best = svc; }
+    }
+    /* 运营日下一段的发车时刻不一定落在发车间隔网格上：
+       整张运行图平移，让本务那趟车精确从 pendingStart 发车，
+       否则 HUD/ATO/AI 三方会差出半个间隔（最多 150 s）。 */
+    if (best && typeof ttShiftTimetable === 'function' && Math.abs(best.startSec - startSec) > 1e-6) {
+      ttShiftTimetable(path.timetable, startSec - best.startSec);
     }
     path.playerService = best;
 
@@ -12200,6 +13052,8 @@ function physics(dt) {
   if (G.sigMode === 'fixed') limit = Math.min(limit, fixedBlockLimit());
   // 牵引故障限速必须先于超速判定生效
   if (G.fault && G.fault.type === 'traction') limit = Math.min(limit, 40);
+  /* 运营日临时限速（P2-2）：时间窗内的全线限速 */
+  if (G.slowzone && G.clock < G.slowzone.until) limit = Math.min(limit, G.slowzone.limit);
   if (typeof interlockSpeedLimit === 'function') limit = interlockSpeedLimit(G.s, limit);
   G.limit = limit;
   const overBy = speedKmh - limit;
@@ -12557,6 +13411,8 @@ function openDoors() {
   G.doorsOpen = true;
   G.stopState = 'dwell';
   G.doorAt[G.targetIdx] = true;
+  /* 运营日：大客流站点办客即记为已服务（P2-2/P2-4 满意度） */
+  if (typeof sessionCrowdServed === 'function') sessionCrowdServed(G.targetIdx);
   AUDIO.hiss(1.1, 0.05);
   setTimeout(() => AUDIO.thud(), 340);
   AUDIO.chime('open');
@@ -12591,6 +13447,8 @@ const FAULT_TYPES = [
 ];
 
 function maybeFault() {
+  /* 运营日的故障由种子时间轴触发（66_session_game.js），不再走随机 */
+  if (G.session) return;
   const chance = G.diff === 'hard' ? 0.24 : G.diff === 'easy' ? 0.05 : 0.13;
   if (G.fault || G.targetIdx === 0) return;
   if (Math.random() > chance) return;
@@ -12610,6 +13468,7 @@ function clearFault() {
   if (!G.fault) return;
   const n = G.fault.name, ty = G.fault.type;
   G.fault = null;
+  if (G.session) G.session.legFaultsFixed++;
   G.penalties += 6;
   AUDIO.beep();
   AUDIO.hiss(0.3, 0.04);
@@ -12659,7 +13518,7 @@ function resetService() {
   if (typeof IX !== 'undefined' && IX.routes.length) IX.applyRoute('main', true);
   G.fault = null; G.faultCount = 0; G.speedLog = [];
   G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
-  G.walk = null; G.turnback = null;
+  G.walk = null; G.turnback = null; G.slowzone = null;
   hideTransferPanel();
   if (G.exam) examInit();
 
@@ -12677,6 +13536,7 @@ function resetService() {
   G.leaderGap = null; G.leaderNo = '';
   buildTimetable();
   updateHUD(true);
+  if (typeof sessionUpdateHud === 'function') sessionUpdateHud();
   showBanner(st[0].zh, st[0].en);
   toast(`值乘开始 · ${st[0].zh} 站，请关闭车门`, 'good', 5200);
   AUDIO.announce(`欢迎乘坐上海地铁${line.name}，本次列车开往${st[st.length - 1].zh}方向。请关闭车门，准备发车。`);
@@ -12787,6 +13647,11 @@ function hideTransferPanel() {
 }
 async function performTransfer(lineName) {
   if (!G.walk || !G.walk.active) return;
+  /* 运营日是一整段交路，中途换线会打断时段编排与逐段对账 */
+  if (typeof sessionActive === 'function' && sessionActive()) {
+    toast('运营日期间不可换乘 · 请按交路完成本段值乘', 'warn', 3600);
+    return;
+  }
   const from = path.stations[G.walk.station];
   const ri = transferRouteFor(lineName);
   if (ri < 0) { toast(`${lineName} 暂无可用交路`, 'warn', 3000); return; }
@@ -12943,6 +13808,7 @@ function isLastServed(idx) {
 function finishService() {
   if (G.mode === 'results') return;
   G.mode = 'results';
+  const isSession = (typeof sessionActive === 'function') && sessionActive();
   const stops = G.results.filter(r => r.idx > 0);
   const avgStop = stops.length ? stops.reduce((a, r) => a + r.stopScore, 0) / stops.length : 0;
   const avgPunc = stops.length ? stops.reduce((a, r) => a + r.punc, 0) / stops.length : 0;
@@ -12984,9 +13850,34 @@ function finishService() {
   }
   drawSpeedChart();
   drawDelayChart();
+
+  /* ---- 运营日（P2）：提交本段成绩，进入段间交接或最终结算 ---- */
+  if (isSession) {
+    sessionCommitLeg();
+    const sess = G.session;
+    const more = sess && sess.legIndex < sess.legCount - 1;
+    $('resAgain').classList.add('hidden');
+    $('resReverse').classList.remove('hidden');
+    $('resReverse').style.display = '';
+    if (more) {
+      sessionShowIntermission(score, grade);
+      AUDIO.announce(`第${sess.legIndex + 1}段值乘结束，准备交班。`);
+    } else {
+      sessionShowFinal(false);
+      AUDIO.announce('本次运营日结束，正在结算。');
+    }
+    $('results').classList.remove('hidden');
+    $('hud').classList.remove('on');
+    return;
+  }
+
   if (typeof routeDef !== 'undefined' && routeDef) saveCareer(routeDef.id + (G.reverse ? ':rev' : ''), score, grade);
   const rvBtn = $('resReverse');
   if (rvBtn) rvBtn.style.display = (G.reverse || (routeDef && (routeDef.loop || routeDef.stopPlan))) ? 'none' : '';
+  $('resSession') && ($('resSession').style.display = 'none');
+  $('resScoreLabel') && ($('resScoreLabel').textContent = '总评分');
+  $('resAgain').classList.remove('hidden');
+  $('resMenu').textContent = '返回线路选择';
   $('results').classList.remove('hidden');
   $('hud').classList.remove('on');
   AUDIO.announce(`本次值乘结束，综合评分${score}分，${grade}级。感谢您的驾驶。`);
@@ -13322,6 +14213,7 @@ function updateHUD(force = false) {
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';
+  else if (G.slowzone && G.clock < G.slowzone.until) status = `临时限速 ${G.slowzone.limit} km/h`;
   else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
   else if (G.stopState === 'dwell') status = '停站作业';
   else if (G.stopState === 'stop') status = '停稳';
@@ -13835,7 +14727,7 @@ function careerByLine() {
   const c = loadCareer();
   const out = {};
   for (const id in c) {
-    const base = id.replace(/:rev$/, '');
+    const base = id.replace(/:rev$|:day$/, '');
     const r = (typeof ROUTES !== 'undefined') ? ROUTES.find(x => x.id === base) : null;
     if (!r) continue;
     const l = LINES[r.line];
@@ -13987,10 +14879,10 @@ function renderRouteCards() {
       card.style.setProperty('--rc2', l.color2);
     }
     card.dataset.i = i;
-    const best = career[r.id], rev = career[r.id + ':rev'];
+    const best = career[r.id], rev = career[r.id + ':rev'], day = career[r.id + ':day'];
     card.innerHTML = `
       <div>
-        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}</div>
+        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}${day ? `<span class="rc-career day">日 ${day.grade} · ${day.score}</span>` : ''}</div>
         <div class="rc-title">${r.title}<small>${r.sub}</small></div>
         <div class="rc-meta"><span><i>里程</i> ${km.toFixed(1)} km</span><span><i>车站</i> ${r.stopPlan ? r.stopPlan.length : (r.stations || l.stations).length} 座</span><span><i>车底</i> ${l.stock}</span><span><i>编组</i> ${l.cars} 辆</span></div>
         <div class="rc-desc">${r.desc}</div>
@@ -14044,9 +14936,23 @@ function bindMenu() {
   });
   $('modeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    G.exam = b.dataset.v === 'exam';
+    const v = b.dataset.v;
+    G.playMode = v === 'day' ? 'day' : 'single';
+    G.exam = v === 'exam';
     [...$('modeGroup').children].forEach(x => x.classList.toggle('on', x === b));
-    toast(G.exam ? '执照考试模式 · 五项考核全部达标才算通过' : '普通值乘模式', 'info', 2600);
+    const label = v === 'day' ? '运营日 · 多段连续值乘，按图行车'
+      : v === 'exam' ? '执照考试 · 五项考核全部达标才算通过'
+        : '单趟值乘';
+    toast(label, 'info', 2600);
+  });
+  const shiftGroup = $('shiftGroup');
+  if (shiftGroup) shiftGroup.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    G.sessionMinutes = Number(b.dataset.v) || 120;
+    [...shiftGroup.children].forEach(x => x.classList.toggle('on', x === b));
+    if ($('brDay')) $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
   });
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -14077,6 +14983,9 @@ function bindMenu() {
     const hasOfficial = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[def.id])
       || (typeof OFFICIAL_RUN_NETWORK !== 'undefined' && OFFICIAL_RUN_NETWORK[def.id]);
     $('brTimes').textContent = hasOfficial ? '官方首末班车推导' : '物理曲线估算';
+    $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
     $('brDist').textContent = routeTT(def).toFixed(1) + ' km';
     $('brStops').textContent = (def.stopPlan ? def.stopPlan.length - 1 : (st.length - 1 + (def.loop ? 1 : 0))) + ' 站';
     $('brShift').textContent = 'SHIFT ' + (l.badge === '1' ? '0118' : l.badge === '3' ? '0306' : '0214');
@@ -14089,8 +14998,13 @@ function bindMenu() {
     $('hud').classList.remove('on');
     $('loading').classList.remove('hidden');
     G.mode = 'loading';
+    G.session = null;
     try {
       await buildService(G.routeIdx);
+      /* 运营日：建时段编排与事件时间轴；单趟/考试保持原流程 */
+      if (G.playMode === 'day' && !G.exam && typeof sessionStart === 'function') {
+        sessionStart(G.routeIdx);
+      }
       $('loading').classList.add('hidden');
       beginDriving();
     } catch (err) {
@@ -14107,6 +15021,11 @@ function bindMenu() {
     G.mode = 'driving';
     clock.getDelta();
     resetService();
+    /* 运营日：重开本段而不是整局（已完成段不丢），事件时间轴从本段开头重放 */
+    if (typeof sessionActive === 'function' && sessionActive()) {
+      sessionBeginLeg(G.session.legIndex);
+      toast(`第 ${G.session.legIndex + 1} 段重新开始`, 'info', 3200);
+    }
   });
   $('pQuit').addEventListener('click', () => location.reload());
   $('volRange').addEventListener('input', e => {
@@ -14151,8 +15070,28 @@ function bindMenu() {
     clock.getDelta();
     resetService();
   });
-  $('resReverse') && $('resReverse').addEventListener('click', () => startTurnback());
-  $('resMenu').addEventListener('click', () => location.reload());
+  $('resReverse') && $('resReverse').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionNextLeg();
+    } else {
+      startTurnback();
+    }
+  });
+  $('resMenu').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionFinishEarly();       // 段间提前收工：按已完成段结算
+    } else {
+      location.reload();
+    }
+  });
+  /* 运营日中途保存（P2-3）：保存当前段快照后退出，下次从菜单继续 */
+  const saveQuit = $('pSaveQuit');
+  if (saveQuit) saveQuit.addEventListener('click', () => {
+    if (!(typeof sessionActive === 'function' && sessionActive())) return;
+    sessionSave(true);
+    toast('运营日已保存 · 下次可从菜单继续', 'good', 3200);
+    setTimeout(() => location.reload(), 400);
+  });
 
   /* ---------------- 存档导出 / 导入（P3-3）---------------- */
   const expBtn = $('saveExport');
@@ -14221,6 +15160,7 @@ function boot() {
   initMaterials(renderer, theme);
   renderRouteCards();
   bindMenu();
+  if (typeof sessionResumePrompt === 'function') sessionResumePrompt();
   bindInput();
   ATS.init();
   IX.init();
@@ -14260,11 +15200,21 @@ window.__sim = {
   snapTrain() { if (train) train.update(G.s, G.v, 0); },
   advance(sec) {
     const h = 0.02; const n = Math.round(sec / h);
-    for (let i = 0; i < n; i++) { physics(h); for (const ai of aiTrains) ai.update(h); G.clock += h; }
+    for (let i = 0; i < n; i++) {
+      physics(h);
+      for (const ai of aiTrains) ai.update(h);
+      G.clock += h;
+      if (typeof sessionTick === 'function') sessionTick();
+      /* 与主循环一致：终到开门后的 6 s 倒计时也要在固定步长推进里结算 */
+      if (G.finishTimer > 0) {
+        G.finishTimer -= h;
+        if (G.finishTimer <= 0) finishService();
+      }
+    }
     train.update(G.s, G.v, 0); updateHUD(true); return { s: G.s, v: G.v, state: G.stopState, target: G.targetIdx, doors: G.doorT };
   },
   setLever(v) { G.lever = v; },
-  openDoors, closeDoors, finishService, releaseEB, triggerEB, toggleATO,
+  openDoors, closeDoors, finishService, clearFault, releaseEB, triggerEB, toggleATO,
   installBloomChain, makeComposer,
   startTurnback, performTransfer,
   advanceTurnback(sec) {
@@ -14285,6 +15235,11 @@ window.__sim = {
   get ttStats() { return G.ttStats || null; },
   get timetable() { return path && path.timetable ? path.timetable : null; },
   get playerService() { return path && path.playerService ? path.playerService : null; },
+  /* 运营日（P2）：调试与回归入口 */
+  get session() { return G.session; },
+  sessionStart, sessionSave, sessionResume, sessionResumePrompt, sessionTick,
+  sessionNextLeg, sessionFinishEarly, sessionCommitLeg, sessionShowFinal,
+  sessionReadSave, sessionClearSave, buildSessionPlan, scoreSession,
   get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
   get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },

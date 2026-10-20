@@ -61,7 +61,7 @@ function careerByLine() {
   const c = loadCareer();
   const out = {};
   for (const id in c) {
-    const base = id.replace(/:rev$/, '');
+    const base = id.replace(/:rev$|:day$/, '');
     const r = (typeof ROUTES !== 'undefined') ? ROUTES.find(x => x.id === base) : null;
     if (!r) continue;
     const l = LINES[r.line];
@@ -213,10 +213,10 @@ function renderRouteCards() {
       card.style.setProperty('--rc2', l.color2);
     }
     card.dataset.i = i;
-    const best = career[r.id], rev = career[r.id + ':rev'];
+    const best = career[r.id], rev = career[r.id + ':rev'], day = career[r.id + ':day'];
     card.innerHTML = `
       <div>
-        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}</div>
+        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}${day ? `<span class="rc-career day">日 ${day.grade} · ${day.score}</span>` : ''}</div>
         <div class="rc-title">${r.title}<small>${r.sub}</small></div>
         <div class="rc-meta"><span><i>里程</i> ${km.toFixed(1)} km</span><span><i>车站</i> ${r.stopPlan ? r.stopPlan.length : (r.stations || l.stations).length} 座</span><span><i>车底</i> ${l.stock}</span><span><i>编组</i> ${l.cars} 辆</span></div>
         <div class="rc-desc">${r.desc}</div>
@@ -270,9 +270,23 @@ function bindMenu() {
   });
   $('modeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    G.exam = b.dataset.v === 'exam';
+    const v = b.dataset.v;
+    G.playMode = v === 'day' ? 'day' : 'single';
+    G.exam = v === 'exam';
     [...$('modeGroup').children].forEach(x => x.classList.toggle('on', x === b));
-    toast(G.exam ? '执照考试模式 · 五项考核全部达标才算通过' : '普通值乘模式', 'info', 2600);
+    const label = v === 'day' ? '运营日 · 多段连续值乘，按图行车'
+      : v === 'exam' ? '执照考试 · 五项考核全部达标才算通过'
+        : '单趟值乘';
+    toast(label, 'info', 2600);
+  });
+  const shiftGroup = $('shiftGroup');
+  if (shiftGroup) shiftGroup.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    G.sessionMinutes = Number(b.dataset.v) || 120;
+    [...shiftGroup.children].forEach(x => x.classList.toggle('on', x === b));
+    if ($('brDay')) $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
   });
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -303,6 +317,9 @@ function bindMenu() {
     const hasOfficial = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[def.id])
       || (typeof OFFICIAL_RUN_NETWORK !== 'undefined' && OFFICIAL_RUN_NETWORK[def.id]);
     $('brTimes').textContent = hasOfficial ? '官方首末班车推导' : '物理曲线估算';
+    $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
     $('brDist').textContent = routeTT(def).toFixed(1) + ' km';
     $('brStops').textContent = (def.stopPlan ? def.stopPlan.length - 1 : (st.length - 1 + (def.loop ? 1 : 0))) + ' 站';
     $('brShift').textContent = 'SHIFT ' + (l.badge === '1' ? '0118' : l.badge === '3' ? '0306' : '0214');
@@ -315,8 +332,13 @@ function bindMenu() {
     $('hud').classList.remove('on');
     $('loading').classList.remove('hidden');
     G.mode = 'loading';
+    G.session = null;
     try {
       await buildService(G.routeIdx);
+      /* 运营日：建时段编排与事件时间轴；单趟/考试保持原流程 */
+      if (G.playMode === 'day' && !G.exam && typeof sessionStart === 'function') {
+        sessionStart(G.routeIdx);
+      }
       $('loading').classList.add('hidden');
       beginDriving();
     } catch (err) {
@@ -333,6 +355,11 @@ function bindMenu() {
     G.mode = 'driving';
     clock.getDelta();
     resetService();
+    /* 运营日：重开本段而不是整局（已完成段不丢），事件时间轴从本段开头重放 */
+    if (typeof sessionActive === 'function' && sessionActive()) {
+      sessionBeginLeg(G.session.legIndex);
+      toast(`第 ${G.session.legIndex + 1} 段重新开始`, 'info', 3200);
+    }
   });
   $('pQuit').addEventListener('click', () => location.reload());
   $('volRange').addEventListener('input', e => {
@@ -377,8 +404,28 @@ function bindMenu() {
     clock.getDelta();
     resetService();
   });
-  $('resReverse') && $('resReverse').addEventListener('click', () => startTurnback());
-  $('resMenu').addEventListener('click', () => location.reload());
+  $('resReverse') && $('resReverse').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionNextLeg();
+    } else {
+      startTurnback();
+    }
+  });
+  $('resMenu').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionFinishEarly();       // 段间提前收工：按已完成段结算
+    } else {
+      location.reload();
+    }
+  });
+  /* 运营日中途保存（P2-3）：保存当前段快照后退出，下次从菜单继续 */
+  const saveQuit = $('pSaveQuit');
+  if (saveQuit) saveQuit.addEventListener('click', () => {
+    if (!(typeof sessionActive === 'function' && sessionActive())) return;
+    sessionSave(true);
+    toast('运营日已保存 · 下次可从菜单继续', 'good', 3200);
+    setTimeout(() => location.reload(), 400);
+  });
 
   /* ---------------- 存档导出 / 导入（P3-3）---------------- */
   const expBtn = $('saveExport');
@@ -447,6 +494,7 @@ function boot() {
   initMaterials(renderer, theme);
   renderRouteCards();
   bindMenu();
+  if (typeof sessionResumePrompt === 'function') sessionResumePrompt();
   bindInput();
   ATS.init();
   IX.init();
@@ -486,11 +534,21 @@ window.__sim = {
   snapTrain() { if (train) train.update(G.s, G.v, 0); },
   advance(sec) {
     const h = 0.02; const n = Math.round(sec / h);
-    for (let i = 0; i < n; i++) { physics(h); for (const ai of aiTrains) ai.update(h); G.clock += h; }
+    for (let i = 0; i < n; i++) {
+      physics(h);
+      for (const ai of aiTrains) ai.update(h);
+      G.clock += h;
+      if (typeof sessionTick === 'function') sessionTick();
+      /* 与主循环一致：终到开门后的 6 s 倒计时也要在固定步长推进里结算 */
+      if (G.finishTimer > 0) {
+        G.finishTimer -= h;
+        if (G.finishTimer <= 0) finishService();
+      }
+    }
     train.update(G.s, G.v, 0); updateHUD(true); return { s: G.s, v: G.v, state: G.stopState, target: G.targetIdx, doors: G.doorT };
   },
   setLever(v) { G.lever = v; },
-  openDoors, closeDoors, finishService, releaseEB, triggerEB, toggleATO,
+  openDoors, closeDoors, finishService, clearFault, releaseEB, triggerEB, toggleATO,
   installBloomChain, makeComposer,
   startTurnback, performTransfer,
   advanceTurnback(sec) {
@@ -511,6 +569,11 @@ window.__sim = {
   get ttStats() { return G.ttStats || null; },
   get timetable() { return path && path.timetable ? path.timetable : null; },
   get playerService() { return path && path.playerService ? path.playerService : null; },
+  /* 运营日（P2）：调试与回归入口 */
+  get session() { return G.session; },
+  sessionStart, sessionSave, sessionResume, sessionResumePrompt, sessionTick,
+  sessionNextLeg, sessionFinishEarly, sessionCommitLeg, sessionShowFinal,
+  sessionReadSave, sessionClearSave, buildSessionPlan, scoreSession,
   get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
   get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },

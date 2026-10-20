@@ -182,6 +182,12 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在解算线路中心线…', 0.04);
   path = new RoutePath(routeDef, line);
 
+  /* 运营日（P2-1）：下一段按「交班时刻」而不是交路首班车时刻排点。
+     buildSchedule 会把 st.schArr/schDep 一起重排，HUD 时刻表与运行图口径一致。 */
+  const sessionStart = (typeof G.session !== 'undefined' && G.session && G.session.pendingStart != null)
+    ? G.session.pendingStart : null;
+  if (sessionStart != null) path.buildSchedule(sessionStart);
+
   /* ---------------- 运行图（P1-1） ----------------
      RoutePath 里已有单趟时刻表（buildSchedule 把 schArr/schDep 写在车站对象上），
      但它本质只能表示「一趟车」。这里用 57_timetable.js 的纯函数生成真正的
@@ -209,6 +215,12 @@ async function buildService(routeIdx, reverse) {
     for (const svc of path.timetable.services) {
       const d = Math.abs(svc.startSec - startSec);
       if (d < bd) { bd = d; best = svc; }
+    }
+    /* 运营日下一段的发车时刻不一定落在发车间隔网格上：
+       整张运行图平移，让本务那趟车精确从 pendingStart 发车，
+       否则 HUD/ATO/AI 三方会差出半个间隔（最多 150 s）。 */
+    if (best && typeof ttShiftTimetable === 'function' && Math.abs(best.startSec - startSec) > 1e-6) {
+      ttShiftTimetable(path.timetable, startSec - best.startSec);
     }
     path.playerService = best;
 

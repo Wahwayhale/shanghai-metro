@@ -314,6 +314,21 @@ function ttTimeAtPosition(service, s) {
   return stops[stops.length - 1].dep;
 }
 
+/* 整张运行图平移 delta 秒（含全部车次与停站时刻）。
+   运营日的下一段要精确从「交班时刻」发车，而运行图是按发车间隔网格
+   生成的，不一定正好落在该时刻，所以整表对齐一次。 */
+function ttShiftTimetable(tt, delta) {
+  if (!tt || !tt.services || !delta) return tt;
+  tt.fromSec += delta;
+  tt.toSec += delta;
+  for (const svc of tt.services) {
+    svc.startSec += delta;
+    svc.endSec += delta;
+    for (const sp of svc.stops) { sp.arr += delta; sp.dep += delta; }
+  }
+  return tt;
+}
+
 /* 克隆一个车次并整体平移 offset 秒。
    P1-3 用它给 AI 车生成「以自己当前位置为准」的班次：
    AI 的初始位置是场景布置决定的，不能为了对时刻表把车挪走，
@@ -340,6 +355,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TT_DEFAULTS,
     ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
     ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
-    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition, ttShiftService
+    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition,
+    ttShiftService, ttShiftTimetable
   };
 }

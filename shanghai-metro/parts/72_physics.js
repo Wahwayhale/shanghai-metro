@@ -68,6 +68,8 @@ function physics(dt) {
   if (G.sigMode === 'fixed') limit = Math.min(limit, fixedBlockLimit());
   // 牵引故障限速必须先于超速判定生效
   if (G.fault && G.fault.type === 'traction') limit = Math.min(limit, 40);
+  /* 运营日临时限速（P2-2）：时间窗内的全线限速 */
+  if (G.slowzone && G.clock < G.slowzone.until) limit = Math.min(limit, G.slowzone.limit);
   if (typeof interlockSpeedLimit === 'function') limit = interlockSpeedLimit(G.s, limit);
   G.limit = limit;
   const overBy = speedKmh - limit;
@@ -425,6 +427,8 @@ function openDoors() {
   G.doorsOpen = true;
   G.stopState = 'dwell';
   G.doorAt[G.targetIdx] = true;
+  /* 运营日：大客流站点办客即记为已服务（P2-2/P2-4 满意度） */
+  if (typeof sessionCrowdServed === 'function') sessionCrowdServed(G.targetIdx);
   AUDIO.hiss(1.1, 0.05);
   setTimeout(() => AUDIO.thud(), 340);
   AUDIO.chime('open');
@@ -459,6 +463,8 @@ const FAULT_TYPES = [
 ];
 
 function maybeFault() {
+  /* 运营日的故障由种子时间轴触发（66_session_game.js），不再走随机 */
+  if (G.session) return;
   const chance = G.diff === 'hard' ? 0.24 : G.diff === 'easy' ? 0.05 : 0.13;
   if (G.fault || G.targetIdx === 0) return;
   if (Math.random() > chance) return;
@@ -478,6 +484,7 @@ function clearFault() {
   if (!G.fault) return;
   const n = G.fault.name, ty = G.fault.type;
   G.fault = null;
+  if (G.session) G.session.legFaultsFixed++;
   G.penalties += 6;
   AUDIO.beep();
   AUDIO.hiss(0.3, 0.04);

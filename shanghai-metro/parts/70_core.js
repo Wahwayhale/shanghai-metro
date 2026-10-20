@@ -28,7 +28,10 @@ const G = {
   shakeOn: true, shakeAmp: 0.0022,
   fault: null, faultCount: 0, speedLog: [],
   sigMode: 'cbtc', exam: false, examTasks: [], examDone: 0, doorAt: {},
-  stopPlan: null, walk: null, turnback: null
+  stopPlan: null, walk: null, turnback: null,
+  /* 运营日（P2）：playMode 'single' | 'day'；session 由 66_session_game.js 维护 */
+  playMode: 'single', session: null, sessionSeed: null, sessionMinutes: 120,
+  sessionLegs: null, slowzone: null
 };
 
 let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
@@ -324,6 +327,8 @@ function updateGame(dt) {
     remain -= h;
   }
   G.clock += dt;
+  /* 运营日事件时间轴：到点触发故障/客流/限速/调度指令（P2-2） */
+  if (typeof sessionTick === 'function') sessionTick();
   if (G.finishTimer > 0) {
     G.finishTimer -= dt;
     if (G.finishTimer <= 0) finishService();
@@ -668,6 +673,8 @@ function togglePause(on) {
     G.mode = 'paused';
     $('pause').classList.remove('hidden');
     $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
+    const saveBtn = $('pSaveQuit');
+    if (saveBtn) saveBtn.classList.toggle('hidden', !(typeof sessionActive === 'function' && sessionActive()));
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } else if (G.mode === 'paused' && !on) {
     G.mode = 'driving';

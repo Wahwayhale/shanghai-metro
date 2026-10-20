@@ -220,6 +220,7 @@ function updateHUD(force = false) {
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';
+  else if (G.slowzone && G.clock < G.slowzone.until) status = `临时限速 ${G.slowzone.limit} km/h`;
   else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
   else if (G.stopState === 'dwell') status = '停站作业';
   else if (G.stopState === 'stop') status = '停稳';

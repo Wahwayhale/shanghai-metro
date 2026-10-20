@@ -20,7 +20,7 @@ function resetService() {
   if (typeof IX !== 'undefined' && IX.routes.length) IX.applyRoute('main', true);
   G.fault = null; G.faultCount = 0; G.speedLog = [];
   G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
-  G.walk = null; G.turnback = null;
+  G.walk = null; G.turnback = null; G.slowzone = null;
   hideTransferPanel();
   if (G.exam) examInit();
 
@@ -38,6 +38,7 @@ function resetService() {
   G.leaderGap = null; G.leaderNo = '';
   buildTimetable();
   updateHUD(true);
+  if (typeof sessionUpdateHud === 'function') sessionUpdateHud();
   showBanner(st[0].zh, st[0].en);
   toast(`值乘开始 · ${st[0].zh} 站，请关闭车门`, 'good', 5200);
   AUDIO.announce(`欢迎乘坐上海地铁${line.name}，本次列车开往${st[st.length - 1].zh}方向。请关闭车门，准备发车。`);
@@ -148,6 +149,11 @@ function hideTransferPanel() {
 }
 async function performTransfer(lineName) {
   if (!G.walk || !G.walk.active) return;
+  /* 运营日是一整段交路，中途换线会打断时段编排与逐段对账 */
+  if (typeof sessionActive === 'function' && sessionActive()) {
+    toast('运营日期间不可换乘 · 请按交路完成本段值乘', 'warn', 3600);
+    return;
+  }
   const from = path.stations[G.walk.station];
   const ri = transferRouteFor(lineName);
   if (ri < 0) { toast(`${lineName} 暂无可用交路`, 'warn', 3000); return; }
@@ -304,6 +310,7 @@ function isLastServed(idx) {
 function finishService() {
   if (G.mode === 'results') return;
   G.mode = 'results';
+  const isSession = (typeof sessionActive === 'function') && sessionActive();
   const stops = G.results.filter(r => r.idx > 0);
   const avgStop = stops.length ? stops.reduce((a, r) => a + r.stopScore, 0) / stops.length : 0;
   const avgPunc = stops.length ? stops.reduce((a, r) => a + r.punc, 0) / stops.length : 0;
@@ -345,9 +352,34 @@ function finishService() {
   }
   drawSpeedChart();
   drawDelayChart();
+
+  /* ---- 运营日（P2）：提交本段成绩，进入段间交接或最终结算 ---- */
+  if (isSession) {
+    sessionCommitLeg();
+    const sess = G.session;
+    const more = sess && sess.legIndex < sess.legCount - 1;
+    $('resAgain').classList.add('hidden');
+    $('resReverse').classList.remove('hidden');
+    $('resReverse').style.display = '';
+    if (more) {
+      sessionShowIntermission(score, grade);
+      AUDIO.announce(`第${sess.legIndex + 1}段值乘结束，准备交班。`);
+    } else {
+      sessionShowFinal(false);
+      AUDIO.announce('本次运营日结束，正在结算。');
+    }
+    $('results').classList.remove('hidden');
+    $('hud').classList.remove('on');
+    return;
+  }
+
   if (typeof routeDef !== 'undefined' && routeDef) saveCareer(routeDef.id + (G.reverse ? ':rev' : ''), score, grade);
   const rvBtn = $('resReverse');
   if (rvBtn) rvBtn.style.display = (G.reverse || (routeDef && (routeDef.loop || routeDef.stopPlan))) ? 'none' : '';
+  $('resSession') && ($('resSession').style.display = 'none');
+  $('resScoreLabel') && ($('resScoreLabel').textContent = '总评分');
+  $('resAgain').classList.remove('hidden');
+  $('resMenu').textContent = '返回线路选择';
   $('results').classList.remove('hidden');
   $('hud').classList.remove('on');
   AUDIO.announce(`本次值乘结束，综合评分${score}分，${grade}级。感谢您的驾驶。`);
