@@ -10446,13 +10446,18 @@ function makeComposer(targetScene) {
      color 1.6/2.4/3.2）在 ToneMapping 之前就被裁到 1.0，画面整体过曝发白。
      HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
 
-     MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿
-     明显（钢轨、接触网、建筑轮廓尤其严重）。现在实测 110 fps / 9 ms，
-     距 60 fps 预算还有 7 ms 余量，按档位重新开启：
-       精细 = 4x、标准 = 2x、流畅 = 0（且不建 composer，直接出屏）
-     注意这是**渲染目标**的 MSAA，与 canvas 的 antialias 无关 ——
-     走后处理时画面先进 RT，所以真正决定抗锯齿的是这里的 samples。 */
-  const MSAA = { high: 4, medium: 2, low: 0 };
+     MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿明显。
+     曾经想用 4x 补回来，但真机实测撞墙：
+       2.1 MP + 4x  = 100 fps（8.4M 采样）
+       3.69 MP + 4x =  39 fps（14.8M 采样）
+     采样数只涨 1.76 倍，帧时间涨 2.56 倍 —— 不是线性填充率关系，
+     而是 HalfFloat 颜色缓冲在 3.69MP×4x 时达到 118 MB，核显 UMA
+     带宽扛不住。所以下调到 2x：
+       精细 = 3.69 MP + 2x（7.4M 采样，比已知 100fps 的 8.4M 还低）
+       标准 = 2.1 MP + 2x
+       流畅 = 1.4 MP + 0（且不建 composer，直接出屏）
+     这样既能保住原生分辨率的文字清晰度，采样预算又不超过已知安全值。 */
+  const MSAA = { high: 2, medium: 2, low: 0 };
   const samples = MSAA[G.quality] != null ? MSAA[G.quality] : 2;
   const pr = G.renderPR || 1;
   const w = Math.max(1, Math.floor(window.innerWidth * pr));
@@ -10742,6 +10747,11 @@ const FPS_TARGET_MS = 1000 / 60;       // 60 fps
 
 function sampleFrame(dt) {
   if (G.mode !== 'driving') { G._fpsBuf = null; return; }
+  /* 降档后必须先冷却：切换档位会重建 composer，触发一批着色器编译，
+     那一两帧会形成几百毫秒的长任务。如果不冷却，这个假尖峰会被
+     当成「还是很慢」，于是继续降档 —— 这正是「39fps 一路降到流畅」
+     的成因。冷却期内不采样、不判定。 */
+  if (G._fpsCooldown > 0) { G._fpsCooldown -= dt; G._fpsBuf = null; G._fpsSum = 0; return; }
   if (!G._fpsBuf) { G._fpsBuf = []; G._fpsSum = 0; }
   const ms = dt * 1000;
   G._fpsBuf.push(ms);
@@ -10768,6 +10778,12 @@ function sampleFrame(dt) {
         saveSettings({ quality: G.quality });
         if (typeof applyRenderScale === 'function') applyRenderScale();
         if (typeof rebuildPostChain === 'function') rebuildPostChain();
+        /* 冷却 2.5 秒，跳过切换引起的编译尖峰 */
+        G._fpsCooldown = 2.5;
+        G._fpsBuf = null;
+        G._fpsSum = 0;
+        G.fps = 0;
+        G._slowStreak = 0;
         const names = { high: '精细', medium: '标准', low: '流畅' };
         toast(`帧率偏低（${G.fps.toFixed(0)} fps）· 已自动降到「${names[G.quality]}」`, 'warn', 4200);
       }
