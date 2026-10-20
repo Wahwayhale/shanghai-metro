@@ -317,6 +317,8 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+  /* 城市 LOD：只遍历约 25 个块，不做矩阵运算，开销可忽略 */
+  if (typeof updateCityLOD === 'function') updateCityLOD(camera.position);
 
   /* ---- 隧道照明跟随（建模提升）----
      3 盏灯放在玩家前/中/后各一盏（间隔 22 m，与 buildTunnels 的灯具间距一致），

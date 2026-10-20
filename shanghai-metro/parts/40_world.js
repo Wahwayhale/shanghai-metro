@@ -671,8 +671,15 @@ function buildCity(route, group, riverPts) {
   /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
      用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
   const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
-  const protoCount = buildCityProtos(group, items, cityMat);
-  G.cityStats = { buildings: items.length, prototypes: protoCount, districts: districtHits.size };
+  const built = buildCityChunked(group, items, cityMat);
+  G.cityStats = {
+    buildings: items.length,
+    chunks: built.chunks,
+    meshes: built.meshes,
+    districts: districtHits.size
+  };
+  /* 首次建好后立刻按当前相机刷一次可见性，避免第一帧整城不显示 */
+  if (camera) updateCityLOD(camera.position);
 
 
   // 树木

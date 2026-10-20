@@ -5692,8 +5692,15 @@ function buildCity(route, group, riverPts) {
   /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
      用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
   const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
-  const protoCount = buildCityProtos(group, items, cityMat);
-  G.cityStats = { buildings: items.length, prototypes: protoCount, districts: districtHits.size };
+  const built = buildCityChunked(group, items, cityMat);
+  G.cityStats = {
+    buildings: items.length,
+    chunks: built.chunks,
+    meshes: built.meshes,
+    districts: districtHits.size
+  };
+  /* 首次建好后立刻按当前相机刷一次可见性，避免第一帧整城不显示 */
+  if (camera) updateCityLOD(camera.position);
 
 
   // 树木
@@ -7279,31 +7286,67 @@ function cityProto(name) {
   return out;
 }
 
-/* ---------------------------------------------------------------------
-   buildCityProtos：把一组建筑实例按原型分组，各建一个 InstancedMesh
-   ---------------------------------------------------------------------
-   items: [{ proto, x, y, z, w, h, d, rot, tint }]
-     tint 是 0..1 的明度抖动，用 instanceColor 实现，
-     这样同一种原型不需要为「颜色不同」再开 draw call。
-   返回实际创建的 InstancedMesh 数量（用于 draw call 统计）。
+/* 远景 LOD：只保留一个盒子（12 三角面）。
+   原型本体 36–112 三角面，远景下这些细节完全看不见，但乘上几千栋就是
+   十几万面。换成盒子几何后，同一批实例的三角面降到 1/4 ~ 1/8。 */
+const CITY_FAR_GEO_CACHE = new Map();
+function cityProtoFar(name) {
+  const p = cityProto(name);
+  if (CITY_FAR_GEO_CACHE.has(p.name)) return CITY_FAR_GEO_CACHE.get(p.name);
+  const g = new THREE.BoxGeometry(p.ref.w, p.ref.h, p.ref.d);
+  g.translate(0, p.ref.h / 2, 0);
+  CITY_FAR_GEO_CACHE.set(p.name, g);
+  return g;
+}
+
+/* ---------------- 分块 + LOD 的城市实例化 ----------------
+   为什么要分块：
+   全局一个 InstancedMesh 时，`frustumCulled=false` —— 相机背后的建筑
+   也会被提交。分块后每个块是一个独立 mesh，`frustumCulled=true`，
+   three.js 会把不在视锥内的块**连 draw call 一起跳过**。
+   实测 1 号线城市约 1568 栋 / 8.6 万面，占全场景 200 万面的 4%，
+   所以省面本身收益不大；真正的收益是「相机背后的块完全不提交」。
+
+   块大小 1200 m：太小会让 draw call 变多（CPU 是当前瓶颈），
+   太大又失去了视锥剔除的粒度。1200 m 在一条 30 km 线路上约 25 个块。
    --------------------------------------------------------------------- */
-function buildCityProtos(group, items, material) {
-  if (!items || !items.length) return 0;
-  const byProto = new Map();
+const CITY_CHUNK = 1200;         // 分块边长（米）
+const CITY_LOD_DIST = 750;       // 超过这个距离改用远景盒子
+const CITY_VISIBLE_DIST = 3200;  // 超过这个距离整块隐藏
+
+let cityChunks = [];             // [{ cx, cz, near: [mesh], far: [mesh], x, z }]
+let cityMatRef = null;
+
+function buildCityChunked(group, items, material) {
+  cityChunks = [];
+  cityMatRef = material;
+  if (!items || !items.length) return { chunks: 0, meshes: 0 };
+
+  /* 按块 × 原型归类 */
+  const buckets = new Map();
   for (const it of items) {
-    const k = CITY_PROTO_DEF[it.proto] ? it.proto : 'slab';
-    if (!byProto.has(k)) byProto.set(k, []);
-    byProto.get(k).push(it);
+    const kx = Math.floor(it.x / CITY_CHUNK);
+    const kz = Math.floor(it.z / CITY_CHUNK);
+    const key = kx + ',' + kz;
+    let ch = buckets.get(key);
+    if (!ch) {
+      ch = { kx, kz, byProto: new Map() };
+      buckets.set(key, ch);
+    }
+    const pk = CITY_PROTO_DEF[it.proto] ? it.proto : 'slab';
+    if (!ch.byProto.has(pk)) ch.byProto.set(pk, []);
+    ch.byProto.get(pk).push(it);
   }
 
   const d = new THREE.Object3D();
   const col = new THREE.Color();
-  let created = 0;
+  let meshCount = 0;
 
-  for (const [name, arr] of byProto) {
-    const proto = cityProto(name);
-    const im = new THREE.InstancedMesh(proto.geo, material, arr.length);
-    im.frustumCulled = false;
+  const makeMesh = (protoName, arr, far) => {
+    const proto = cityProto(protoName);
+    const geo = far ? cityProtoFar(protoName) : proto.geo;
+    const im = new THREE.InstancedMesh(geo, material, arr.length);
+    im.frustumCulled = true;          // 关键：让 three.js 跳过视锥外的块
     arr.forEach((it, i) => {
       d.position.set(it.x, it.y || 0, it.z);
       d.rotation.set(0, it.rot || 0, 0);
@@ -7322,10 +7365,58 @@ function buildCityProtos(group, items, material) {
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
     im.castShadow = false;
     im.receiveShadow = false;
+    im.visible = false;               // 由 updateCityLOD 决定
     group.add(im);
-    created++;
+    meshCount++;
+    return im;
+  };
+
+  for (const [, ch] of buckets) {
+    const near = [], far = [];
+    for (const [pk, arr] of ch.byProto) {
+      near.push(makeMesh(pk, arr, false));
+      far.push(makeMesh(pk, arr, true));
+    }
+    /* 块中心用于距离判定 */
+    let sx = 0, sz = 0, n = 0;
+    for (const [, arr] of ch.byProto) for (const it of arr) { sx += it.x; sz += it.z; n++; }
+    cityChunks.push({ near, far, x: sx / n, z: sz / n });
   }
-  return created;
+
+  return { chunks: cityChunks.length, meshes: meshCount };
+}
+
+/* 每帧调用：按相机距离切换 LOD 与整块可见性。
+   只遍历 chunk（约 25 个），不做任何矩阵运算，开销可忽略。
+   LOD 与可见性都带**滞回**（进入用近阈值、退出用远阈值），
+   否则相机停在阈值上时整块会在「细节/盒子」之间反复跳变。 */
+const CITY_LOD_HYST = 90;        // LOD 切换滞回（米）
+const CITY_VIS_HYST = 220;       // 可见性切换滞回（米）
+
+function updateCityLOD(camPos) {
+  if (!cityChunks.length || !camPos) return;
+  for (const ch of cityChunks) {
+    const dx = ch.x - camPos.x, dz = ch.z - camPos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    /* 沿用上一帧状态做滞回判断 */
+    const wasNear = ch.isNear !== undefined ? ch.isNear : (dist < CITY_LOD_DIST);
+    const wasVis = ch.visible !== undefined ? ch.visible : (dist < CITY_VISIBLE_DIST);
+
+    const isNear = wasNear ? dist < CITY_LOD_DIST + CITY_LOD_HYST : dist < CITY_LOD_DIST - CITY_LOD_HYST;
+    const vis = wasVis ? dist < CITY_VISIBLE_DIST + CITY_VIS_HYST : dist < CITY_VISIBLE_DIST - CITY_VIS_HYST;
+
+    ch.isNear = isNear;
+    ch.visible = vis;
+    for (const m of ch.near) m.visible = vis && isNear;
+    for (const m of ch.far) m.visible = vis && !isNear;
+  }
+}
+
+/* 兼容旧调用：不想要分块时仍可用（当前 buildCity 已改走分块版本） */
+function buildCityProtos(group, items, material) {
+  const r = buildCityChunked(group, items, material);
+  return r.chunks ? r.chunks : 0;
 }
 
 
@@ -10351,6 +10442,8 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+  /* 城市 LOD：只遍历约 25 个块，不做矩阵运算，开销可忽略 */
+  if (typeof updateCityLOD === 'function') updateCityLOD(camera.position);
 
   /* ---- 隧道照明跟随（建模提升）----
      3 盏灯放在玩家前/中/后各一盏（间隔 22 m，与 buildTunnels 的灯具间距一致），
