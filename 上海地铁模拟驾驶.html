@@ -5933,6 +5933,39 @@ function buildRoads(route, group) {
     dashes.frustumCulled = false;
     group.add(dashes);
     meshes++;
+
+    /* 路灯：沿外侧人行道每 28 m 一根，灯头自发光。
+       灯杆与灯头各一个 InstancedMesh（2 个 draw call），
+       材质不同无法合并，但这个数量可以接受。 */
+    const lampCnt = Math.max(1, Math.floor(totalLen / 28));
+    const poleGeo = new THREE.CylinderGeometry(0.11, 0.14, 8, 6);
+    poleGeo.translate(0, 4, 0);
+    const headGeo = new THREE.BoxGeometry(0.9, 0.16, 0.34);
+    const poles = new THREE.InstancedMesh(poleGeo, MAT.metal, lampCnt * 2);
+    const heads = new THREE.InstancedMesh(headGeo, MAT.strip, lampCnt * 2);
+    const dl = new THREE.Object3D();
+    let li = 0;
+    for (let k = 0; k < lampCnt; k++) {
+      const s = route.S[run.a] + k * 28 + 14;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        const lx = f.pos.x + f.right.x * side * 27.6;
+        const lz = f.pos.z + f.right.z * side * 27.6;
+        dl.position.set(lx, 0, lz);
+        dl.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        dl.scale.set(1, 1, 1);
+        dl.updateMatrix(); poles.setMatrixAt(li, dl.matrix);
+        dl.position.set(lx, 8, lz);
+        dl.updateMatrix(); heads.setMatrixAt(li, dl.matrix);
+        li++;
+      }
+    }
+    poles.count = li; heads.count = li;
+    poles.instanceMatrix.needsUpdate = true; heads.instanceMatrix.needsUpdate = true;
+    poles.frustumCulled = false; heads.frustumCulled = false;
+    group.add(poles, heads);
+    meshes += 2;
+    if (typeof G !== 'undefined' && G) G.lampCount = li;
   }
   if (typeof G !== 'undefined' && G) G.roadStats = { runs: runs.length, meshes };
   return meshes;
@@ -6131,31 +6164,44 @@ function buildCity(route, group, riverPts) {
   if (camera) updateCityLOD(camera.position);
 
 
-  // 树木
-  const treeN = 320;
+  /* 行道树
+     原来的实现有两个问题：
+     1) 位置用 f.pos（线路中心），高架段的 y 是十几米 —— 树直接浮在空中；
+     2) 只有 320 棵，撒在 14–38 m 的随机横向位置，看不出成行。
+     改为：贴地（y 由地面起算）、沿道路外侧人行道成行布置、间隔 14 m。 */
+  const treeN = 1400;
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.22, 2.2, 5);
   const crownGeo = new THREE.IcosahedronGeometry(1.7, 0);
   const trunks = new THREE.InstancedMesh(trunkGeo, MAT.trunk, treeN);
   const crowns = new THREE.InstancedMesh(crownGeo, MAT.tree, treeN);
   const dt = new THREE.Object3D();
   let tn = 0;
-  for (let i = 0; i < treeN * 3 && tn < treeN; i++) {
-    const s = 200 + RNG() * (route.length - 400);
+  const treeStep = 14;
+  for (let s = 160; s < route.length - 160 && tn < treeN; s += treeStep) {
     const f = route.frameAt(s);
-    const side = RNG() < 0.5 ? -1 : 1;
-    const p = f.pos.clone().addScaledVector(f.right, side * (14 + RNG() * 24));
-    if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 8) continue;
-    const h = 1 + RNG() * 0.8;
-    dt.position.set(p.x, 1.1 * h, p.z); dt.rotation.set(0, RNG() * TAU, 0); dt.scale.set(h, h, h);
-    dt.updateMatrix(); trunks.setMatrixAt(tn, dt.matrix);
-    dt.position.y = 2.6 * h; dt.scale.set(h * (0.8 + RNG() * 0.5), h, h * (0.8 + RNG() * 0.5));
-    dt.updateMatrix(); crowns.setMatrixAt(tn, dt.matrix);
-    tn++;
+    for (const side of [-1, 1]) {
+      if (tn >= treeN) break;
+      /* 外侧人行道（27–29 m）之外再留 1 m，避开路灯 */
+      const lat = side * (29 + RNG() * 2.5);
+      const p = f.pos.clone().addScaledVector(f.right, lat);
+      if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 8) continue;
+      const h = 0.95 + RNG() * 0.7;
+      /* 关键：y 从地面起算，不要用 f.pos.y（那是线路高度） */
+      dt.position.set(p.x, 1.1 * h, p.z);
+      dt.rotation.set(0, RNG() * TAU, 0);
+      dt.scale.set(h, h, h);
+      dt.updateMatrix(); trunks.setMatrixAt(tn, dt.matrix);
+      dt.position.y = 2.6 * h;
+      dt.scale.set(h * (0.8 + RNG() * 0.5), h, h * (0.8 + RNG() * 0.5));
+      dt.updateMatrix(); crowns.setMatrixAt(tn, dt.matrix);
+      tn++;
+    }
   }
   trunks.count = tn; crowns.count = tn;
   trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true;
   trunks.frustumCulled = false; crowns.frustumCulled = false;
   group.add(trunks, crowns);
+  if (typeof G !== 'undefined' && G) G.treeCount = tn;
 }
 
 /* ---------------- 地标 ---------------- */
