@@ -112,8 +112,10 @@ async function waitDriving(p) {
   /* ---- 3. 第一段跑完 → 段间交接 ---- */
   const leg1 = await page.evaluate(() => {
     const S = window.__sim, G = S.G;
+    if (G.onboardOpen) S.onboardFinish();
     Math.random = () => 0.99;
     G.autoQuality = false;
+    if (G.onboardOpen) S.onboardFinish();
     S.toggleATO(true);
     let faultsSeen = 0;
     for (let i = 0; i < 2000; i++) {

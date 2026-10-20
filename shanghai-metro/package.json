@@ -21,7 +21,9 @@
     "test:routes": "node tests/unit/routes.test.js",
     "test:punc": "node tests/regress_punc.js",
     "test:day": "node tests/regress_session.js",
-    "test:p3": "node tests/regress_p3.js"
+    "test:p3": "node tests/regress_p3.js",
+    "test:p4": "node tests/regress_p4.js",
+    "package:deploy": "node scripts/package-deploy.js"
   },
   "devDependencies": {
     "puppeteer-core": "^24.0.0"

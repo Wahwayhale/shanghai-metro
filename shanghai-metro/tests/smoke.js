@@ -54,6 +54,7 @@ async function waitMode(p, mode, sec) {
     run = await page.evaluate(() => {
       const S = window.__sim, G = S.G;
       Math.random = () => 1;                 // 关掉随机故障，只验主链路
+      if (G.onboardOpen) S.onboardFinish();  // 首次进入的新手引导（P4-2）
       S.toggleATO(true);
       for (let i = 0; i < 1500; i++) {
         S.advance(1);

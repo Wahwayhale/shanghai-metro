@@ -40,6 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   const run = await page.evaluate(() => {
     const S = window.__sim, G = S.G;
+    if (G.onboardOpen) S.onboardFinish();
     Math.random = () => 0.99;
     G.autoQuality = false;
     /* 关门 → 等门锁释放 → 满牵引 5 s */

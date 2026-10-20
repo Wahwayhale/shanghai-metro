@@ -85,6 +85,7 @@
   .rc-career{margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#0a1206;
     background:var(--line);padding:2px 6px;border-radius:5px;vertical-align:1px}
   .rc-career.rev{background:rgba(255,255,255,.08);color:#c3d4de;border:1px solid rgba(255,255,255,.16);padding:1px 5px}
+  .rc-career.day{background:rgba(140,198,63,.14);color:#c9f07a;border:1px solid rgba(140,198,63,.35);padding:1px 5px}
   .rc-seg{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
   .rc-title{font-size:17px;font-weight:700;letter-spacing:-.01em}
   .rc-title small{display:block;margin:4px 0 0;font-size:11px;color:#8799a5;font-weight:500;letter-spacing:.02em}
@@ -137,6 +138,50 @@
   .hud-clock span{display:block;font-size:9.5px;letter-spacing:.16em;color:#8b9daa;margin-top:2px}
   .hud-clock span.late{color:var(--amber)}
   .hud-clock span.early{color:#6fd3ff}
+  .hud-clock i{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    color:#3ddc97;margin-top:3px;font-variant-numeric:tabular-nums}
+  .hud-clock i.late{color:var(--amber)}
+  .hud-clock i.early{color:#6fd3ff}
+  .hud-clock i.bad{color:#ff6b5a}
+  .hud-duty{font-style:normal;font-size:9.5px;letter-spacing:.06em;color:#c9f07a;margin-left:9px;
+    padding:2px 7px;border-radius:6px;background:rgba(140,198,63,.14);border:1px solid rgba(140,198,63,.28)}
+  .hud-duty.hidden{display:none}
+
+  /* ---------------- 触屏手柄（P4-1） ---------------- */
+  #touch{display:none}
+  body.touch-mode #touch{display:flex}
+  body.touch-mode .hud-bottom{display:none}
+  body.touch-mode .keys-hint{display:none}
+  body.touch-mode .hud-right{max-height:52vh}
+  body.touch-mode .hud-left{top:70px;width:190px;padding:10px 12px 8px}
+  body.touch-mode .hud-left .next-zh{font-size:21px}
+  body.touch-mode .hud-left .dist-row b{font-size:26px}
+  body.touch-mode .hud-left .hud-sub:last-child{display:none}
+  body.touch-mode .hud-clock b{font-size:16px}
+  #touch{position:absolute;left:12px;right:12px;bottom:12px;z-index:14;gap:10px;align-items:stretch}
+  .touch-card{background:rgba(7,11,14,.74);border:1px solid var(--stroke);border-radius:14px;backdrop-filter:blur(14px)}
+  .touch-btns{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:8px;width:164px}
+  .touch-btns button{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe0ea;
+    border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;padding:10px 6px;touch-action:manipulation}
+  .touch-btns button:active{background:rgba(140,198,63,.22);border-color:var(--line)}
+  .touch-btns button.on{background:rgba(140,198,63,.22);border-color:var(--line);color:#c9f07a}
+  .touch-btns button.eb{border-color:rgba(255,107,90,.42);color:#ff8f80}
+  .touch-btns button.eb.on{background:rgba(255,107,90,.24)}
+  .touch-mid{flex:1;min-width:0;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+  .touch-track{position:relative;height:38px;border-radius:11px;background:linear-gradient(90deg,rgba(255,107,90,.22),rgba(255,255,255,.05) 50%,rgba(140,198,63,.22));
+    border:1px solid rgba(255,255,255,.1);touch-action:none;overflow:hidden}
+  .touch-track .zero{position:absolute;left:50%;top:5px;bottom:5px;width:2px;margin-left:-1px;background:rgba(255,255,255,.28)}
+  .touch-track i{position:absolute;top:5px;bottom:5px;border-radius:5px;background:rgba(140,198,63,.55);width:0}
+  .touch-knob{position:absolute;top:50%;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+    background:#e8f5d0;border:3px solid #0b0f12;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+  .touch-read{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10.5px;color:#8fa2ae}
+  .touch-read b{color:#dfeefb;font-variant-numeric:tabular-nums}
+  .touch-read .t-zero{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#b9ccd7;
+    border-radius:7px;font-family:inherit;font-size:10px;padding:4px 8px}
+  @media (orientation:portrait) and (pointer:coarse){
+    #touch{flex-direction:column}
+    .touch-btns{width:auto;grid-template-columns:repeat(4,1fr)}
+  }
 
   .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
   .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
@@ -271,10 +316,16 @@
   .ats-ix-btn.on b{color:#c9f07a}
   .ats-ix-btn.on span{color:#8fae6a}
   .ats-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px}
-  .ats-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+  .ats-row{display:grid;grid-template-columns:auto 1fr 40px auto;gap:8px;align-items:center;
     padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.035);
     border:1px solid rgba(255,255,255,.05);font-size:10.5px}
   .ats-row.me{background:rgba(255,255,255,.075);border-color:var(--line)}
+  .ats-dev{font-size:10px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;color:#3ddc97;white-space:nowrap}
+  .ats-dev.late{color:#ffb020}
+  .ats-dev.bad{color:#ff6b5a}
+  .ats-dev.early{color:#6fd3ff}
+  .ats-dev.na{color:#5f7280;font-weight:500}
   .ats-no{font-weight:800;font-size:12px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
   .ats-no i{display:block;font-style:normal;font-size:8.5px;font-weight:500;color:#7492a1;letter-spacing:.06em}
   .ats-mid{min-width:0}
@@ -342,7 +393,8 @@
   kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
     border-radius:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
     border-bottom-width:2px;font-size:10px;font-family:ui-monospace,Menlo,monospace;color:#dfe8ee;font-weight:600}
-  .modal-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .modal-actions{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:-2px;
+    padding-top:12px;background:linear-gradient(180deg,rgba(10,14,18,0),rgba(10,14,18,.96) 32%)}
   .btn{border:1px solid var(--stroke-2);background:rgba(255,255,255,.05);color:#dbe6ed;font-family:inherit;
     font-size:12.5px;font-weight:600;padding:11px 18px;border-radius:9px;cursor:pointer;transition:.15s}
   .btn:hover{background:rgba(255,255,255,.1)}
@@ -360,6 +412,36 @@
   .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
   .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
   .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .ob-text{font-size:12.5px;line-height:1.95;color:#b9ccd7;margin:12px 0 14px;min-height:76px}
+  .ob-dots{display:flex;gap:6px;margin-bottom:16px}
+  .ob-dots i{width:22px;height:4px;border-radius:3px;background:rgba(255,255,255,.14)}
+  .ob-dots i.on{background:var(--line);box-shadow:0 0 10px var(--line-glow)}
+  .energy-note{font-size:10px;color:#7f939f;letter-spacing:.03em;margin:-12px 0 14px;text-align:right}
+  .energy-note b{color:#3ddc97;font-weight:600}
+  .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
+    padding:10px 12px;margin:0 0 10px;font-size:11px;color:#b9ccd7}
+  .sess-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+  .sess-head b{font-size:12.5px;color:#dbe7ee;letter-spacing:.03em}
+  .sess-head span{font-size:9.5px;color:#7f939f}
+  .sess-parts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.07);
+    border-radius:8px;overflow:hidden;margin-bottom:8px}
+  .sess-parts div{background:#10161b;padding:7px 6px;text-align:center}
+  .sess-parts i{display:block;font-style:normal;font-size:9px;color:#7f939f;letter-spacing:.04em}
+  .sess-parts b{display:block;font-size:14px;color:#c9f07a;font-variant-numeric:tabular-nums;margin-top:2px}
+  .sess-next{font-size:10.5px;color:#ffd479;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.22);
+    border-radius:7px;padding:5px 8px;margin-bottom:8px}
+  .sess-legs{border:1px solid rgba(255,255,255,.07);border-radius:8px;overflow:hidden}
+  .sess-leg{display:grid;grid-template-columns:24px 1fr 40px 52px 56px 42px;gap:6px;padding:5px 7px;
+    border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums;color:#a9bcc8}
+  .sess-leg:last-child{border-bottom:0}
+  .sess-leg.head{background:rgba(255,255,255,.05);color:#7f939f;font-size:9px;letter-spacing:.04em}
+  .sess-leg .seg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sess-foot{margin-top:7px;font-size:9px;color:#6b8290;text-align:right}
+  .resume-day{display:block;width:100%;margin-bottom:10px;padding:12px 16px;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:700;color:#08110a;background:linear-gradient(180deg,#d6ff8a,#9bcf3e);
+    border:0;box-shadow:0 10px 26px rgba(140,198,63,.25);transition:.15s}
+  .resume-day span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#31421a;letter-spacing:.03em}
+  .resume-day:hover{transform:translateY(-1px);filter:brightness(1.06)}
   .stop-line{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr;gap:8px;padding:8px 12px;font-size:11px;color:#9aacb8;
     border-bottom:1px solid rgba(255,255,255,.05)}
   .stop-line:last-child{border-bottom:0}
@@ -471,6 +553,7 @@
         </div>
       </div>
       <div class="start-wrap">
+        <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
       </div>
     </div>
@@ -494,8 +577,8 @@
   <!-- ===================== HUD ===================== -->
   <div id="hud">
     <div class="hud-top">
-      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em></div>
-      <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span></div>
+      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em><i class="hud-duty hidden" id="hudDuty"></i></div>
+      <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span><i id="hudPunc">正点</i></div>
     </div>
 
     <div class="hud-left panel">
@@ -530,7 +613,27 @@
     </div>
 
     <div class="keys-hint">
-      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 切除车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span>
+      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 切除车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span><span><b>F4</b> 诊断</span>
+    </div>
+
+    <!-- 触屏手柄（P4-1）：body.touch-mode 时才显示 -->
+    <div id="touch">
+      <div class="touch-btns touch-card">
+        <button data-touch="door" id="tDoor">开门</button>
+        <button data-touch="ato" id="tAto">ATO</button>
+        <button data-touch="horn">鸣笛</button>
+        <button data-touch="eb" id="tEb">紧急</button>
+      </div>
+      <div class="touch-mid touch-card">
+        <div class="touch-track" id="tTrack">
+          <span class="zero"></span><i id="tFill"></i><b class="touch-knob" id="tKnob"></b>
+        </div>
+        <div class="touch-read">
+          <span id="tLeverTxt">0%</span>
+          <span><b id="tSpeed">0</b> km/h · 限 <b id="tLimit">80</b></span>
+          <button class="t-zero" data-touch="zero">回零</button>
+        </div>
+      </div>
     </div>
     <div class="exam-panel" id="examPanel"></div>
     <div class="toast-area" id="toastArea"></div>
@@ -560,11 +663,15 @@
         <div class="m-row"><span>编组</span><b>6 节 A 型车 · 定员 1860 人</b></div>
         <div class="m-row"><span>计划发车</span><b id="brDepart">08:12:00</b></div>
         <div class="m-row"><span>运行时分</span><b id="brTimes">上海地铁官方首末班车推导</b></div>
+        <div class="m-row"><span>运营时段</span><b id="brDay">单趟值乘</b></div>
+        <div class="m-row"><span>运营时长</span>
+          <div class="seg" id="shiftGroup"><button data-v="60">1 小时</button><button data-v="120" class="on">2 小时</button><button data-v="180">3 小时</button></div>
+        </div>
         <div class="m-row"><span>区间里程</span><b id="brDist">11.5 km</b></div>
         <div class="m-row"><span>停车站数</span><b id="brStops">7 站</b></div>
         <div class="m-row"><span>自动驾驶</span><b>ATO 自动运行 · 自动停站开门（按 A）</b></div>
         <div class="m-row"><span>值乘模式</span>
-          <div class="seg" id="modeGroup"><button data-v="normal" class="on">普通值乘</button><button data-v="exam">执照考试</button></div>
+          <div class="seg" id="modeGroup"><button data-v="day">运营日</button><button data-v="single" class="on">单趟</button><button data-v="exam">执照考试</button></div>
         </div>
       </div>
       <div class="keys-grid">
@@ -599,6 +706,20 @@
     <div class="ats-foot"><span>按住列车可下达调度命令</span><span>Tab 关闭</span></div>
   </div>
 
+  <!-- ===================== 新手引导（P4-2） ===================== -->
+  <div id="onboard" class="modal-mask hidden">
+    <div class="modal panel" style="width:min(520px,90vw)">
+      <span class="kicker">FIRST RUN</span>
+      <h3 id="obTitle" style="margin-top:6px">1 / 3 · 起步</h3>
+      <p class="ob-text" id="obText"></p>
+      <div class="ob-dots" id="obDots"><i class="on"></i><i></i><i></i></div>
+      <div class="modal-actions">
+        <button class="btn acc" id="obNext">下一步</button>
+        <button class="btn" id="obSkip">跳过引导</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== 暂停 ===================== -->
   <div id="pause" class="modal-mask hidden">
     <div class="modal panel">
@@ -617,6 +738,8 @@
       </div>
       <div class="modal-actions">
         <button class="btn acc" id="pResume">继续驾驶</button>
+        <button class="btn" id="pSaveQuit">保存并退出</button>
+        <button class="btn" id="pGuide">操作指引</button>
         <button class="btn" id="pRestart">重新开始本次任务</button>
         <button class="btn" id="pQuit">返回线路选择</button>
       </div>
@@ -630,7 +753,7 @@
       <h3 style="margin-top:6px" id="resTitle">值乘结束</h3>
       <div class="grade">
         <div class="letter" id="resGrade">A</div>
-        <div class="g-meta">总评分<br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
+        <div class="g-meta"><span id="resScoreLabel">总评分</span><br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
       </div>
       <div class="stat-grid">
         <div class="stat-cell"><i>停站精度</i><b id="resStop">—<small>m</small></b></div>
@@ -638,8 +761,11 @@
         <div class="stat-cell"><i>牵引能耗</i><b id="resKwh">—<small>kWh</small></b></div>
         <div class="stat-cell"><i>不当操作减分</i><b id="resPenalty">0<small>分</small></b></div>
       </div>
+      <div class="energy-note" id="resEnergy"></div>
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <div id="resSession" class="sess-result" style="display:none"></div>
       <div class="stop-table" id="resTable"></div>
       <div class="modal-actions">
         <button class="btn acc" id="resAgain">再次值乘</button>
@@ -54119,7 +54245,7 @@ return {
 };
 })();
 
-const { RoundedBoxGeometry, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, BufferGeometryUtils } = (function(){
+const { RoundedBoxGeometry, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, FXAAShader, BufferGeometryUtils } = (function(){
 const { BoxGeometry, Vector3, Clock, HalfFloatType, NoBlending, Vector2, WebGLRenderTarget, ShaderMaterial, UniformsUtils, BufferGeometry, Float32BufferAttribute, OrthographicCamera, Mesh, Color, AdditiveBlending, MeshBasicMaterial, ColorManagement, RawShaderMaterial, LinearToneMapping, ReinhardToneMapping, CineonToneMapping, AgXToneMapping, ACESFilmicToneMapping, SRGBTransfer, BufferAttribute, InstancedBufferAttribute, InterleavedBuffer, InterleavedBufferAttribute, TriangleFanDrawMode, TriangleStripDrawMode, TrianglesDrawMode } = THREE;
 /* RoundedBoxGeometry.js */
 
@@ -55565,6 +55691,294 @@ class OutputPass extends Pass {
 
 
 
+/* FXAAShader.js */
+
+
+/**
+ * NVIDIA FXAA by Timothy Lottes
+ * https://developer.download.nvidia.com/assets/gamedev/files/sdk/11/FXAA_WhitePaper.pdf
+ * - WebGL port by @supereggbert
+ * http://www.glge.org/demos/fxaa/
+ * Further improved by Daniel Sturk
+ */
+
+const FXAAShader = {
+
+	name: 'FXAAShader',
+
+	uniforms: {
+
+		'tDiffuse': { value: null },
+		'resolution': { value: new Vector2( 1 / 1024, 1 / 512 ) }
+
+	},
+
+	vertexShader: /* glsl */`
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+
+	fragmentShader: /* glsl */`
+		precision highp float;
+
+		uniform sampler2D tDiffuse;
+
+		uniform vec2 resolution;
+
+		varying vec2 vUv;
+
+		// FXAA 3.11 implementation by NVIDIA, ported to WebGL by Agost Biro (biro@archilogic.com)
+
+		//----------------------------------------------------------------------------------
+		// File:        es3-kepler\FXAA\assets\shaders/FXAA_DefaultES.frag
+		// SDK Version: v3.00
+		// Email:       gameworks@nvidia.com
+		// Site:        http://developer.nvidia.com/
+		//
+		// Copyright (c) 2014-2015, NVIDIA CORPORATION. All rights reserved.
+		//
+		// Redistribution and use in source and binary forms, with or without
+		// modification, are permitted provided that the following conditions
+		// are met:
+		//  * Redistributions of source code must retain the above copyright
+		//    notice, this list of conditions and the following disclaimer.
+		//  * Redistributions in binary form must reproduce the above copyright
+		//    notice, this list of conditions and the following disclaimer in the
+		//    documentation and/or other materials provided with the distribution.
+		//  * Neither the name of NVIDIA CORPORATION nor the names of its
+		//    contributors may be used to endorse or promote products derived
+		//    from this software without specific prior written permission.
+		//
+		// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ''AS IS'' AND ANY
+		// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+		// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+		// PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+		// CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+		// EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+		// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+		// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+		// OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+		// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+		// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+		//
+		//----------------------------------------------------------------------------------
+
+		#ifndef FXAA_DISCARD
+			//
+			// Only valid for PC OpenGL currently.
+			// Probably will not work when FXAA_GREEN_AS_LUMA = 1.
+			//
+			// 1 = Use discard on pixels which don't need AA.
+			//     For APIs which enable concurrent TEX+ROP from same surface.
+			// 0 = Return unchanged color on pixels which don't need AA.
+			//
+			#define FXAA_DISCARD 0
+		#endif
+
+		/*--------------------------------------------------------------------------*/
+		#define FxaaTexTop(t, p) texture2D(t, p, -100.0)
+		#define FxaaTexOff(t, p, o, r) texture2D(t, p + (o * r), -100.0)
+		/*--------------------------------------------------------------------------*/
+
+		#define NUM_SAMPLES 5
+
+		// assumes colors have premultipliedAlpha, so that the calculated color contrast is scaled by alpha
+		float contrast( vec4 a, vec4 b ) {
+			vec4 diff = abs( a - b );
+			return max( max( max( diff.r, diff.g ), diff.b ), diff.a );
+		}
+
+		/*============================================================================
+
+									FXAA3 QUALITY - PC
+
+		============================================================================*/
+
+		/*--------------------------------------------------------------------------*/
+		vec4 FxaaPixelShader(
+			vec2 posM,
+			sampler2D tex,
+			vec2 fxaaQualityRcpFrame,
+			float fxaaQualityEdgeThreshold,
+			float fxaaQualityinvEdgeThreshold
+		) {
+			vec4 rgbaM = FxaaTexTop(tex, posM);
+			vec4 rgbaS = FxaaTexOff(tex, posM, vec2( 0.0, 1.0), fxaaQualityRcpFrame.xy);
+			vec4 rgbaE = FxaaTexOff(tex, posM, vec2( 1.0, 0.0), fxaaQualityRcpFrame.xy);
+			vec4 rgbaN = FxaaTexOff(tex, posM, vec2( 0.0,-1.0), fxaaQualityRcpFrame.xy);
+			vec4 rgbaW = FxaaTexOff(tex, posM, vec2(-1.0, 0.0), fxaaQualityRcpFrame.xy);
+			// . S .
+			// W M E
+			// . N .
+
+			bool earlyExit = max( max( max(
+					contrast( rgbaM, rgbaN ),
+					contrast( rgbaM, rgbaS ) ),
+					contrast( rgbaM, rgbaE ) ),
+					contrast( rgbaM, rgbaW ) )
+					< fxaaQualityEdgeThreshold;
+			// . 0 .
+			// 0 0 0
+			// . 0 .
+
+			#if (FXAA_DISCARD == 1)
+				if(earlyExit) FxaaDiscard;
+			#else
+				if(earlyExit) return rgbaM;
+			#endif
+
+			float contrastN = contrast( rgbaM, rgbaN );
+			float contrastS = contrast( rgbaM, rgbaS );
+			float contrastE = contrast( rgbaM, rgbaE );
+			float contrastW = contrast( rgbaM, rgbaW );
+
+			float relativeVContrast = ( contrastN + contrastS ) - ( contrastE + contrastW );
+			relativeVContrast *= fxaaQualityinvEdgeThreshold;
+
+			bool horzSpan = relativeVContrast > 0.;
+			// . 1 .
+			// 0 0 0
+			// . 1 .
+
+			// 45 deg edge detection and corners of objects, aka V/H contrast is too similar
+			if( abs( relativeVContrast ) < .3 ) {
+				// locate the edge
+				vec2 dirToEdge;
+				dirToEdge.x = contrastE > contrastW ? 1. : -1.;
+				dirToEdge.y = contrastS > contrastN ? 1. : -1.;
+				// . 2 .      . 1 .
+				// 1 0 2  ~=  0 0 1
+				// . 1 .      . 0 .
+
+				// tap 2 pixels and see which ones are "outside" the edge, to
+				// determine if the edge is vertical or horizontal
+
+				vec4 rgbaAlongH = FxaaTexOff(tex, posM, vec2( dirToEdge.x, -dirToEdge.y ), fxaaQualityRcpFrame.xy);
+				float matchAlongH = contrast( rgbaM, rgbaAlongH );
+				// . 1 .
+				// 0 0 1
+				// . 0 H
+
+				vec4 rgbaAlongV = FxaaTexOff(tex, posM, vec2( -dirToEdge.x, dirToEdge.y ), fxaaQualityRcpFrame.xy);
+				float matchAlongV = contrast( rgbaM, rgbaAlongV );
+				// V 1 .
+				// 0 0 1
+				// . 0 .
+
+				relativeVContrast = matchAlongV - matchAlongH;
+				relativeVContrast *= fxaaQualityinvEdgeThreshold;
+
+				if( abs( relativeVContrast ) < .3 ) { // 45 deg edge
+					// 1 1 .
+					// 0 0 1
+					// . 0 1
+
+					// do a simple blur
+					return mix(
+						rgbaM,
+						(rgbaN + rgbaS + rgbaE + rgbaW) * .25,
+						.4
+					);
+				}
+
+				horzSpan = relativeVContrast > 0.;
+			}
+
+			if(!horzSpan) rgbaN = rgbaW;
+			if(!horzSpan) rgbaS = rgbaE;
+			// . 0 .      1
+			// 1 0 1  ->  0
+			// . 0 .      1
+
+			bool pairN = contrast( rgbaM, rgbaN ) > contrast( rgbaM, rgbaS );
+			if(!pairN) rgbaN = rgbaS;
+
+			vec2 offNP;
+			offNP.x = (!horzSpan) ? 0.0 : fxaaQualityRcpFrame.x;
+			offNP.y = ( horzSpan) ? 0.0 : fxaaQualityRcpFrame.y;
+
+			bool doneN = false;
+			bool doneP = false;
+
+			float nDist = 0.;
+			float pDist = 0.;
+
+			vec2 posN = posM;
+			vec2 posP = posM;
+
+			int iterationsUsed = 0;
+			int iterationsUsedN = 0;
+			int iterationsUsedP = 0;
+			for( int i = 0; i < NUM_SAMPLES; i++ ) {
+				iterationsUsed = i;
+
+				float increment = float(i + 1);
+
+				if(!doneN) {
+					nDist += increment;
+					posN = posM + offNP * nDist;
+					vec4 rgbaEndN = FxaaTexTop(tex, posN.xy);
+					doneN = contrast( rgbaEndN, rgbaM ) > contrast( rgbaEndN, rgbaN );
+					iterationsUsedN = i;
+				}
+
+				if(!doneP) {
+					pDist += increment;
+					posP = posM - offNP * pDist;
+					vec4 rgbaEndP = FxaaTexTop(tex, posP.xy);
+					doneP = contrast( rgbaEndP, rgbaM ) > contrast( rgbaEndP, rgbaN );
+					iterationsUsedP = i;
+				}
+
+				if(doneN || doneP) break;
+			}
+
+
+			if ( !doneP && !doneN ) return rgbaM; // failed to find end of edge
+
+			float dist = min(
+				doneN ? float( iterationsUsedN ) / float( NUM_SAMPLES - 1 ) : 1.,
+				doneP ? float( iterationsUsedP ) / float( NUM_SAMPLES - 1 ) : 1.
+			);
+
+			// hacky way of reduces blurriness of mostly diagonal edges
+			// but reduces AA quality
+			dist = pow(dist, .5);
+
+			dist = 1. - dist;
+
+			return mix(
+				rgbaM,
+				rgbaN,
+				dist * .5
+			);
+		}
+
+		void main() {
+			const float edgeDetectionQuality = .2;
+			const float invEdgeDetectionQuality = 1. / edgeDetectionQuality;
+
+			gl_FragColor = FxaaPixelShader(
+				vUv,
+				tDiffuse,
+				resolution,
+				edgeDetectionQuality, // [0,1] contrast needed, otherwise early discard
+				invEdgeDetectionQuality
+			);
+
+		}
+	`
+
+};
+
+
+
 /* BufferGeometryUtils.js */
 
 
@@ -56919,7 +57333,7 @@ function mergeBufferAttributes( attributes ) {
 
 
 const BufferGeometryUtils = {computeMikkTSpaceTangents,mergeGeometries,mergeBufferGeometries,mergeAttributes,mergeBufferAttributes,interleaveAttributes,estimateBytesUsed,mergeVertices,toTrianglesDrawMode,computeMorphedAttributes,mergeGroups,toCreasedNormals,deepCloneAttribute,deinterleaveAttribute,deinterleaveGeometry};
-return { RoundedBoxGeometry, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, BufferGeometryUtils };
+return { RoundedBoxGeometry, EffectComposer, RenderPass, UnrealBloomPass, ShaderPass, OutputPass, FXAAShader, BufferGeometryUtils };
 })();
 
 
@@ -57228,7 +57642,15 @@ const LANDMARKS = [
   { id: 'jinmao', zh: '金茂大厦', lat: 31.23673, lon: 121.50531, h: 421, kind: 'jinmao' },
   { id: 'bund', zh: '外滩', lat: 31.24010, lon: 121.49020, h: 40, kind: 'bund' },
   { id: 'stadium', zh: '虹口足球场', lat: 31.27055, lon: 121.47812, h: 45, kind: 'stadium' },
-  { id: 'museum', zh: '上海科技馆', lat: 31.21950, lon: 121.54190, h: 32, kind: 'museum' }
+  { id: 'museum', zh: '上海科技馆', lat: 31.21950, lon: 121.54190, h: 32, kind: 'museum' },
+  /* ---- P5-3 新增 7 个：把「一眼认出是上海」的锚点补全 ---- */
+  { id: 'jingan', zh: '静安寺', lat: 31.22370, lon: 121.44530, h: 46, kind: 'temple' },
+  { id: 'longhua', zh: '龙华塔', lat: 31.18170, lon: 121.45220, h: 41, kind: 'pagoda' },
+  { id: 'xujiahui_church', zh: '徐家汇天主教堂', lat: 31.19300, lon: 121.43850, h: 50, kind: 'church' },
+  { id: 'sports_center', zh: '东方体育中心', lat: 31.15260, lon: 121.47900, h: 58, kind: 'shells' },
+  { id: 'south_station', zh: '上海南站', lat: 31.15450, lon: 121.42900, h: 47, kind: 'dome_station' },
+  { id: 'wujiaochang', zh: '五角场彩蛋', lat: 31.30060, lon: 121.51460, h: 32, kind: 'egg' },
+  { id: 'expo_axis', zh: '世博轴阳光谷', lat: 31.18770, lon: 121.49000, h: 41, kind: 'funnel' }
 ];
 
 /* 黄浦江中心线（纬度, 经度） */
@@ -65521,9 +65943,11 @@ class RoutePath {
     }
     return lim;
   }
-  buildSchedule() {
+  /* startOverride：运营日交班后要按「实际交班时刻」重新排本务时刻，
+     不能再用交路定义里的首班车时间。 */
+  buildSchedule(startOverride) {
     const st = this.stations;
-    const startSec = parseClock(this.def.start);
+    const startSec = (startOverride != null) ? startOverride : parseClock(this.def.start);
     const order = st.map((s, i) => i).filter(i => st[i].served !== false);
     const first = order[0];
     const off = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[this.def.id])
@@ -65934,34 +66358,41 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
 function texStationSign(station, line, dirTo) {
   const key = 'sign_' + line.id + '_' + station.zh;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  /* 1536×384 对一块吊挂站名牌是过度采样：它在场景里约 4.4 m 宽，
-     按 1080p 屏幕与 45° 视角折算 768×192 已足够清晰。
-     每站省 4 倍像素 = 27 站累计省下大量 canvas 光栅化时间（P1-1）。 */
-  const W = 768, H = 192;
-  const S = W / 1536;                    // 统一缩放系数，保持排版比例
+  /* 曾经为省 canvas 光栅化时间降到 768×192（P1-1）。但玩家反馈站名牌
+     文字发虚 —— 吊挂牌在场景里约 4.4 m 宽，近距离占了屏幕很大一块，
+     768 宽对应到 2K 屏上每个字只有几个像素。
+     现在 GPU 有余量，提到 1152×288（1.5 倍），排版系数按同一基准缩放。 */
+  /* 排版基准一直是 1536×384，但 P1 阶段把画布降到 768×192 时
+     只改了 W/H，没有缩放坐标系 —— 结果 x=1520 处的「上海地铁」字样
+     直接画在画布外，静默丢失。这里改用 ctx.scale 整体缩放，
+     让绝对坐标始终按 1536×384 基准书写，与画布实际尺寸解耦。 */
+  const BASE_W = 1536, BASE_H = 384;
+  const W = 1152, H = 288;
+  const S = W / BASE_W;                  // 0.75
   const [c, x] = cv2d(W, H);
-  x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 13, W, 13);
+  x.scale(S, S);
+  x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, BASE_W, BASE_H);
+  x.fillStyle = '#e9ebe9'; x.fillRect(0, BASE_H - 13, BASE_W, 13);
   // 线路色块（共线段用双色）
-  x.fillStyle = line.color; x.fillRect(0, 0, 105, H);
+  x.fillStyle = line.color; x.fillRect(0, 0, 105, BASE_H);
   if (line.color2) { x.fillStyle = line.color2; x.fillRect(52, 0, 53, H); }
-  x.fillStyle = '#fff'; x.font = `800 ${Math.round(132 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#fff'; x.font = `800 ${132}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'center'; x.fillText(line.badge, 52, 104);
-  x.font = `600 ${Math.round(34 * S)}px "Microsoft YaHei",sans-serif`;
+  x.font = `600 ${34}px "Microsoft YaHei",sans-serif`;
   x.fillText(line.name, 52, 141);
   // 站名
   x.textAlign = 'left';
   x.fillStyle = '#15181a';
-  x.font = `800 ${Math.round(132 * S)}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.font = `800 ${132}px "PingFang SC","Microsoft YaHei",sans-serif`;
   x.fillText(station.zh, 130, 95);
   x.fillStyle = '#586468';
-  x.font = `500 ${Math.round(40 * S)}px "Segoe UI",Helvetica,sans-serif`;
+  x.font = `500 ${40}px "Segoe UI",Helvetica,sans-serif`;
   x.fillText(station.en.toUpperCase(), 132, 129);
   // 方向
-  x.fillStyle = '#2b3236'; x.font = `600 ${Math.round(40 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#2b3236'; x.font = `600 ${40}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'right';
   x.fillText(`往 ${dirTo}`, W - 35, 75);
-  x.fillStyle = '#7a868b'; x.font = `500 ${Math.round(32 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#7a868b'; x.font = `500 ${32}px "Microsoft YaHei",sans-serif`;
   x.fillText('TO ' + dirTo, W - 35, 105);
   x.strokeStyle = '#c9cfd1'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
   const t = toTex(c, 1, 1);
@@ -66038,15 +66469,17 @@ function texAd(i) {
 function texDestination(line, station, arrow = true) {
   const key = 'dest_' + station.zh + line.id;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  const W = 512, H = 128;
+  /* 车头目的地屏：从 512×128 提到 768×192。这块是玩家在追车视角、
+     站台视角都会看到的文字，原尺寸在 2K 屏上偏糊。 */
+  const W = 768, H = 192;
   const [c, x] = cv2d(W, H);
   x.fillStyle = '#080a08'; x.fillRect(0, 0, W, H);
-  x.fillStyle = line.color; x.fillRect(0, 0, 8, H);
-  x.fillStyle = '#ffb733'; x.font = '700 44px "Microsoft YaHei",sans-serif';
-  x.textAlign = 'center'; x.fillText(station.zh, W / 2 + 8, 62);
-  x.fillStyle = '#ff8a1f'; x.font = '600 24px "Segoe UI",sans-serif';
-  x.fillText(station.en.toUpperCase(), W / 2 + 8, 96);
-  if (arrow) { x.fillStyle = '#ffb733'; x.font = '700 34px sans-serif'; x.fillText('→', W - 26, 72); }
+  x.fillStyle = line.color; x.fillRect(0, 0, 12, H);
+  x.fillStyle = '#ffb733'; x.font = '700 66px "Microsoft YaHei",sans-serif';
+  x.textAlign = 'center'; x.fillText(station.zh, W / 2 + 8, 93);
+  x.fillStyle = '#ff8a1f'; x.font = '600 36px "Segoe UI",sans-serif';
+  x.fillText(station.en.toUpperCase(), W / 2 + 8, 144);
+  if (arrow) { x.fillStyle = '#ffb733'; x.font = '700 51px sans-serif'; x.fillText('→', W - 39, 108); }
   const t = toTex(c, 1, 1);
   TEX_CACHE.set(key, t);
   return t;
@@ -66788,11 +67221,147 @@ function buildViaduct(route, group) {
   }
 }
 
+/* ---------------- 街道层（P5-4） ----------------
+   高架段下面的地面原本是空的，看起来像浮在空中。
+   真实的高架地铁绝大多数沿城市主干道走，所以这里沿线路在两侧各铺一条
+   道路 + 人行道，再加车道虚线。全部用带状几何 + 实例化，draw call 控制在
+   个位数（当前固定成本 6.5 ms，加 draw call 会直接吃掉分辨率预算）。
+
+   ribbonY 的帮助函数：按给定的横向偏移与宽度，沿线路生成一条水平带。
+   y 用固定值（地面高度），不跟随线路起伏 —— 线路是架在空中的。 */
+function cityRibbon(route, a, b, side, latCenter, width, y, mat, step) {
+  const pos = [], idx = [];
+  const st = step || 3;
+  let n = 0;
+  for (let i = a; i <= b; i += st) {
+    const P = route.P[i], R = route.R[i];
+    const cx = P.x + R.x * side * latCenter;
+    const cz = P.z + R.z * side * latCenter;
+    const hw = width / 2;
+    pos.push(cx - R.x * hw, y, cz - R.z * hw);
+    pos.push(cx + R.x * hw, y, cz + R.z * hw);
+    if (n > 0) {
+      const k = (n - 1) * 2;
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.receiveShadow = false;
+  return m;
+}
+
+function buildRoads(route, group) {
+  /* 只在高架段铺路：地下段的地面在城市建筑之间，铺了也看不见 */
+  const runs = [];
+  let cur = null;
+  for (let i = 0; i <= route.N; i++) {
+    const on = route.P[i].y > 3.2;
+    if (on && !cur) cur = { a: i, b: i };
+    else if (on && cur) cur.b = i;
+    else if (!on && cur) { if (cur.b - cur.a > 4) runs.push(cur); cur = null; }
+  }
+  if (cur && cur.b - cur.a > 4) runs.push(cur);
+  if (typeof G !== 'undefined' && G) G.roadRuns = runs.length;
+  if (!runs.length) return 0;
+
+  /* 带状几何的三角形绕序容易朝下，被背面剔除后就整条看不见。
+     路面是平面条带，用 DoubleSide 的代价可以忽略，省掉绕序调试。 */
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.95, metalness: 0.02, side: THREE.DoubleSide });
+  const walkMat = new THREE.MeshStandardMaterial({ color: 0xa8adb2, roughness: 0.90, metalness: 0.02, side: THREE.DoubleSide });
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xd2d6d6, roughness: 0.82, side: THREE.DoubleSide });
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xd8d2b8, toneMapped: false });
+
+  let meshes = 0;
+  for (const run of runs) {
+    for (const side of [-1, 1]) {
+      /* 车行道：中心距线路 18 m，宽 12 m（双向四车道） */
+      group.add(cityRibbon(route, run.a, run.b, side, 18, 12, 0.03, roadMat)); meshes++;
+      /* 人行道：靠线路一侧 3 m */
+      group.add(cityRibbon(route, run.a, run.b, side, 10.6, 3.0, 0.14, walkMat)); meshes++;
+      /* 路缘石 */
+      group.add(cityRibbon(route, run.a, run.b, side, 12.25, 0.35, 0.16, curbMat)); meshes++;
+      /* 外侧人行道 */
+      group.add(cityRibbon(route, run.a, run.b, side, 25.6, 3.0, 0.14, walkMat)); meshes++;
+    }
+
+    /* 车道虚线：沿道路中心线每 12 m 一段 5 m 长的短条，实例化 */
+    const dashGeo = new THREE.BoxGeometry(0.16, 0.02, 5);
+    const totalLen = route.S[run.b] - route.S[run.a];
+    const cnt = Math.max(1, Math.floor(totalLen / 12));
+    const dashes = new THREE.InstancedMesh(dashGeo, lineMat, cnt * 2);
+    const d = new THREE.Object3D();
+    let di = 0;
+    for (let k = 0; k < cnt; k++) {
+      const s = route.S[run.a] + k * 12 + 3;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        d.position.set(
+          f.pos.x + f.right.x * side * 18,
+          0.05,
+          f.pos.z + f.right.z * side * 18
+        );
+        d.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        d.updateMatrix();
+        dashes.setMatrixAt(di++, d.matrix);
+      }
+    }
+    dashes.count = di;
+    dashes.instanceMatrix.needsUpdate = true;
+    dashes.frustumCulled = false;
+    group.add(dashes);
+    meshes++;
+
+    /* 路灯：沿外侧人行道每 28 m 一根，灯头自发光。
+       灯杆与灯头各一个 InstancedMesh（2 个 draw call），
+       材质不同无法合并，但这个数量可以接受。 */
+    const lampCnt = Math.max(1, Math.floor(totalLen / 28));
+    const poleGeo = new THREE.CylinderGeometry(0.11, 0.14, 8, 6);
+    poleGeo.translate(0, 4, 0);
+    const headGeo = new THREE.BoxGeometry(0.9, 0.16, 0.34);
+    const poles = new THREE.InstancedMesh(poleGeo, MAT.metal, lampCnt * 2);
+    const heads = new THREE.InstancedMesh(headGeo, MAT.strip, lampCnt * 2);
+    const dl = new THREE.Object3D();
+    let li = 0;
+    for (let k = 0; k < lampCnt; k++) {
+      const s = route.S[run.a] + k * 28 + 14;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        const lx = f.pos.x + f.right.x * side * 27.6;
+        const lz = f.pos.z + f.right.z * side * 27.6;
+        dl.position.set(lx, 0, lz);
+        dl.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        dl.scale.set(1, 1, 1);
+        dl.updateMatrix(); poles.setMatrixAt(li, dl.matrix);
+        dl.position.set(lx, 8, lz);
+        dl.updateMatrix(); heads.setMatrixAt(li, dl.matrix);
+        li++;
+      }
+    }
+    poles.count = li; heads.count = li;
+    poles.instanceMatrix.needsUpdate = true; heads.instanceMatrix.needsUpdate = true;
+    poles.frustumCulled = false; heads.frustumCulled = false;
+    group.add(poles, heads);
+    meshes += 2;
+    if (typeof G !== 'undefined' && G) G.lampCount = li;
+  }
+  if (typeof G !== 'undefined' && G) G.roadStats = { runs: runs.length, meshes };
+  return meshes;
+}
+
 /* ---------------- 地面 / 河流 ---------------- */
 function buildGround(route, group) {
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000, 1, 1), MAT.ground);
+  /* 地面平面必须盖住整条线路：线路可延伸到 ±20 km，
+     原来固定 14 km 且以原点居中，远端建筑会「悬在虚空里」。
+     改为按线路中点居中、边长 60 km。 */
+  const midPt = route.frameAt(route.length * 0.5).pos;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000, 1, 1), MAT.ground);
   plane.rotation.x = -PI / 2;
-  plane.position.y = -0.05;
+  plane.position.set(midPt.x, -0.05, midPt.z);
   plane.receiveShadow = true;
   group.add(plane);
 
@@ -66864,97 +67433,203 @@ function distToRiver(x, z, pts) {
 
 /* ---------------- 城市 ---------------- */
 function buildCity(route, group, riverPts) {
-  const cbd = [{ x: 0, z: 0, r: 0, p: 0 }];
-  const lujiazui = route.projectLL(31.2365, 121.5055);
-  const peopleSq = route.projectLL(31.2329, 121.4696);
-  const xujiahui = route.projectLL(31.1936, 121.4363);
-  const hongkou = route.projectLL(31.2689, 121.4793);
-  const centers = [
-    { x: lujiazui.x, z: lujiazui.z, r: 900, h: 250 },
-    { x: peopleSq.x, z: peopleSq.z, r: 1600, h: 95 },
-    { x: xujiahui.x, z: xujiahui.z, r: 1200, h: 80 },
-    { x: hongkou.x, z: hongkou.z, r: 1200, h: 60 }
-  ];
-  const heightAt = (x, z) => {
-    let h = 14 + RNG() * 16;
-    for (const c of centers) {
-      const d = Math.hypot(x - c.x, z - c.z);
-      if (d < c.r) h = Math.max(h, c.h * Math.pow(1 - d / c.r, 1.8) + 12);
-    }
-    return h;
+  /* ---- P5：分区驱动的城市 ----
+     原来是把沿线走廊按高度分 3 桶、每桶一个 InstancedMesh 铺方盒子。
+     现在改为：按位置查所属城市分区 → 取该区允许的建筑原型 → 分组实例化。
+     分区数据在 45_city_data.js，原型几何在 47_city_proto.js。
+     draw call 预算：8 种原型 × 1 个材质 = 8，远低于原来的 3 桶 + 树。 */
+  const districts = resolveCityDistricts(route);
+
+  /* 地标避让表：城市建筑不能压在地标上。
+     半径按地标体量给：塔类/穹顶类大（150-200 m），塔/寺/教堂中等（90 m）。
+     不避让的后果是「静安寺被一栋 140 m 塔楼盖住」，而且相机贴近时会
+     直接黑屏（在建筑内部）。 */
+  const LM_CLEAR = {
+    pearl: 200, twist: 190, swfc: 180, jinmao: 170, bund: 260,
+    stadium: 160, museum: 150, temple: 110, pagoda: 90, church: 100,
+    shells: 170, dome_station: 210, egg: 110, funnel: 160
   };
-  const buckets = [[], [], []];
-  const rng = mulberry32(77123);
-  for (let s = 240; s < route.length - 200; s += 44) {
-    const f = route.frameAt(s);
-    for (const side of [-1, 1]) {
-      const n = 2 + Math.floor(rng() * 2);
-      for (let k = 0; k < n; k++) {
-        const lat = side * (40 + rng() * 300);
-        const along = (rng() - 0.5) * 40;
-        const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.tan, along);
-        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 26) continue;
-        let nearStation = false;
-        for (const st of route.stations) {
-          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 34) { nearStation = true; break; }
-          if (st.y < -2) {
-            const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
-            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 45) { nearStation = true; break; }
-          }
-        }
-        if (nearStation) continue;
-        const h = heightAt(p.x, p.z) * (0.55 + rng() * 0.9);
-        const w = 22 + rng() * 30, dp = 22 + rng() * 32;
-        const cls = h < 30 ? 0 : h < 85 ? 1 : 2;
-        buckets[cls].push({ x: p.x, y: 0, z: p.z, w, h, d: dp, rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.18, c: rng() });
-      }
+  const lmSites = [];
+  if (typeof LANDMARKS !== 'undefined') {
+    for (const lm of LANDMARKS) {
+      const w = route.projectLL(lm.lat, lm.lon);
+      lmSites.push({ x: w.x, z: w.z, r: LM_CLEAR[lm.kind] || 120 });
     }
-  }
-  for (let c = 0; c < 3; c++) {
-    const arr = buckets[c];
-    if (!arr.length) continue;
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    const mat = MAT.bld[c * 3 + Math.floor(RNG() * 3)] || MAT.bld[0];
-    const im = new THREE.InstancedMesh(geo, mat, arr.length);
-    const d = new THREE.Object3D();
-    arr.forEach((b, i) => {
-      d.position.set(b.x, b.h / 2, b.z);
-      d.rotation.set(0, b.rot, 0);
-      d.scale.set(b.w, b.h, b.d);
-      d.updateMatrix();
-      im.setMatrixAt(i, d.matrix);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.castShadow = false; im.receiveShadow = false;
-    im.frustumCulled = false;
-    group.add(im);
   }
 
-  // 树木
-  const treeN = 320;
+  const rng = mulberry32(77123);
+  const items = [];
+  const districtHits = new Set();
+
+  /* 关键：建筑必须落在**格网**上，而不是随机撒点。
+     随机撒点会让大体量街区互相重叠，看起来是一张黑毯子 —— 没有一点
+     街道缝隙，就是典型的「像 SimCity 不像上海」。
+     这里按分区街区尺度推算格距，间距取街区的 1.45 倍，保证楼间留出马路；
+     再用填充率 district.density 决定填不填。
+     注意：必须用**累加步长**推进，不能用「采样序号取模」——
+     后者会因为步长与采样间隔不是整数倍而漏掉绝大部分行。 */
+  let sPos = 260;
+  let guard = 0;
+  while (sPos < route.length - 220 && guard < 4000) {
+    guard++;
+    const f = route.frameAt(sPos);
+    const probe = f.pos.clone().addScaledVector(f.right, 90);
+    const dist0 = cityDistrictAt(probe.x, probe.z, districts);
+    const bs = dist0.block || [80, 160];
+    /* 格距上限 150 m：再大就会变成「每 200 m 才一栋楼」的空旷感。
+       真实上海街区虽有 200 m 级的，但街区内部是多栋小楼，不是一栋巨构。 */
+    const latStep = Math.min(150, (bs[0] + bs[1]) * 0.5 * 1.45);
+
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 7; k++) {
+        const lat = side * (72 + k * latStep);
+        const along = (rng() - 0.5) * latStep * 0.4;
+        const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.tan, along);
+        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 30) continue;
+
+        let blocked = false;
+        let nearestSt = 1e9;
+        for (const st of route.stations) {
+          const dSt = Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z);
+          if (dSt < nearestSt) nearestSt = dSt;
+          if (dSt < 36) { blocked = true; break; }
+          if (st.y < -2) {
+            const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
+            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
+          }
+        }
+        /* 地标避让 */
+        if (!blocked) {
+          for (const lm of lmSites) {
+            if (Math.hypot(p.x - lm.x, p.z - lm.z) < lm.r) { blocked = true; break; }
+          }
+        }
+        if (blocked) continue;
+
+        const dist = cityDistrictAt(p.x, p.z, districts);
+        districtHits.add(dist.id);
+        if (rng() > (dist.density || 0.7)) continue;
+
+        const rH = rng(), rJ = rng(), rP = rng(), rW = rng(), rD = rng(), rT = rng(), rC = rng();
+        const dbs = dist.block || [80, 160];
+        /* 楼宽只能取街区的一个零头：街区 80–220 m，单栋楼通常 18–70 m。
+           之前直接把 block 当楼宽，结果全是「100 m 宽 20 m 高」的薄饼。 */
+        const w = 16 + rW * Math.min(54, dbs[1] * 0.34);
+        const d = 14 + rD * Math.min(46, dbs[1] * 0.28);
+        /* 注意：CITY_FALLBACK 没有 x/z 字段。直接减会得到 NaN，
+           高度变 NaN -> 缩放矩阵失效 -> 建筑整批不可见（且不报错）。
+           这里兜底成「以自身为原点」，衰减取最大值。 */
+        const cx = dist.x == null ? p.x : dist.x;
+        const cz = dist.z == null ? p.z : dist.z;
+        let h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        /* 车站周边限高：真实车站是开放空间（站前广场、公交枢纽、低层配套），
+           不会紧贴着盖一栋 150 m 塔楼。原来建筑高度只看分区与离中心的距离，
+           完全不知道车站在哪，导致站旁天际线不合理。
+             60 m 内   -> 压到 35%
+             60–220 m  -> 从 35% 线性恢复到 100%
+             220 m 外  -> 不限制 */
+        if (nearestSt < 220) {
+          const k = nearestSt <= 60 ? 0.35 : 0.35 + 0.65 * ((nearestSt - 60) / 160);
+          h *= k;
+        }
+        items.push({
+          proto: cityPickProto(dist.kind, rP),
+          x: p.x, y: 0, z: p.z,
+          w, h, d,
+          rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.25,
+          tint: 0.80 + rT * 0.34,
+          warmth: rC
+        });
+      }
+    }
+    sPos += latStep * 0.7;
+  }
+
+  /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
+     用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
+  /* 高架站下方铺一块站前广场：否则车站像是「立在一片空地上」。
+     全部用实例化，26 个站只占 1 个 draw call。 */
+  const plazaStations = route.stations.filter(st => st.frame.pos.y > 3 && !st.synthetic);
+  if (plazaStations.length) {
+    const plazaGeo = new THREE.BoxGeometry(1, 1, 1);
+    const plazaMat = new THREE.MeshStandardMaterial({ color: 0x9a9fa2, roughness: 0.94, metalness: 0.02 });
+    const plazas = new THREE.InstancedMesh(plazaGeo, plazaMat, plazaStations.length);
+    const dp = new THREE.Object3D();
+    plazaStations.forEach((st, k) => {
+      const f = st.frame;
+      dp.position.set(f.pos.x, 0.10, f.pos.z);
+      dp.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+      dp.scale.set(30, 0.2, 118);   /* 比两侧道路内缘（21.2 m）略宽即可，太宽会盖住车道 */
+      dp.updateMatrix();
+      plazas.setMatrixAt(k, dp.matrix);
+    });
+    plazas.instanceMatrix.needsUpdate = true;
+    plazas.frustumCulled = false;
+    group.add(plazas);
+  }
+
+  const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
+  const built = buildCityChunked(group, items, cityMat);
+  /* 站周限高验证：统计距最近车站 100 m 内的最高建筑 */
+  let maxNearSt = 0, cntNearSt = 0;
+  for (const it of items) {
+    let d = 1e9;
+    for (const st of route.stations) {
+      const dd = Math.hypot(it.x - st.frame.pos.x, it.z - st.frame.pos.z);
+      if (dd < d) d = dd;
+    }
+    if (d < 100) { cntNearSt++; if (it.h > maxNearSt) maxNearSt = it.h; }
+  }
+  G.cityStats = {
+    buildings: items.length,
+    chunks: built.chunks,
+    meshes: built.meshes,
+    districts: districtHits.size,
+    nearStation: cntNearSt,
+    maxHeightNearStation: Math.round(maxNearSt)
+  };
+  /* 首次建好后立刻按当前相机刷一次可见性，避免第一帧整城不显示 */
+  if (camera) updateCityLOD(camera.position);
+
+
+  /* 行道树
+     原来的实现有两个问题：
+     1) 位置用 f.pos（线路中心），高架段的 y 是十几米 —— 树直接浮在空中；
+     2) 只有 320 棵，撒在 14–38 m 的随机横向位置，看不出成行。
+     改为：贴地（y 由地面起算）、沿道路外侧人行道成行布置、间隔 14 m。 */
+  const treeN = 1400;
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.22, 2.2, 5);
   const crownGeo = new THREE.IcosahedronGeometry(1.7, 0);
   const trunks = new THREE.InstancedMesh(trunkGeo, MAT.trunk, treeN);
   const crowns = new THREE.InstancedMesh(crownGeo, MAT.tree, treeN);
   const dt = new THREE.Object3D();
   let tn = 0;
-  for (let i = 0; i < treeN * 3 && tn < treeN; i++) {
-    const s = 200 + RNG() * (route.length - 400);
+  const treeStep = 14;
+  for (let s = 160; s < route.length - 160 && tn < treeN; s += treeStep) {
     const f = route.frameAt(s);
-    const side = RNG() < 0.5 ? -1 : 1;
-    const p = f.pos.clone().addScaledVector(f.right, side * (14 + RNG() * 24));
-    if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 8) continue;
-    const h = 1 + RNG() * 0.8;
-    dt.position.set(p.x, 1.1 * h, p.z); dt.rotation.set(0, RNG() * TAU, 0); dt.scale.set(h, h, h);
-    dt.updateMatrix(); trunks.setMatrixAt(tn, dt.matrix);
-    dt.position.y = 2.6 * h; dt.scale.set(h * (0.8 + RNG() * 0.5), h, h * (0.8 + RNG() * 0.5));
-    dt.updateMatrix(); crowns.setMatrixAt(tn, dt.matrix);
-    tn++;
+    for (const side of [-1, 1]) {
+      if (tn >= treeN) break;
+      /* 外侧人行道（27–29 m）之外再留 1 m，避开路灯 */
+      const lat = side * (29 + RNG() * 2.5);
+      const p = f.pos.clone().addScaledVector(f.right, lat);
+      if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 8) continue;
+      const h = 0.95 + RNG() * 0.7;
+      /* 关键：y 从地面起算，不要用 f.pos.y（那是线路高度） */
+      dt.position.set(p.x, 1.1 * h, p.z);
+      dt.rotation.set(0, RNG() * TAU, 0);
+      dt.scale.set(h, h, h);
+      dt.updateMatrix(); trunks.setMatrixAt(tn, dt.matrix);
+      dt.position.y = 2.6 * h;
+      dt.scale.set(h * (0.8 + RNG() * 0.5), h, h * (0.8 + RNG() * 0.5));
+      dt.updateMatrix(); crowns.setMatrixAt(tn, dt.matrix);
+      tn++;
+    }
   }
   trunks.count = tn; crowns.count = tn;
   trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true;
   trunks.frustumCulled = false; crowns.frustumCulled = false;
   group.add(trunks, crowns);
+  if (typeof G !== 'undefined' && G) G.treeCount = tn;
 }
 
 /* ---------------- 地标 ---------------- */
@@ -66966,11 +67641,15 @@ function buildLandmarks(route, group, theme) {
   });
   const concreteMat = new THREE.MeshStandardMaterial({ color: 0xb9b3a8, roughness: 0.8, metalness: 0.1 });
 
+  let builtCount = 0;
+  const builtKinds = [];
   for (const lm of LANDMARKS) {
     const p = route.projectLL(lm.lat, lm.lon);
     let nearest = 1e9;
     for (const st of route.stations) nearest = Math.min(nearest, Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z));
     if (nearest > 3600) continue;
+    builtCount++;
+    builtKinds.push(lm.kind);
     const g = new THREE.Group();
     g.position.set(p.x, 0, p.z);
 
@@ -67066,9 +67745,154 @@ function buildLandmarks(route, group, theme) {
         color: 0x9fc6d8, roughness: 0.08, metalness: 0.5, transparent: true, opacity: 0.55, envMapIntensity: 1.3
       }));
       dome.position.y = 22; g.add(dome);
+
+    /* ================= P5-3 新增 7 个地标 ================= */
+
+    } else if (lm.kind === 'temple') {
+      /* 静安寺：台基 + 主殿 + 金色歇山顶 + 左右配殿 */
+      const stone = new THREE.MeshStandardMaterial({ color: 0x8a7f6d, roughness: 0.85 });
+      const gold = new THREE.MeshStandardMaterial({
+        color: 0xc9a24a, roughness: 0.35, metalness: 0.75,
+        emissive: new THREE.Color(0x6b4a10), emissiveIntensity: 0.35
+      });
+      const base = new THREE.Mesh(new THREE.BoxGeometry(76, 6, 56), stone);
+      base.position.y = 3; g.add(base);
+      const hall = new THREE.Mesh(new THREE.BoxGeometry(52, 20, 34), stone);
+      hall.position.y = 16; g.add(hall);
+      /* 歇山顶：用四坡四边形近似 —— 上小下大的两段 */
+      const roof1 = new THREE.Mesh(new THREE.CylinderGeometry(19, 40, 9, 4), gold);
+      roof1.position.y = 30.5; roof1.rotation.y = PI / 4; roof1.scale.z = 0.72;
+      g.add(roof1);
+      const roof2 = new THREE.Mesh(new THREE.CylinderGeometry(6, 19, 6, 4), gold);
+      roof2.position.y = 38; roof2.rotation.y = PI / 4; roof2.scale.z = 0.72;
+      g.add(roof2);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(20, 12, 22), stone);
+        wing.position.set(sx * 40, 12, 6); g.add(wing);
+        const wr = new THREE.Mesh(new THREE.CylinderGeometry(8, 16, 6, 4), gold);
+        wr.position.set(sx * 40, 21, 6); wr.rotation.y = PI / 4; wr.scale.z = 0.8;
+        g.add(wr);
+      }
+
+    } else if (lm.kind === 'pagoda') {
+      /* 龙华塔：八角七层，逐层收分，塔刹 */
+      const brick = new THREE.MeshStandardMaterial({ color: 0x9d7a5c, roughness: 0.9 });
+      const eave = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.75 });
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(11, 12, 5, 8), brick);
+      base.position.y = 2.5; g.add(base);
+      let y = 5;
+      for (let i = 0; i < 7; i++) {
+        const r = 7.4 - i * 0.72;
+        const h = 4.4 - i * 0.18;
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.82, r, h, 8), brick);
+        body.position.y = y + h / 2; g.add(body);
+        const eaveRing = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.28, r * 1.12, 0.7, 8), eave);
+        eaveRing.position.y = y + h; g.add(eaveRing);
+        y += h + 0.7;
+      }
+      /* 塔刹用铜金色。注意不能引用 temple 分支里的 gold ——
+         那是块级作用域，在 pagoda 分支里取不到，运行时会抛 ReferenceError。 */
+      const spireMat = new THREE.MeshStandardMaterial({ color: 0xb08d3f, roughness: 0.4, metalness: 0.7 });
+      const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.1, 7, 8), spireMat);
+      spire.position.y = y + 3.5; g.add(spire);
+
+    } else if (lm.kind === 'church') {
+      /* 徐家汇天主教堂：中殿 + 双尖塔 + 玫瑰窗 */
+      const brickM = new THREE.MeshStandardMaterial({ color: 0x8d5a44, roughness: 0.9 });
+      const roofM = new THREE.MeshStandardMaterial({ color: 0x3b3a3c, roughness: 0.8 });
+      const nave = new THREE.Mesh(new THREE.BoxGeometry(28, 22, 64), brickM);
+      nave.position.y = 11; g.add(nave);
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 64, 3), roofM);
+      ridge.rotation.z = PI / 2; ridge.rotation.y = PI / 2;
+      ridge.position.y = 27; ridge.scale.z = 0.55; g.add(ridge);
+      for (const sx of [-1, 1]) {
+        const tower = new THREE.Mesh(new THREE.BoxGeometry(11, 42, 11), brickM);
+        tower.position.set(sx * 15, 21, 34); g.add(tower);
+        const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 7.6, 18, 8), roofM);
+        spire.position.set(sx * 15, 51, 34); g.add(spire);
+      }
+      const rose = new THREE.Mesh(new THREE.CircleGeometry(5, 16), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.4, 1.15, 0.75), toneMapped: false
+      }));
+      rose.position.set(0, 20, 32.2); g.add(rose);
+
+    } else if (lm.kind === 'shells') {
+      /* 东方体育中心：三片弧形壳体 */
+      const shellM = new THREE.MeshStandardMaterial({
+        color: 0xd7dee2, roughness: 0.3, metalness: 0.55, side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 3; i++) {
+        const s = new THREE.Mesh(
+          new THREE.SphereGeometry(34 + i * 6, 22, 12, 0, TAU, 0, PI * 0.42),
+          shellM
+        );
+        s.position.set((i - 1) * 44, 6, (i - 1) * 16);
+        s.scale.set(1.25, 1.0, 0.85);
+        s.rotation.y = i * 0.5;
+        g.add(s);
+      }
+      const pool = new THREE.Mesh(new THREE.CylinderGeometry(80, 80, 0.6, 28), MAT.water || shellM);
+      pool.position.y = 0.3; g.add(pool);
+
+    } else if (lm.kind === 'dome_station') {
+      /* 上海南站：圆形大屋盖 + 环状基座 */
+      const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(105, 112, 16, 32, 1, true), new THREE.MeshStandardMaterial({
+        color: 0xa8b0b3, roughness: 0.65, metalness: 0.25, side: THREE.DoubleSide
+      }));
+      baseRing.position.y = 8; g.add(baseRing);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 32, 14, 0, TAU, 0, PI * 0.34), new THREE.MeshPhysicalMaterial({
+        color: 0xcfd8dc, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.62, envMapIntensity: 1.4,
+        side: THREE.DoubleSide
+      }));
+      dome.position.y = 14; g.add(dome);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(112, 2.2, 8, 40), MAT.metal);
+      rim.position.y = 16; rim.rotation.x = PI / 2; g.add(rim);
+      const plaza = new THREE.Mesh(new THREE.CylinderGeometry(150, 150, 0.8, 32), new THREE.MeshStandardMaterial({ color: 0x6e7376, roughness: 0.95 }));
+      plaza.position.y = 0.4; g.add(plaza);
+
+    } else if (lm.kind === 'egg') {
+      /* 五角场彩蛋：椭球发光体 + 环形基座 */
+      const eggMat = new THREE.MeshPhysicalMaterial({
+        color: 0xdfe9ee, roughness: 0.18, metalness: 0.4,
+        emissive: new THREE.Color(0x2a4a66), emissiveIntensity: 0.8,
+        transparent: true, opacity: 0.78, envMapIntensity: 1.6
+      });
+      const egg = new THREE.Mesh(new THREE.SphereGeometry(15, 24, 18), eggMat);
+      egg.position.y = 22; egg.scale.set(1, 1.35, 1);
+      g.add(egg);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 4, 28), new THREE.MeshStandardMaterial({
+        color: 0x8f979b, roughness: 0.5, metalness: 0.5
+      }));
+      ring.position.y = 2; g.add(ring);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(23, 28), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0.6, 1.1, 1.5), toneMapped: false, transparent: true, opacity: 0.5
+      }));
+      glow.position.y = 4.1; glow.rotation.x = -PI / 2; g.add(glow);
+
+    } else if (lm.kind === 'funnel') {
+      /* 世博轴阳光谷：六个倒锥形采光罩 */
+      const funnelMat = new THREE.MeshStandardMaterial({
+        color: 0xcfe0e6, roughness: 0.2, metalness: 0.45, side: THREE.DoubleSide
+      });
+      const glassM = new THREE.MeshPhysicalMaterial({
+        color: 0x9fc6d8, roughness: 0.06, metalness: 0.5, transparent: true, opacity: 0.42, envMapIntensity: 1.5,
+        side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 6; i++) {
+        const f = new THREE.Mesh(new THREE.CylinderGeometry(26, 7, 30, 20, 1, true), glassM);
+        f.position.set(0, 15, -160 + i * 64);
+        g.add(f);
+        const lip = new THREE.Mesh(new THREE.TorusGeometry(26, 1.1, 6, 28), funnelMat);
+        lip.position.set(0, 30, -160 + i * 64); lip.rotation.x = PI / 2;
+        g.add(lip);
+      }
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(30, 3, 420), new THREE.MeshStandardMaterial({ color: 0x9aa3a6, roughness: 0.7, metalness: 0.3 }));
+      deck.position.y = 1.5; g.add(deck);
     }
     group.add(g);
   }
+  /* 统计本次实际建造的地标（离线路 3.6 km 内的才建），供回归与调试用 */
+  if (typeof G !== 'undefined' && G) G.landmarks = { total: LANDMARKS.length, built: builtCount, kinds: builtKinds };
 }
 
 
@@ -68151,6 +68975,103 @@ class StationCrowd {
 }
 
 
+/* ===== 45_city_data.js ===== */
+/* =====================================================================
+   城市分区数据（P5-0 / v2.0）
+   ---------------------------------------------------------------------
+   为什么需要分区：如果全城用同一套「随机高度方盒子」，结果一定像
+   SimCity 而不像上海。真实城市的肌理是分层的 —— 陆家嘴是超高层塔楼、
+   老城厢是低矮密集里弄、衡复一带是梧桐树下的低层洋房。
+
+   本文件只放**数据与纯函数**，不碰 THREE、不生成几何。
+   ===================================================================== */
+
+/* 分区：中心用经纬度（与 LANDMARKS / RIVER_PATH 同一套坐标系），
+   半径单位米。hMin/hMax 是该区建筑高度区间，block 是街区边长区间。 */
+const CITY_DISTRICTS = [
+  { id: 'lujiazui',   name: '陆家嘴',     lat: 31.2365, lon: 121.5055, r: 1500, kind: 'tower',    hMin: 90,  hMax: 320, block: [90, 170],  density: 0.85 },
+  { id: 'bund',       name: '外滩',       lat: 31.2400, lon: 121.4900, r: 850,  kind: 'heritage', hMin: 20,  hMax: 48,  block: [60, 100],  density: 0.80 },
+  { id: 'peoplesq',   name: '人民广场',   lat: 31.2329, lon: 121.4696, r: 1700, kind: 'office',   hMin: 40,  hMax: 120, block: [80, 150],  density: 0.80 },
+  { id: 'french',     name: '衡复风貌',   lat: 31.2050, lon: 121.4450, r: 1600, kind: 'villa',    hMin: 10,  hMax: 26,  block: [55, 105],  density: 0.70 },
+  { id: 'laocheng',   name: '老城厢',     lat: 31.2200, lon: 121.4900, r: 1200, kind: 'lane',     hMin: 8,   hMax: 22,  block: [40, 80],   density: 0.92 },
+  { id: 'xujiahui',   name: '徐家汇',     lat: 31.1936, lon: 121.4363, r: 1300, kind: 'office',   hMin: 45,  hMax: 140, block: [80, 140],  density: 0.85 },
+  { id: 'hongkou',    name: '虹口',       lat: 31.2689, lon: 121.4793, r: 1400, kind: 'mixed',    hMin: 20,  hMax: 95,  block: [70, 130],  density: 0.75 },
+  { id: 'zhongshan',  name: '中山公园',   lat: 31.2200, lon: 121.4200, r: 1200, kind: 'office',   hMin: 30,  hMax: 90,  block: [80, 140],  density: 0.80 },
+  { id: 'wujiaochang',name: '五角场',     lat: 31.3000, lon: 121.5150, r: 1300, kind: 'mixed',    hMin: 25,  hMax: 100, block: [80, 150],  density: 0.80 },
+  { id: 'pudong_s',   name: '浦东腹地',   lat: 31.1800, lon: 121.5600, r: 2200, kind: 'mixed',    hMin: 20,  hMax: 80,  block: [100, 190], density: 0.60 },
+  { id: 'minhang',    name: '闵行',       lat: 31.1100, lon: 121.3800, r: 2600, kind: 'mixed',    hMin: 14,  hMax: 70,  block: [110, 200], density: 0.55 },
+  { id: 'baoshan',    name: '宝山',       lat: 31.3600, lon: 121.4800, r: 2400, kind: 'mixed',    hMin: 14,  hMax: 65,  block: [110, 200], density: 0.55 }
+];
+
+/* 分区类型 → 可用建筑原型及权重。
+   原型名对应 47_city_proto.js 里的 CITY_PROTO。 */
+const CITY_KIND_PROTO = {
+  tower:    [['towerSetback', 0.35], ['tower', 0.40], ['podium', 0.25]],
+  office:   [['tower', 0.45], ['slab', 0.30], ['podium', 0.25]],
+  mixed:    [['slab', 0.40], ['tower', 0.25], ['lane', 0.20], ['podium', 0.15]],
+  villa:    [['villa', 0.70], ['slab', 0.30]],
+  lane:     [['lane', 0.80], ['villa', 0.20]],
+  heritage: [['heritage', 0.80], ['podium', 0.20]],
+  factory:  [['factory', 0.80], ['silo', 0.20]]
+};
+
+/* 裸地：不属于任何分区时使用（郊区/工业带） */
+const CITY_FALLBACK = { id: 'rural', name: '外围', kind: 'factory', hMin: 8, hMax: 30, block: [120, 220], density: 0.35 };
+
+/* 把经纬度中心投影成世界坐标（需要传 route.projectLL）。
+   返回带 x/z 的分区数组，按半径从大到小排序，便于「小区域优先命中」。 */
+function resolveCityDistricts(route) {
+  const out = [];
+  for (const d of CITY_DISTRICTS) {
+    const p = route.projectLL(d.lat, d.lon);
+    out.push(Object.assign({}, d, { x: p.x, z: p.z }));
+  }
+  out.sort((a, b) => a.r - b.r);
+  return out;
+}
+
+/* 给定世界坐标，返回所属分区；都不命中则返回 fallback。
+   districts 必须已排序（resolveCityDistricts 已处理）。 */
+function cityDistrictAt(x, z, districts) {
+  if (!districts || !districts.length) return CITY_FALLBACK;
+  for (const d of districts) {
+    const dx = x - d.x, dz = z - d.z;
+    if (dx * dx + dz * dz <= d.r * d.r) return d;
+  }
+  return CITY_FALLBACK;
+}
+
+/* 按权重从分区允许的原型里挑一个；rnd 传 0..1 的随机数，便于确定性重放 */
+function cityPickProto(kind, rnd) {
+  const list = CITY_KIND_PROTO[kind] || CITY_KIND_PROTO.mixed;
+  let acc = 0;
+  for (const [name, w] of list) {
+    acc += w;
+    if (rnd < acc) return name;
+  }
+  return list[list.length - 1][0];
+}
+
+/* 高度：分区基础高度 × 距中心衰减 × 随机抖动。
+   rndH 0..1 控制高度落点，rndJ 0..1 控制抖动。 */
+function cityBuildingHeight(district, dx, dz, rndH, rndJ) {
+  const d = Math.hypot(dx, dz);
+  const falloff = Math.max(0.25, 1 - Math.pow(d / (district.r || 1), 1.6));
+  const base = district.hMin + (district.hMax - district.hMin) * rndH;
+  const h = base * falloff * (0.75 + rndJ * 0.55);
+  /* 防线：任何输入异常都不要让高度变成 NaN（NaN 会静默摧毁整个实例的变换矩阵） */
+  if (!isFinite(h)) return Math.max(8, district.hMin || 10);
+  return Math.max(district.hMin * 0.4, h);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CITY_DISTRICTS, CITY_KIND_PROTO, CITY_FALLBACK,
+    resolveCityDistricts, cityDistrictAt, cityPickProto, cityBuildingHeight
+  };
+}
+
+
 /* ===== 46_weather.js ===== */
 /* =====================================================================
    天气：晴 / 雨 / 雾
@@ -68265,6 +69186,296 @@ function updateWeather(dt) {
 /* 雨天/雾天对制动的影响 */
 function weatherGrip() {
   return (WEATHER[weatherNow] || WEATHER.clear).grip;
+}
+
+/* 轮轨黏着系数（P3-1）：雨天钢轨有水膜，μ 从 0.33 掉到 0.18。
+   与 grip 的区别：grip 是旧的「制动力折扣」，这里给牵引/制动共用的绝对黏着。 */
+function weatherMu() {
+  if (weatherNow === 'rain') return 0.18;
+  if (weatherNow === 'fog') return 0.22;
+  return 0.33;
+}
+
+
+/* ===== 47_city_proto.js ===== */
+/* =====================================================================
+   建筑原型库（P5-1 / v2.0）
+   ---------------------------------------------------------------------
+   每个原型是一份**合并好的几何**（几种基础体拼成），运行时按原型分组用
+   InstancedMesh 绘制。8 种原型 = 8 个 draw call，这是城市能加入而不拖垮
+   帧率的前提（当前总 draw call 975，瓶颈在 CPU）。
+
+   坐标系约定：原型立在原点，底面 y=0，朝向 +z。
+   几何按**参考尺寸**建（ref），实例用 (w/ref.w, h/ref.h, d/ref.d) 缩放。
+   非等比缩放会让细节轻微变形，但在城市尺度下看不出来，换来的是
+   一套几何能吃下任意长宽高组合。
+   ===================================================================== */
+
+/* 合并工具：把若干已 translate 的几何合成一个 */
+function protoMerge(parts) {
+  if (typeof BufferGeometryUtils === 'undefined' || !BufferGeometryUtils.mergeGeometries) {
+    /* 兜底：合并不可用时返回第一个（不会崩，只是少了细节） */
+    return parts[0];
+  }
+  const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+  return merged || parts[0];
+}
+
+/* 一个盒子，中心落在 (x, y, z) */
+function protoBox(w, h, d, x, y, z) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x || 0, y || 0, z || 0);
+  return g;
+}
+
+/* ---------------- 8 种原型 ---------------- */
+
+const CITY_PROTO_DEF = {
+  /* 板楼：住宅主力。主体 + 女儿墙 + 屋顶电梯机房 */
+  slab: () => ({
+    ref: { w: 32, h: 58, d: 13 },
+    geo: protoMerge([
+      protoBox(32, 56, 13, 0, 28, 0),
+      protoBox(32.8, 1.4, 13.8, 0, 56.7, 0),      // 女儿墙
+      protoBox(6, 3.2, 6, -8, 58.2, 0)            // 电梯机房
+    ])
+  }),
+
+  /* 矩形塔楼：商务区主力 */
+  tower: () => ({
+    ref: { w: 28, h: 108, d: 28 },
+    geo: protoMerge([
+      protoBox(28, 104, 28, 0, 52, 0),
+      protoBox(29, 1.6, 29, 0, 105, 0),
+      protoBox(9, 4.5, 9, 0, 108, 0)              // 屋顶机房
+    ])
+  }),
+
+  /* 退台塔楼：核心商务区地标式体量，三段收分 + 顶冠 */
+  towerSetback: () => ({
+    ref: { w: 36, h: 178, d: 36 },
+    geo: protoMerge([
+      protoBox(36, 96, 36, 0, 48, 0),
+      protoBox(30, 52, 30, 0, 122, 0),
+      protoBox(23, 32, 23, 0, 164, 0),
+      protoBox(25, 2.2, 25, 0, 97.5, 0),          // 第一段收分线脚
+      protoBox(19, 1.8, 19, 0, 148.5, 0),         // 第二段线脚
+      protoBox(11, 9, 11, 0, 182, 0)              // 顶冠
+    ])
+  }),
+
+  /* 裙房 + 塔楼：商场上盖综合体 */
+  podium: () => ({
+    ref: { w: 52, h: 96, d: 44 },
+    geo: protoMerge([
+      protoBox(52, 20, 44, 0, 10, 0),             // 裙房
+      protoBox(53, 1.2, 45, 0, 20.6, 0),
+      protoBox(26, 72, 24, 0, 56, 0),             // 塔楼
+      protoBox(27, 1.4, 25, 0, 92.5, 0),
+      protoBox(8, 3.5, 8, 0, 95, 0)
+    ])
+  }),
+
+  /* 低层洋房：衡复风貌区。主体 + 简单坡顶 + 烟囱 */
+  villa: () => ({
+    ref: { w: 16, h: 15, d: 13 },
+    geo: protoMerge([
+      protoBox(16, 11, 13, 0, 5.5, 0),
+      protoBox(14, 3.4, 11, 0, 12.7, 0),          // 坡顶近似（收窄一段）
+      protoBox(11, 1.6, 9, 0, 14.8, 0),
+      protoBox(1.2, 2.4, 1.2, 4, 12, 2)           // 烟囱
+    ])
+  }),
+
+  /* 老式里弄：三开间连排，山墙分隔 */
+  lane: () => ({
+    ref: { w: 27, h: 13, d: 11 },
+    geo: protoMerge([
+      protoBox(8.4, 12, 11, -9.2, 6, 0),
+      protoBox(8.4, 12, 11, 0, 6, 0),
+      protoBox(8.4, 12, 11, 9.2, 6, 0),
+      protoBox(27.6, 1.2, 11.6, 0, 12.6, 0),      // 统一檐口
+      protoBox(27.6, 0.8, 11.2, 0, 0.4, 0)        // 台基
+    ])
+  }),
+
+  /* 大跨厂房：锯齿屋顶 + 高侧窗带 */
+  factory: () => ({
+    ref: { w: 62, h: 18, d: 32 },
+    geo: protoMerge([
+      protoBox(62, 14, 32, 0, 7, 0),
+      protoBox(20, 3.2, 33, -20, 15.6, 0),        // 锯齿顶（三段坡）
+      protoBox(20, 3.2, 33, 0, 15.6, 0),
+      protoBox(20, 3.2, 33, 20, 15.6, 0),
+      protoBox(63, 1.0, 33, 0, 14.2, 0)
+    ])
+  }),
+
+  /* 外滩历史建筑：厚重的石砌体量 + 檐口 + 中部塔冠 */
+  heritage: () => ({
+    ref: { w: 34, h: 42, d: 26 },
+    geo: protoMerge([
+      protoBox(34, 32, 26, 0, 16, 0),
+      protoBox(35.2, 2.4, 27.2, 0, 33.2, 0),      // 檐口
+      protoBox(24, 6, 20, 0, 37.5, 0),            // 退台
+      protoBox(18, 4, 16, 0, 41, 0),
+      protoBox(2.4, 3.6, 24, 0, 0, 13.2)          // 门廊柱列（前脸）
+    ])
+  }),
+
+  /* 筒仓 / 冷却塔：工业带点缀 */
+  silo: () => ({
+    ref: { w: 14, h: 34, d: 14 },
+    geo: protoMerge([
+      (() => { const g = new THREE.CylinderGeometry(6.4, 7.2, 32, 14); g.translate(0, 16, 0); return g; })(),
+      (() => { const g = new THREE.CylinderGeometry(7.4, 7.4, 2, 14); g.translate(0, 33, 0); return g; })()
+    ])
+  })
+};
+
+const CITY_PROTO_CACHE = new Map();
+
+/* 取原型（懒构造 + 缓存）。返回 { name, ref, geo } */
+function cityProto(name) {
+  const key = CITY_PROTO_DEF[name] ? name : 'slab';
+  if (CITY_PROTO_CACHE.has(key)) return CITY_PROTO_CACHE.get(key);
+  const built = CITY_PROTO_DEF[key]();
+  const out = { name: key, ref: built.ref, geo: built.geo };
+  CITY_PROTO_CACHE.set(key, out);
+  return out;
+}
+
+/* 远景 LOD：只保留一个盒子（12 三角面）。
+   原型本体 36–112 三角面，远景下这些细节完全看不见，但乘上几千栋就是
+   十几万面。换成盒子几何后，同一批实例的三角面降到 1/4 ~ 1/8。 */
+const CITY_FAR_GEO_CACHE = new Map();
+function cityProtoFar(name) {
+  const p = cityProto(name);
+  if (CITY_FAR_GEO_CACHE.has(p.name)) return CITY_FAR_GEO_CACHE.get(p.name);
+  const g = new THREE.BoxGeometry(p.ref.w, p.ref.h, p.ref.d);
+  g.translate(0, p.ref.h / 2, 0);
+  CITY_FAR_GEO_CACHE.set(p.name, g);
+  return g;
+}
+
+/* ---------------- 分块 + LOD 的城市实例化 ----------------
+   为什么要分块：
+   全局一个 InstancedMesh 时，`frustumCulled=false` —— 相机背后的建筑
+   也会被提交。分块后每个块是一个独立 mesh，`frustumCulled=true`，
+   three.js 会把不在视锥内的块**连 draw call 一起跳过**。
+   实测 1 号线城市约 1568 栋 / 8.6 万面，占全场景 200 万面的 4%，
+   所以省面本身收益不大；真正的收益是「相机背后的块完全不提交」。
+
+   块大小 1200 m：太小会让 draw call 变多（CPU 是当前瓶颈），
+   太大又失去了视锥剔除的粒度。1200 m 在一条 30 km 线路上约 25 个块。
+   --------------------------------------------------------------------- */
+const CITY_CHUNK = 1200;         // 分块边长（米）
+const CITY_LOD_DIST = 750;       // 超过这个距离改用远景盒子
+const CITY_VISIBLE_DIST = 3200;  // 超过这个距离整块隐藏
+
+let cityChunks = [];             // [{ cx, cz, near: [mesh], far: [mesh], x, z }]
+let cityMatRef = null;
+
+function buildCityChunked(group, items, material) {
+  cityChunks = [];
+  cityMatRef = material;
+  if (!items || !items.length) return { chunks: 0, meshes: 0 };
+
+  /* 按块 × 原型归类 */
+  const buckets = new Map();
+  for (const it of items) {
+    const kx = Math.floor(it.x / CITY_CHUNK);
+    const kz = Math.floor(it.z / CITY_CHUNK);
+    const key = kx + ',' + kz;
+    let ch = buckets.get(key);
+    if (!ch) {
+      ch = { kx, kz, byProto: new Map() };
+      buckets.set(key, ch);
+    }
+    const pk = CITY_PROTO_DEF[it.proto] ? it.proto : 'slab';
+    if (!ch.byProto.has(pk)) ch.byProto.set(pk, []);
+    ch.byProto.get(pk).push(it);
+  }
+
+  const d = new THREE.Object3D();
+  const col = new THREE.Color();
+  let meshCount = 0;
+
+  const makeMesh = (protoName, arr, far) => {
+    const proto = cityProto(protoName);
+    const geo = far ? cityProtoFar(protoName) : proto.geo;
+    const im = new THREE.InstancedMesh(geo, material, arr.length);
+    im.frustumCulled = true;          // 关键：让 three.js 跳过视锥外的块
+    arr.forEach((it, i) => {
+      d.position.set(it.x, it.y || 0, it.z);
+      d.rotation.set(0, it.rot || 0, 0);
+      d.scale.set(
+        Math.max(0.05, it.w / proto.ref.w),
+        Math.max(0.05, it.h / proto.ref.h),
+        Math.max(0.05, it.d / proto.ref.d)
+      );
+      d.updateMatrix();
+      im.setMatrixAt(i, d.matrix);
+      const t = it.tint == null ? 1 : it.tint;
+      col.setRGB(t, t, t * (0.97 + (it.warmth || 0) * 0.06));
+      im.setColorAt(i, col);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    im.castShadow = false;
+    im.receiveShadow = false;
+    im.visible = false;               // 由 updateCityLOD 决定
+    group.add(im);
+    meshCount++;
+    return im;
+  };
+
+  for (const [, ch] of buckets) {
+    const near = [], far = [];
+    for (const [pk, arr] of ch.byProto) {
+      near.push(makeMesh(pk, arr, false));
+      far.push(makeMesh(pk, arr, true));
+    }
+    /* 块中心用于距离判定 */
+    let sx = 0, sz = 0, n = 0;
+    for (const [, arr] of ch.byProto) for (const it of arr) { sx += it.x; sz += it.z; n++; }
+    cityChunks.push({ near, far, x: sx / n, z: sz / n });
+  }
+
+  return { chunks: cityChunks.length, meshes: meshCount };
+}
+
+/* 每帧调用：按相机距离切换 LOD 与整块可见性。
+   只遍历 chunk（约 25 个），不做任何矩阵运算，开销可忽略。
+   LOD 与可见性都带**滞回**（进入用近阈值、退出用远阈值），
+   否则相机停在阈值上时整块会在「细节/盒子」之间反复跳变。 */
+const CITY_LOD_HYST = 90;        // LOD 切换滞回（米）
+const CITY_VIS_HYST = 220;       // 可见性切换滞回（米）
+
+function updateCityLOD(camPos) {
+  if (!cityChunks.length || !camPos) return;
+  for (const ch of cityChunks) {
+    const dx = ch.x - camPos.x, dz = ch.z - camPos.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    /* 沿用上一帧状态做滞回判断 */
+    const wasNear = ch.isNear !== undefined ? ch.isNear : (dist < CITY_LOD_DIST);
+    const wasVis = ch.visible !== undefined ? ch.visible : (dist < CITY_VISIBLE_DIST);
+
+    const isNear = wasNear ? dist < CITY_LOD_DIST + CITY_LOD_HYST : dist < CITY_LOD_DIST - CITY_LOD_HYST;
+    const vis = wasVis ? dist < CITY_VISIBLE_DIST + CITY_VIS_HYST : dist < CITY_VISIBLE_DIST - CITY_VIS_HYST;
+
+    ch.isNear = isNear;
+    ch.visible = vis;
+    for (const m of ch.near) m.visible = vis && isNear;
+    for (const m of ch.far) m.visible = vis && !isNear;
+  }
+}
+
+/* 兼容旧调用：不想要分块时仍可用（当前 buildCity 已改走分块版本） */
+function buildCityProtos(group, items, material) {
+  const r = buildCityChunked(group, items, material);
+  return r.chunks ? r.chunks : 0;
 }
 
 
@@ -68440,6 +69651,9 @@ function nextSignalAhead() {
 const IX = {
   turnouts: [],        // { s, pos, t, target, blades:[], lamp }
   routes: [],
+  table: null,         // P3-3 进路表 / 敌对矩阵
+  locks: [],
+  occupiedRes: [],
   active: 'main',
   locked: {},
   group: null,
@@ -68464,9 +69678,54 @@ const IX = {
       { id: 'revB', name: '终点折返', sub: 'B 渡线反位', states: { A: 0, B: 1 }, conflicts: ['main', 'revA', 'both'] },
       { id: 'both', name: '两端折返', sub: 'A/B 渡线同时反位', states: { A: 1, B: 1 }, conflicts: ['main', 'revA', 'revB'] }
     ];
+    /* 进路表与敌对矩阵（P3-3）：每站一条正线通过 + 两端折返，
+       浏览器侧只做动画与按钮，判定统一走 55_routes.js 的纯函数。 */
+    this.table = (typeof buildRouteTable === 'function')
+      ? buildRouteTable({
+        stations: route.stations.map(s => ({ idx: s.index, zh: s.zh, stopS: s.stopS })),
+        turnouts: this.turnouts.map(t => ({ key: t.key, s: t.s }))
+      })
+      : null;
+    this.locks = [];
+    this.occupiedRes = [];
     this.active = 'main';
     this.applyRoute('main', true);
     this.renderIx();
+  },
+
+  /* UI 的 4 个按钮 → 进路表 id。main 是「当前站正线通过」的别名 */
+  routeTableId(uiId) {
+    if (!this.table || !this.table.byId) return null;
+    if (uiId === 'main') {
+      const idx = (typeof G !== 'undefined' && G.targetIdx != null) ? G.targetIdx : 0;
+      return this.table.byId[`S${idx}-main`] ? `S${idx}-main` : null;
+    }
+    return this.table.byId[uiId] ? uiId : null;
+  },
+
+  occupiedResources() {
+    const occ = [];
+    const near = (s, t) => Math.abs(s - t.s) < 75;
+    for (const t of this.turnouts) {
+      let busy = (typeof G !== 'undefined' && G.mode === 'driving' && near(G.s, t));
+      if (!busy) {
+        for (const ai of (typeof aiTrains !== 'undefined' ? aiTrains : [])) {
+          if (!ai.dead && near(ai.s, t)) { busy = true; break; }
+        }
+      }
+      if (busy) occ.push('ix:' + t.key);
+    }
+    return occ;
+  },
+
+  /* 列车在渡线区段时锁闭当前进路；出清后解锁 */
+  syncLocks() {
+    if (!this.table) return;
+    this.occupiedRes = this.occupiedResources();
+    const rid = this.routeTableId(this.active);
+    this.locks = [];
+    const r = rid ? this.table.byId[rid] : null;
+    if (r && r.resources.some(x => this.occupiedRes.indexOf(x) >= 0)) this.locks.push(rid);
   },
 
   buildCrossover(route, s, key) {
@@ -68557,6 +69816,7 @@ const IX = {
   },
 
   update(dt) {
+    this.syncLocks();
     let moving = false;
     for (const t of this.turnouts) {
       if (Math.abs(t.t - t.target) < 0.001) continue;
@@ -68597,13 +69857,19 @@ const IX = {
     head.innerHTML = `<span>联锁进路</span><i>道岔 ${tA ? (tA.t > 0.5 ? 'A:反' : 'A:直') : ''} ${tB ? (tB.t > 0.5 ? 'B:反' : 'B:直') : ''} · ${occupied ? '区段占用' : '区段空闲'}</i>`;
     box.appendChild(head);
     const active = this.routes.find(r => r.id === this.active);
-    const conflicts = active && active.conflicts && active.conflicts.length
-      ? active.conflicts.map(id => (this.routes.find(r => r.id === id) || {}).name).filter(Boolean).join(' / ')
+    const rid = this.routeTableId(this.active);
+    const matrix = (this.table && rid && this.table.matrix[rid]) ? this.table.matrix[rid] : [];
+    const conflicts = matrix.length
+      ? matrix.map(id => (this.table.byId[id] || {}).name).filter(Boolean).join(' / ')
       : '无';
     const sub = document.createElement('div');
     sub.className = 'ats-ix-head';
     sub.innerHTML = `<span>敌对进路</span><i>${conflicts}</i>`;
     box.appendChild(sub);
+    const info = document.createElement('div');
+    info.className = 'ats-ix-head';
+    info.innerHTML = `<span>进路表</span><i>${this.table ? this.table.routes.length : 0} 条 · 锁闭 ${(this.locks || []).length}</i>`;
+    box.appendChild(info);
     for (const r of this.routes) {
       const b = document.createElement('button');
       b.className = 'ats-ix-btn' + (this.active === r.id ? ' on' : '');
@@ -68623,7 +69889,19 @@ const IX = {
       if (!b) return;
       const id = b.dataset.ix;
       if (!this.routes.find(r => r.id === id)) return;
-      if (id !== this.active && this.occupied()) {
+      if (id === this.active) return;
+      /* 先过敌对/占用检查（纯函数），失败给出具体原因 */
+      if (this.table && typeof checkRouteRequest === 'function') {
+        this.syncLocks();
+        const reqId = this.routeTableId(id);
+        const chk = reqId ? checkRouteRequest(this.table, reqId, this.locks, this.occupiedRes) : { ok: true };
+        if (!chk.ok) {
+          toast(`进路不能排列 · ${chk.reason}`, 'warn', 4600);
+          AUDIO.beep(true);
+          return;
+        }
+      }
+      if (this.occupied()) {
         toast('道岔区段有车占用 · 进路锁闭，禁止转换', 'warn', 3800);
         AUDIO.beep(true);
         return;
@@ -68880,17 +70158,30 @@ class CabDisplay {
     // 时刻
     x.strokeStyle = '#1c2f42'; x.lineWidth = 2;
     x.beginPath(); x.moveTo(96, 136); x.lineTo(540, 136); x.stroke();
+    /* 正晚点表述：真实 HMI 不会只给一个带符号的数字，
+       而是直接说「早点 / 晚点 / 正点」。这里按 ±5 s 分界。 */
+    const dv = Math.round(st.delay);
+    let puncTxt;
+    if (Math.abs(dv) <= 5) puncTxt = '正点';
+    else if (dv < 0) puncTxt = '早点 ' + (-dv) + ' s';
+    else puncTxt = '晚点 ' + dv + ' s';
+    /* 停站时补一个「距计划发车还有多久」：正点与否之外，
+       司机真正要判断的是「还能不能按点发车」。 */
+    if (st.depLeft != null && st.depLeft > -120) {
+      puncTxt += ' · 余 ' + Math.round(Math.max(0, st.depLeft)) + 's';
+    }
     const rows = [
       ['计划到达', fmtClock(st.schArr)],
       ['计划发车', fmtClock(st.schDep)],
       ['当前时间', fmtClock(st.clock)],
-      ['偏差', (st.delay > 0 ? '+' : '') + Math.round(st.delay) + ' s']
+      ['正晚点', puncTxt]
     ];
     rows.forEach((r, i) => {
       const yy = 164 + i * 34;
       x.fillStyle = '#7f95a8'; x.font = '500 17px "Microsoft YaHei",sans-serif';
       x.fillText(r[0], 98, yy);
-      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 30 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
+      /* ±60 s 以上转红告警（与 HUD / ATS 同口径），±15 s 以上琥珀 */
+      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 60 ? '#ff6b5a' : Math.abs(st.delay) > 15 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
       x.font = '600 21px ui-monospace,monospace';
       x.fillText(r[1], 250, yy);
     });
@@ -69757,9 +71048,16 @@ class AiTrain {
     this.phase = 0;
     this.s0 = this.s; this.v0 = this.v; this.idx0 = this.idx;
     this.dir0 = this.dir; this.lat0 = this.lateral;
-    /* 决策用的常量包（与全局常量一致，便于单测覆盖） */
-    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH };
+    /* 决策用的常量包（与全局常量一致，便于单测覆盖）。
+       clock 每帧由 update() 从 G.clock 同步：绑定车次后 aiUpdate 用它算正晚点。 */
+    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH, clock: null };
     this._events = [];
+    /* P1-3：运行图班次（由 bindAiSchedules 在布置场景时挂上） */
+    this.service = opts.service || null;
+    this.delay = 0;          // 正晚点（秒，正为晚点）
+    this.planArr = null;     // 下一站计划到达（秒）
+    this.lastArrDelay = null;// 最近一次到达偏差
+    this.arrLog = [];        // 到站偏差日志（回归脚本读它）
   }
 
   reset() {
@@ -69767,6 +71065,7 @@ class AiTrain {
     this.dir = this.dir0; this.lateral = this.lat0;
     this.state = 'run'; this.dwellT = 0; this.dwellNeed = 0;
     this.holdT = 0; this.skip = false; this.doorT = 0;
+    this.delay = 0; this.lastArrDelay = null; this.arrLog = [];
     this.train.lateral = this.lateral;
     this.train.dir = this.dir;
     this.train.setDoorT(0);
@@ -69802,7 +71101,9 @@ class AiTrain {
   update(dt) {
     if (this.dead) return;
     /* 决策逻辑在 54_aibody.js（纯函数，可脱离浏览器测试）；
-       这里只负责把结果同步到 Three.js 车辆上。 */
+       这里只负责把结果同步到 Three.js 车辆上。
+       时钟走 _C 传进去，是为了让 aiUpdate 保持零全局依赖、可在 node 里单测。 */
+    this._C.clock = G.clock;
     const r = aiUpdate(this, dt, this.leader(), this._C);
     this._events = r.events;
     if (this.train) {
@@ -69890,6 +71191,38 @@ function spawnAiTrains(path, line, root) {
   return aiTrains;
 }
 
+/* ------------------------------------------------------------------
+   运行图绑定（P1-3）
+   ------------------------------------------------------------------
+   AI 的初始位置由场景布置决定（本务前方 1 km / 2.5 km），不能为了
+   对齐运行图把车挪走。做法：取本务车次的运行时分与停站时间，
+   整体平移到「AI 在 clockSec 时刻正好位于当前里程」—— 相当于给这
+   列车生成一张属于它自己的班次表，之后按图行车。
+   对向通过车不停站，没有可追踪的停站时刻，保持自由运行。
+   ------------------------------------------------------------------ */
+function bindAiSchedules(list, path, clockSec) {
+  if (typeof ttShiftService !== 'function' || !path || !path.playerService) return 0;
+  let bound = 0;
+  for (const ai of list) {
+    if (!ai || ai.dead || ai.dir < 0 || !ai.stops) continue;
+    const tAt = ttTimeAtPosition(path.playerService, ai.s);
+    const svc = ttShiftService(path.playerService, clockSec - tAt, ai.carNo);
+    if (!svc) continue;
+    /* 下一站必须在这个车次里停靠；跳站交路则顺延到下一个停靠站 */
+    let target = ai.idx;
+    while (target > 0 && target < path.stations.length && !ttStopOf(svc, target)) target++;
+    if (target >= path.stations.length) continue;
+    ai.service = svc;
+    ai.idx = target;
+    ai.delay = 0;
+    ai.lastArrDelay = null;
+    const sp = ttStopOf(svc, target);
+    ai.planArr = sp ? sp.arr : null;
+    bound++;
+  }
+  return bound;
+}
+
 /* ------------------------------------------------------------------ 本务的前车 */
 function playerLeader() {
   let best = null, bd = Infinity;
@@ -69923,17 +71256,29 @@ function playerTrainLen() {
    和一个假 P（只要有 length / stations[].stopS / atpLimit）就能跑，
    见 tests/unit/ai.test.js。
 
-   ---- 与原 52_ai.js 的一致性 ----
-   下面的逻辑是**逐行搬运**，不是重写。唯一的改动是把
-   this.train.setDoorT(...) / this.train.update(...) 从尾部去掉
-   （那是渲染，留在 AiTrain 里做）。
+   ---- P1-3 按图运行 ----
+   在原始状态机之上增加了「绑定车次」分支（self.service 非空时生效）：
+   - 每帧用剩余距离 / 计划到达剩余时间 / 当前速度反解巡航速度
+   - 停站时长按计划发车时刻（早到等待、晚点最短办客）
+   - 正晚点读数按「计划位置 vs 实际位置」折算成秒
+   未绑定车次（对向通过车、折返后）仍走原来的自由运行逻辑。
+
+   ---- 渲染 ----
+   this.train.setDoorT(...) / this.train.update(...) 留在 AiTrain 里做。
    ================================================================ */
 
 const AI_DEFAULTS = {
   AI_BRK: 0.95,      // AI 常用制动 m/s²
   AI_ACC: 1.0,       // AI 牵引 m/s²
   AI_VMAX: 22.2,     // 80 km/h（m/s）
-  KMH: 1 / 3.6
+  KMH: 1 / 3.6,
+  /* 绑定车次后改用「运行图口径」的加减速（与 57_timetable 的 TT_ACC/TT_BRK 一致）。
+     不绑定车次的 AI（对向通过车）仍用上面的温和值，避免视觉突变。 */
+  AI_ACC_PLAN: 1.45,
+  AI_BRK_PLAN: 1.0,
+  AI_STOP_PLAN: 1.0,
+  AI_MIN_DWELL: 18,  // 停站最短办客时间（秒）
+  AI_MIN_GAP: 55     // 最小追踪间隔硬约束（米，车尾到车头）
 };
 
 function aiClamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -69952,11 +71297,23 @@ function aiUpdate(self, dt, ld, C) {
   const P = self.path;
   const n = P.stations.length;
   const events = [];
+  /* 本帧时刻：由 AiTrain.update 从 G.clock 同步进来。
+     绑定车次后，所有「按图」判断都基于它；拿不到就退回旧的自由运行。 */
+  const now = K.clock != null ? K.clock : null;
+  const sched = (self.service && typeof ttStopOf === 'function') ? self.service : null;
+  const accCap = sched ? (K.AI_ACC_PLAN || K.AI_ACC) : K.AI_ACC;
+  const brkCap = sched ? (K.AI_BRK_PLAN || K.AI_BRK) : K.AI_BRK;
+  const stopDecel = sched ? (K.AI_STOP_PLAN || 0.82) : 0.82;
 
   /* ---- 停站 / 折返 ---- */
   if (self.state === 'dwell') {
     self.dwellT += dt;
     if (self.holdT > 0) self.holdT = Math.max(0, self.holdT - dt);
+    /* 正晚点读数：停站时「现在 - 计划到达」就是到达偏差 */
+    if (sched && now != null) {
+      const sp = ttStopOf(sched, self.idx);
+      if (sp) self.delay = Math.round(now - sp.arr);
+    }
     if (self.dwellT >= self.dwellNeed && self.holdT <= 0) {
       self.idx += self.dir;
       self.state = 'run';
@@ -69983,34 +71340,88 @@ function aiUpdate(self, dt, ld, C) {
       self.state = 'turnback';
       self.dwellT = 0;
       self.v = 0;
+      /* 折返后方向相反，原车次的停站时刻不再适用。运行图只覆盖本方向，
+         折返车按自由运行处理（P2 再做折返车次接续）。 */
+      self.service = null;
       events.push('turnback:begin');
     }
   }
 
   let vT = self.vmaxMs;
+  let stopTarget = null;      // 本帧停车曲线给出的速度上限（绑定车次时用于精确制动）
 
   if (self.state === 'run') {
     const tgt = P.stations[aiClamp(self.idx, 0, n - 1)];
     const d = self.gapToStop(self.idx);
+    /* 本段终点在运行图里的计划到发（未绑定车次则为 null）。
+       跳停交路上会有「车次不停靠」的车站：这时不施加停车曲线，直接通过。 */
+    const sp = sched ? ttStopOf(sched, self.idx) : null;
+    const stopHere = !sched || !!sp;
+    /* 下一处「计划停靠」：跳站区间里也按它来控制速度，避免冲得太早 */
+    let schedStop = sp;
+    if (sched && !schedStop) {
+      for (const q of sched.stops) {
+        if (q.s - self.s > 0) { schedStop = q; break; }
+      }
+    }
 
     /* 区间限速 */
     const vLim = Math.min(self.vmax, P.atpLimit(self.s, self.v)) * K.KMH;
     vT = Math.min(vT, vLim);
 
-    /* 停车曲线：远段按制动曲线，近段线性收敛到停车标（跳停时不施加） */
-    if (self.stops && !self.skip) {
+    /* 停车曲线：远段按制动曲线，近段线性收敛到停车标（跳停时不施加）。
+       绑定车次的 AI 用运行图口径的制动率，保证到站时刻和计划对得上。 */
+    if (self.stops && !self.skip && stopHere) {
       let vStop = 0;
       if (d > 0) {
-        vStop = Math.sqrt(2 * 0.82 * Math.max(0, d - 0.35));
-        if (d < 6) vStop = Math.min(vStop, aiClamp(d * 0.45, 0, 1.6));
+        vStop = Math.sqrt(2 * stopDecel * Math.max(0, d - 0.35));
+        if (!sched && d < 6) vStop = Math.min(vStop, aiClamp(d * 0.45, 0, 1.6));
       }
+      stopTarget = vStop;
       vT = Math.min(vT, vStop);
     }
 
-    /* 跟车 */
+    /* 按图运行（P1-3）：用「剩余距离 / 计划到达剩余时间」反解巡航速度。
+       时间富余就压低巡航速度，时间不够就跑满线路限速；
+       不用「追赶到点时刻」的 P 控制，避免速度抖动。 */
+    if (schedStop && now != null && d > 0) {
+      const aheadD = self.dir > 0
+        ? schedStop.s - self.s
+        : self.s - schedStop.s;
+      const tLeft = schedStop.arr - now;
+      if (tLeft > 0 && aheadD > 0) {
+        /* 带入当前速度：否则列车一动起来，解出的巡航速度会一路上涨 */
+        const vC = typeof ttSolveCruiseFrom === 'function'
+          ? ttSolveCruiseFrom(aheadD, tLeft, self.v, self.vmax, accCap, stopDecel)
+          : ttSolveCruise(aheadD, tLeft, self.vmax, accCap, stopDecel);
+        /* 下限 10.8 km/h：避免「早点太多」时整段爬行，早点交给停站等待消化 */
+        vT = Math.min(vT, Math.max(vC, aheadD > 30 ? 3 : 0));
+      }
+      /* 正晚点读数：拿「此刻计划应在的里程」和实际里程比，
+         再按当前速度折成秒。比「最早可能的到达时刻」更贴近司机的直觉：
+         正常按图运行时读数稳定在 0，被前车压住时读数才逐渐变大。 */
+      if (typeof ttServicePosition === 'function') {
+        const schedPos = ttServicePosition(sched, now);
+        const behind = self.dir > 0 ? schedPos - self.s : self.s - schedPos;
+        self.delay = Math.round(behind / Math.max(6, self.v));
+      } else {
+        self.delay = Math.max(0, Math.round(now + ttMinRun(aheadD, self.vmax, accCap, stopDecel) - schedStop.arr));
+      }
+      self.planArr = schedStop.arr;
+    }
+
+    /* 跳停交路上的通过站：不办客，越过站台即放行到下一站 */
+    if (sched && !stopHere && d <= 0.5 && d > -40) {
+      self.idx += self.dir;
+      events.push('station:pass');
+    }
+
+    /* 跟车（P1-4）：软约束按制动曲线压速，硬约束保证最小追踪间隔。
+       前车晚点时后车的计划被占用，这里压下来的速度就是「被动晚点」的来源。 */
     if (ld && ld.gap < 420) {
-      vT = Math.min(vT, Math.sqrt(2 * K.AI_BRK * Math.max(0, ld.gap - 30)));
+      vT = Math.min(vT, Math.sqrt(2 * brkCap * Math.max(0, ld.gap - 30)));
       if (ld.gap < 60) vT = Math.min(vT, ld.v * 0.9);
+      if (ld.gap < K.AI_MIN_GAP) vT = 0;
     }
 
     /* 跳停：通过站台后放行 */
@@ -70021,14 +71432,14 @@ function aiUpdate(self, dt, ld, C) {
     }
 
     /* 已越过停车标太多，直接放行到下一站 */
-    if (self.stops && d < -6 && !self.skip) {
+    if (self.stops && stopHere && d < -6 && !self.skip) {
       self.idx += self.dir;
       events.push('station:missed');
       if (self.idx < 0 || self.idx >= n) { self.state = 'turnback'; self.dwellT = 0; self.v = 0; events.push('turnback:begin'); }
     }
 
     /* 停稳判定：站台范围内停住即办客 */
-    if (self.stops && Math.abs(d) <= 6 && self.v < 0.3) {
+    if (self.stops && stopHere && Math.abs(d) <= 6 && self.v < 0.3) {
       self.v = 0;
       self.s = tgt.stopS;
       if (self.skip) {
@@ -70038,7 +71449,19 @@ function aiUpdate(self, dt, ld, C) {
       } else {
         self.state = 'dwell';
         self.dwellT = 0;
-        self.dwellNeed = 26 + (self.seed % 5) * 3;
+        /* 停站时长按运行图：早点到就等到计划发车，晚点就只停最短办客时间。
+           这是「晚点不再被停站时间放大」的关键。 */
+        let need = 26 + (self.seed % 5) * 3;
+        if (sp && now != null) {
+          need = Math.max(K.AI_MIN_DWELL, Math.min(300, sp.dep - now));
+          self.lastArrDelay = Math.round(now - sp.arr);
+          if (self.arrLog) {
+            self.arrLog.push({ idx: self.idx, planned: sp.arr, actual: now, delay: self.lastArrDelay });
+            if (self.arrLog.length > 400) self.arrLog.shift();
+          }
+          self.delay = self.lastArrDelay;
+        }
+        self.dwellNeed = need;
         self.doorT = 0;
         events.push('station:dwell');
       }
@@ -70057,8 +71480,18 @@ function aiUpdate(self, dt, ld, C) {
   /* ---- 速度积分 ---- */
   const dv = vT - self.v;
   let a = 0;
-  if (vT < 0.06 && self.v > 0.02) a = -1.0;          // 停车目标：直接制动到底
-  else if (Math.abs(dv) > 0.08) a = dv > 0 ? Math.min(K.AI_ACC, 0.25 + dv * 0.4) : -Math.min(1.1, 0.22 + (-dv) * 0.55);
+  if (vT < 0.06 && self.v > 0.02) a = -brkCap;       // 停车目标：直接制动到底
+  else if (sched && stopTarget != null && self.v > stopTarget + 0.05) {
+    /* 绑定车次时严格跟随停车曲线：比例控制在曲线匀速下降时会留下
+       1 m/s 左右的稳态偏差，到站前 20 m 就足以冲过停车标（越站）。 */
+    a = -stopDecel;
+  } else if (Math.abs(dv) > 0.08) {
+    /* 绑定车次的 AI 牵引爬升更快：运行图时分按 1.45 m/s² 满牵引编排，
+       若沿用温和的 0.25+0.4·dv 会把每段都拖慢几秒，逐站累积成晚点。 */
+    a = dv > 0
+      ? Math.min(accCap, sched ? 0.5 + dv * 1.2 : 0.25 + dv * 0.4)
+      : -Math.min(1.1, 0.22 + (-dv) * 0.55);
+  }
   self.v = aiClamp(self.v + a * dt, 0, self.vmaxMs);
   if (self.state === 'dwell' || self.state === 'turnback') self.v = 0;
   self.s += self.v * self.dir * dt;
@@ -70078,6 +71511,156 @@ function aiUpdate(self, dt, ld, C) {
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { aiUpdate, AI_DEFAULTS, aiClamp };
+}
+
+
+/* ===== 55_routes.js ===== */
+/* =====================================================================
+   进路表与敌对矩阵（P3-3）
+   ---------------------------------------------------------------------
+   纯逻辑：给一条线路的每座车站生成「正线通过」进路，加上两端渡线的
+   折返进路，按「区段资源」计算敌对关系。浏览器侧（49_interlock.js）
+   只负责道岔动画与按钮，判定全部走这里，便于 node 单测。
+
+   为什么用资源集合而不是手写敌对表：
+   - 手写表在 27 个站 + 2 处渡线时既长又容易漏；
+   - 资源集合能自动回答「两条进路为什么敌对」（共用哪一段）；
+   - 以后加侧线/存车线，只要给进路多挂一个资源即可。
+   ===================================================================== */
+
+const ROUTE_DEFAULTS = {
+  stationHalf: 190,   // 车站进路覆盖的里程半宽（m）
+  turnoutHalf: 60     // 渡线进路覆盖的里程半宽（m）
+};
+
+/**
+ * 生成整条线路的进路表。
+ *
+ * @param {object} o
+ * @param {Array} o.stations  [{ idx, zh, stopS }]
+ * @param {Array} o.turnouts  [{ key:'A'|'B', s }]
+ * @returns {{routes:Array, byId:Object, matrix:Object}}
+ *   route: { id, name, sub, kind:'station'|'turnback', resources:[], fromS, toS, conflicts:[] }
+ */
+function buildRouteTable(o) {
+  const opt = o || {};
+  const stations = (opt.stations || []).filter(s => s && s.stopS != null);
+  const turnouts = opt.turnouts || [];
+  const sh = opt.stationHalf || ROUTE_DEFAULTS.stationHalf;
+  const th = opt.turnoutHalf || ROUTE_DEFAULTS.turnoutHalf;
+  const routes = [];
+
+  /* 每站一条正线通过进路；首末站额外占用端部渡线资源 */
+  for (const st of stations) {
+    const res = [`sec:${st.idx}`];
+    const tA = turnouts.find(t => t.key === 'A');
+    const tB = turnouts.find(t => t.key === 'B');
+    const isFirst = st.idx === stations[0].idx;
+    const isLast = st.idx === stations[stations.length - 1].idx;
+    if (isFirst && tA) res.push('ix:A');
+    if (isLast && tB) res.push('ix:B');
+    routes.push({
+      id: `S${st.idx}-main`,
+      name: `${st.zh || '车站'} 正线通过`,
+      sub: isFirst ? '首站 · 经 A 渡线直向' : isLast ? '末站 · 经 B 渡线直向' : '站内正线',
+      kind: 'station',
+      resources: res,
+      fromS: st.stopS - sh,
+      toS: st.stopS + sh,
+      conflicts: []
+    });
+  }
+
+  /* 两端折返进路 */
+  for (const t of turnouts) {
+    if (t.key !== 'A' && t.key !== 'B') continue;
+    routes.push({
+      id: t.key === 'A' ? 'revA' : 'revB',
+      name: t.key === 'A' ? '起点折返' : '终点折返',
+      sub: `${t.key} 渡线反位`,
+      kind: 'turnback',
+      resources: [`ix:${t.key}`],
+      fromS: t.s - th,
+      toS: t.s + th,
+      conflicts: []
+    });
+  }
+  if (turnouts.some(t => t.key === 'A') && turnouts.some(t => t.key === 'B')) {
+    routes.push({
+      id: 'both',
+      name: '两端折返',
+      sub: 'A/B 渡线同时反位',
+      kind: 'turnback',
+      resources: ['ix:A', 'ix:B'],
+      fromS: -Infinity,
+      toS: Infinity,
+      conflicts: []
+    });
+  }
+
+  /* 敌对矩阵：资源交集非空即敌对 */
+  const byId = {};
+  for (const r of routes) byId[r.id] = r;
+  for (let i = 0; i < routes.length; i++) {
+    for (let j = i + 1; j < routes.length; j++) {
+      const a = routes[i], b = routes[j];
+      const shared = a.resources.filter(x => b.resources.indexOf(x) >= 0);
+      if (!shared.length) continue;
+      a.conflicts.push(b.id);
+      b.conflicts.push(a.id);
+    }
+  }
+  const matrix = {};
+  for (const r of routes) matrix[r.id] = r.conflicts.slice();
+
+  return { routes, byId, matrix };
+}
+
+/**
+ * 请求排列一条进路。
+ *
+ * @param {object} table   buildRouteTable 的返回值
+ * @param {string} id      目标进路
+ * @param {Array}  locks   已锁闭的进路 id（列车占用中）
+ * @param {Array}  occupied 被占用的资源 id
+ * @returns {{ok:boolean, reason?:string, route?:object}}
+ */
+function checkRouteRequest(table, id, locks, occupied) {
+  if (!table || !table.byId || !table.byId[id]) {
+    return { ok: false, reason: '未知进路' };
+  }
+  const route = table.byId[id];
+  const locked = locks || [];
+  for (const lid of locked) {
+    if (lid === id) continue;
+    const other = table.byId[lid];
+    if (!other) continue;
+    const shared = route.resources.filter(x => other.resources.indexOf(x) >= 0);
+    if (shared.length) {
+      return {
+        ok: false,
+        reason: `与锁闭进路「${other.name}」敌对（共用 ${shared.join('、')}）`,
+        conflicts: other.id
+      };
+    }
+  }
+  const occ = occupied || [];
+  const busy = route.resources.filter(x => occ.indexOf(x) >= 0);
+  if (busy.length) {
+    return { ok: false, reason: `区段被占用：${busy.join('、')}` };
+  }
+  return { ok: true, route };
+}
+
+/* 供 49_interlock.js 使用的单例状态（纯数据，不碰 DOM） */
+function makeInterlockState() {
+  return { locks: [], occupied: [] };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    ROUTE_DEFAULTS, buildRouteTable, checkRouteRequest, makeInterlockState
+  };
 }
 
 
@@ -70253,6 +71836,370 @@ class BodyChain {
 }
 
 
+/* ===== 57_timetable.js ===== */
+/* =====================================================================
+   运行图数据层（P0-3 / v2.0）
+   ---------------------------------------------------------------------
+   目标：把「一条线路一个时段内的所有车次」变成纯函数可算的数据结构，
+   供 AI 车按图运行、玩家比对正晚点、ATS 做调度。
+
+   为什么单独抽出来（而不是继续在 20_route.js 里改）：
+   现在的 `Route.buildSchedule()` 把时刻直接写到 **车站对象** 上
+   （`st.schArr` / `st.schDep`），等于「同一时刻只能存在一张时刻表」。
+   要做运行图，必须能同时持有几十个车次，所以时刻要挂在 **车次** 上。
+
+   本文件不依赖 THREE、不读全局变量，可以 node 直接 require 单测。
+   全部函数无副作用：不修改传入的 stations，不读写模块级状态。
+   ===================================================================== */
+
+/* 与 10_data.js 的动力学常量保持一致。
+   之所以不直接引用，是因为 10_data.js 依赖 THREE 与 DOM，node 里 require 不了。
+   数值必须同步：ACC_MAX 1.45 m/s²、BRK_SRV 1.0 m/s²（见 10_data.js:317-320）。 */
+const TT_KMH = 1 / 3.6;
+const TT_ACC = 1.45;
+const TT_BRK = 1.0;
+const TT_VMAX = 80;
+
+const TT_DEFAULTS = {
+  dwell: 40,                      // 标准停站秒数
+  headwayNormal: 300,             // 平峰发车间隔（秒）
+  headwayPeak: 150,               // 高峰发车间隔（秒）
+  peakRanges: [[7 * 3600, 9 * 3600], [17 * 3600, 19 * 3600]],
+  dayFrom: 5 * 3600 + 30 * 60,    // 05:30
+  dayTo: 23 * 3600,               // 23:00
+  maxServices: 4000               // 防御：参数异常时不要生成十万个车次
+};
+
+/* 与 10_data.js:347 的 estimateRunTime 等价的本地实现。
+   传入 dist(米)、vmax(km/h)，返回秒。 */
+function ttEstimateRun(dist, vmaxKmh) {
+  const v = (vmaxKmh || TT_VMAX) * TT_KMH;
+  const da = v * v / (2 * TT_ACC), db = v * v / (2 * TT_BRK);
+  if (da + db < dist) return v / TT_ACC + v / TT_BRK + (dist - da - db) / v;
+  const vp = Math.sqrt(2 * dist * TT_ACC * TT_BRK / (TT_ACC + TT_BRK));
+  return vp / TT_ACC + vp / TT_BRK;
+}
+
+/* 'HH:MM' / 'HH:MM:SS' → 秒 */
+function ttParseClock(str) {
+  if (typeof str === 'number') return str;
+  const parts = String(str || '0:0').split(':').map(Number);
+  return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+}
+
+/* 秒 → 'HH:MM:SS'（跨天按 24h 取模，便于显示末班 23:59 之后的车） */
+function ttFormatClock(sec) {
+  const s = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(h)}:${p2(m)}:${p2(ss)}`;
+}
+
+/* 某个时刻是否落在高峰时段 */
+function ttIsPeak(sec, ranges) {
+  const rs = ranges || TT_DEFAULTS.peakRanges;
+  for (const [a, b] of rs) if (sec >= a && sec < b) return true;
+  return false;
+}
+
+/* 发车间隔：按当前时刻判断峰谷 */
+function ttHeadwayAt(sec, opts) {
+  const o = opts || {};
+  const hw = {
+    headwayNormal: o.headwayNormal || TT_DEFAULTS.headwayNormal,
+    headwayPeak: o.headwayPeak || TT_DEFAULTS.headwayPeak,
+    peakRanges: o.peakRanges || TT_DEFAULTS.peakRanges
+  };
+  return ttIsPeak(sec, hw.peakRanges) ? hw.headwayPeak : hw.headwayNormal;
+}
+
+/* ---------------------------------------------------------------------
+   computeService：算一个车次的逐站到发时刻
+   ---------------------------------------------------------------------
+   入参：
+     stations  [{ stopS, served }]   只读，不会被修改
+     opts {
+       runTimes  [[秒],...] | null   station[i] → station[i+1] 的官方运行时分
+       dwell     停站秒
+       vmax      线路最高速度 km/h
+       startSec  首站发车时刻（秒）
+       no        车次号（可选，仅透传）
+       dir       方向（可选，仅透传）
+     }
+   返回：
+     {
+       no, dir, startSec, endSec,
+       stops: [{ idx, arr, dep, dwell, run }]   run = 从上一站到本站的运行时分
+       served: [idx...]                         实际停靠的站序
+     }
+   --------------------------------------------------------------------- */
+function ttComputeService(stations, opts) {
+  const o = opts || {};
+  const dwell = o.dwell == null ? TT_DEFAULTS.dwell : o.dwell;
+  const vmax = o.vmax || TT_VMAX;
+  const runTimes = o.runTimes || null;
+  const startSec = o.startSec || 0;
+
+  const served = [];
+  for (let i = 0; i < stations.length; i++) {
+    if (stations[i].served !== false) served.push(i);
+  }
+  if (!served.length) {
+    return { no: o.no || '', dir: o.dir || 1, startSec, endSec: startSec, stops: [], served: [] };
+  }
+
+  const stops = [];
+  const first = served[0];
+  /* s 记下停站里程：绑定车次 / ATS 换算位置时要用，且不依赖调用方再查站表 */
+  stops.push({ idx: first, s: stations[first].stopS, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
+
+  for (let k = 1; k < served.length; k++) {
+    const a = stations[served[k - 1]], b = stations[served[k]];
+    const ai = served[k - 1], bi = served[k];
+
+    /* 官方站间时分：把中间被跳过的站的分段累加（跳停时也要走完这段路） */
+    let run = 0, official = false;
+    if (runTimes) {
+      let sum = 0, ok = true;
+      for (let j = ai + 1; j <= bi; j++) {
+        const v = runTimes[j - 1];
+        if (v == null) { ok = false; break; }
+        sum += v;
+      }
+      if (ok && sum > 0) { run = sum; official = true; }
+    }
+    if (!official) {
+      run = ttEstimateRun(Math.max(60, b.stopS - a.stopS), vmax) + 6;
+    }
+
+    const prev = stops[stops.length - 1];
+    const arr = prev.dep + run;
+    stops.push({ idx: bi, s: b.stopS, arr, dep: arr + dwell, dwell, run, official });
+  }
+
+  return {
+    no: o.no || '',
+    dir: o.dir || 1,
+    startSec,
+    endSec: stops[stops.length - 1].dep,
+    stops,
+    served
+  };
+}
+
+/* ---------------------------------------------------------------------
+   buildTimetable：按发车间隔生成一个时段内的全部车次
+   ---------------------------------------------------------------------
+   opts {
+     fromSec, toSec       生成区间（默认 05:30–23:00）
+     headwayNormal/Peak   发车间隔
+     peakRanges           高峰时段
+     dwell, vmax, runTimes
+     dir                  方向
+     noPrefix             车次号前缀（如 '101'）
+   }
+   返回 { fromSec, toSec, dir, services: [...] }
+   --------------------------------------------------------------------- */
+function ttBuildTimetable(stations, opts) {
+  const o = opts || {};
+  const fromSec = o.fromSec == null ? TT_DEFAULTS.dayFrom : o.fromSec;
+  const toSec = o.toSec == null ? TT_DEFAULTS.dayTo : o.toSec;
+  const dir = o.dir || 1;
+  const noPrefix = o.noPrefix || '1';
+  const services = [];
+
+  let t = fromSec;
+  let guard = 0;
+  while (t < toSec && guard < TT_DEFAULTS.maxServices) {
+    guard++;
+    const svc = ttComputeService(stations, {
+      runTimes: o.runTimes, dwell: o.dwell, vmax: o.vmax,
+      startSec: t, dir,
+      no: `${noPrefix}${String(services.length + 1).padStart(3, '0')}`
+    });
+    services.push(svc);
+    const hw = ttHeadwayAt(t, o);
+    t += Math.max(60, hw);
+  }
+  if (guard >= TT_DEFAULTS.maxServices) {
+    /* 参数异常（例如 headway 传了 0）时不要静默生成四万个车次 */
+    services.length = TT_DEFAULTS.maxServices;
+  }
+  return { fromSec, toSec, dir, services };
+}
+
+/* 给定时刻，找出该时刻正在区间内运行的车次（用于 ATS 显示「当前载客车次」） */
+function ttServiceAt(timetable, sec) {
+  const list = timetable && timetable.services;
+  if (!list || !list.length) return null;
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    if (sec >= s.startSec && sec <= s.endSec) return s;
+  }
+  return null;
+}
+
+/* 车次在某一站的计划到发（按站序索引查） */
+function ttStopOf(service, stationIdx) {
+  if (!service || !service.stops) return null;
+  for (const st of service.stops) if (st.idx === stationIdx) return st;
+  return null;
+}
+
+/* 正晚点：正数为晚点（秒），负数为早点 */
+function ttDelay(plannedSec, actualSec) {
+  return Math.round(actualSec - plannedSec);
+}
+
+/* ---------------------------------------------------------------------
+   以下是 P1-3「AI 按图运行」用的纯函数
+   --------------------------------------------------------------------- */
+
+/* 以 vmax 跑完 dist 所需的最短时间（秒）。
+   与 ttEstimateRun 同一套物理：先加速后制动，能巡航就巡航。 */
+function ttMinRun(dist, vmaxKmh, acc, brk) {
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = (vmaxKmh || TT_VMAX) * TT_KMH;
+  const da = v * v / (2 * a), db = v * v / (2 * b);
+  if (da + db < dist) return v / a + v / b + (dist - da - db) / v;
+  const vp = Math.sqrt(2 * dist * a * b / (a + b));
+  return vp / a + vp / b;
+}
+
+/* 给定剩余距离、剩余时间、当前速度，求「恰好按点到达」的巡航速度（m/s）。
+   -----------------------------------------------------------------
+   为什么必须带当前速度：如果按「从静止重新起步」求解，列车一动起来
+   剩余时间缩得比剩余距离快，解出的速度会一路上涨，最后跑成最短时间
+   （早点 6~7 s）。带 v0 后，解出的速度在整段里基本恒定。
+
+   速度剖面：从 v0 加速到 vc → 巡航 → 以 b 制动到停车标。
+   时间随 vc 单调递减，用二分求根；时间不够（即使 vc 取上限也赶不上）时
+   返回 vmax，让列车跑满线路限速。 */
+function ttSolveCruiseFrom(dist, sec, v0, vmaxKmh, acc, brk) {
+  const vmax = (vmaxKmh || TT_VMAX) * TT_KMH;
+  if (!(dist > 0) || !(sec > 0)) return vmax;
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = Math.min(vmax, Math.max(0, v0 || 0));
+
+  /* 加速+制动正好用完全程时的巡航速度（再高就没有巡航段） */
+  const cap = Math.sqrt((dist + v * v / (2 * a)) / (0.5 / a + 0.5 / b));
+  const vCap = Math.min(vmax, cap);
+  const timeAt = nu => {
+    const u = Math.max(0.01, nu);
+    const da = Math.max(0, (u * u - v * v)) / (2 * a);
+    const db = u * u / (2 * b);
+    if (da + db >= dist) return (u - v) / a + u / b;
+    return (u - v) / a + u / b + (dist - da - db) / u;
+  };
+
+  if (timeAt(vCap) >= sec) return vmax;   // 时间不够：跑满限速
+
+  /* 已经很早：需要先减速到更低的巡航速度（不然会越来越早）。
+     剖面：以 b 从 v 减速到 vc → 巡航 → 再以 b 制动到停车标。
+     总时间 = v/b + (D − v²/2b)/vc，解出 vc。 */
+  if (timeAt(v) <= sec) {
+    const denom = sec - v / b;
+    if (denom <= 1e-6) return 0;
+    const vc = (dist - v * v / (2 * b)) / denom;
+    return Math.max(0, Math.min(v, vc));
+  }
+
+  let lo = v, hi = vCap;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (timeAt(mid) > sec) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/* 不带当前速度的简化版（v0 = 0），保留给纯计算与单测 */
+function ttSolveCruise(dist, sec, vmaxKmh, acc, brk) {
+  return ttSolveCruiseFrom(dist, sec, 0, vmaxKmh, acc, brk);
+}
+
+/* 车次在某一时刻所处的里程（米）。停站期间取站台里程。
+   用于把 AI 车「对到」它自己的时刻表上：给定开局时刻与当前位置，
+   反推出这个车次应该何时从首站发车。 */
+function ttServicePosition(service, sec) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (sec <= stops[0].arr) return stops[0].s;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (sec <= p.dep) return p.s;
+    if (sec < q.arr) {
+      const run = q.arr - p.dep;
+      const f = run > 0 ? (sec - p.dep) / run : 1;
+      return p.s + (q.s - p.s) * f;
+    }
+  }
+  return stops[stops.length - 1].s;
+}
+
+/* 车次在某一里程处的计划通过时刻（秒）。
+   s 落在停站区间时返回该站的到达时刻（保守：按「已到站」算）。 */
+function ttTimeAtPosition(service, s) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (s <= stops[0].s) return stops[0].arr;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (s < q.s) {
+      const f = q.s > p.s ? (s - p.s) / (q.s - p.s) : 1;
+      return p.dep + (q.arr - p.dep) * f;
+    }
+    if (s <= q.s) return q.arr;
+  }
+  return stops[stops.length - 1].dep;
+}
+
+/* 整张运行图平移 delta 秒（含全部车次与停站时刻）。
+   运营日的下一段要精确从「交班时刻」发车，而运行图是按发车间隔网格
+   生成的，不一定正好落在该时刻，所以整表对齐一次。 */
+function ttShiftTimetable(tt, delta) {
+  if (!tt || !tt.services || !delta) return tt;
+  tt.fromSec += delta;
+  tt.toSec += delta;
+  for (const svc of tt.services) {
+    svc.startSec += delta;
+    svc.endSec += delta;
+    for (const sp of svc.stops) { sp.arr += delta; sp.dep += delta; }
+  }
+  return tt;
+}
+
+/* 克隆一个车次并整体平移 offset 秒。
+   P1-3 用它给 AI 车生成「以自己当前位置为准」的班次：
+   AI 的初始位置是场景布置决定的，不能为了对时刻表把车挪走，
+   所以取本务车次的运行时分与停站时间，平移到 AI 当前所在处。 */
+function ttShiftService(service, offsetSec, no) {
+  if (!service) return null;
+  const off = Number(offsetSec) || 0;
+  const stops = service.stops.map(sp => ({
+    idx: sp.idx, s: sp.s, run: sp.run, dwell: sp.dwell, official: sp.official,
+    arr: sp.arr + off, dep: sp.dep + off
+  }));
+  return {
+    no: no || service.no,
+    dir: service.dir,
+    startSec: service.startSec + off,
+    endSec: service.endSec + off,
+    stops,
+    served: service.served ? service.served.slice() : []
+  };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    TT_DEFAULTS,
+    ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
+    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
+    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition,
+    ttShiftService, ttShiftTimetable
+  };
+}
+
+
 /* ===== 58_dynamics.js ===== */
 /* ================================================================
    列车纵向动力学核心（纯函数，零浏览器依赖）
@@ -70277,7 +72224,12 @@ const DYN_DEFAULTS = {
   ACC_MAX: 1.45,     // m/s² 牵引
   POWER_V: 18.0,     // m/s 恒功率转折点
   BRK_SRV: 1.0,      // m/s² 常用制动
-  BRK_EMG: 1.35      // m/s² 紧急制动
+  BRK_EMG: 1.35,     // m/s² 紧急制动
+  MASS: 230000,      // 6 节编组总质量 kg
+  MOTOR_RATIO: 0.66, // 动轴承担的车重比例（黏着重量）
+  MU_DRY: 0.33,      // 干燥轨面黏着系数
+  SLIP_PENALTY: 0.85,// 空转后动摩擦低于静摩擦
+  REGEN_EFF: 0.75    // 再生制动回馈效率（含变流/线路损耗）
 };
 
 /**
@@ -70345,7 +72297,12 @@ function splitTraction(o) {
 function accelFromTraction(o, c) {
   const C = Object.assign({}, DYN_DEFAULTS, c || {});
   const v = o.v || 0;
-  let a = 0, force = 0;
+  const mass = o.mass || C.MASS;
+  const mu = o.mu != null ? o.mu
+    : C.MU_DRY * (o.grip == null ? 1 : o.grip);
+  /* 黏着极限：动轴承担的重量 × μ。超过它，轮对开始空转。 */
+  const adhesion = mu * mass * (o.motorRatio || C.MOTOR_RATIO) * 9.81;
+  let a = 0, force = 0, slip = false, slipRatio = 0;
 
   if (o.traction > 0) {
     let aT = C.ACC_MAX * o.traction;
@@ -70353,11 +72310,25 @@ function accelFromTraction(o, c) {
     if (v > C.POWER_V) aT *= C.POWER_V / v;
     /* 载荷修正：满载乘客 → 加速度略降 */
     aT *= 0.94;
+    /* 轮轨黏着：指令牵引力超过黏着极限时，实际只能用到极限值，
+       且动摩擦（空转）低于静摩擦，加速度出现平台。 */
+    const fCmd = aT * mass;
+    if (fCmd > adhesion) {
+      slip = true;
+      force = adhesion * C.SLIP_PENALTY;
+      aT = force / mass;
+      slipRatio = Math.min(1, (fCmd / Math.max(1, adhesion) - 1) * 2 + 0.05);
+    } else {
+      force = fCmd;
+    }
     a += aT;
-    force = aT * 230000;
   }
   if (o.brake > 0) {
-    const aB = (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip);
+    /* 制动同样受黏着限制（紧急制动在低 μ 下会延长） */
+    const aB = Math.min(
+      (o.eb ? C.BRK_EMG : C.BRK_SRV) * o.brake * (o.grip == null ? 1 : o.grip),
+      mu * 9.81 * 0.98
+    );
     a -= aB;
   }
   /* 基本阻力（Davis 式简化）+ 坡道 */
@@ -70365,7 +72336,28 @@ function accelFromTraction(o, c) {
   a -= Math.sign(v || 0) * res;
   a -= 9.81 * (o.grade || 0);
 
-  return { a, force };
+  return { a, force, slip, slipRatio, adhesion, mu };
+}
+
+/**
+ * 一步能量：牵引电耗与再生回馈（kWh）。
+ * 纯函数，便于用解析解校验积分误差（P3-2）。
+ *
+ * @param {object} o
+ * @param {number} o.force      实际牵引力 N
+ * @param {number} o.regenForce 实际再生制动力 N
+ * @param {number} o.v          m/s
+ * @param {number} o.dt         秒
+ * @param {number} [o.regenEff] 回馈效率
+ * @returns {{traction:number, regen:number}}
+ */
+function energyStep(o) {
+  const dt = Math.max(0, o.dt || 0);
+  const v = Math.max(0, o.v || 0);
+  const eff = o.regenEff == null ? DYN_DEFAULTS.REGEN_EFF : o.regenEff;
+  const traction = Math.max(0, o.force || 0) * v * dt / 3.6e6;
+  const regen = Math.max(0, o.regenForce || 0) * v * dt / 3.6e6 * eff;
+  return { traction, regen };
 }
 
 /**
@@ -70389,7 +72381,7 @@ function integrateSpeed(o) {
 /* 页面环境无需导出（打包成 IIFE 后同作用域可见）；
    node 环境通过 module.exports 暴露，供单测直接 require */
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed };
+  module.exports = { DYN_DEFAULTS, splitTraction, accelFromTraction, integrateSpeed, energyStep };
 }
 
 
@@ -70450,6 +72442,7 @@ function atsRows(o) {
     v: (G.v || 0) * 3.6,
     state: G.eb ? 'eb' : G.doorsOpen ? 'dwell' : 'run',
     hold: 0,
+    delay: G.puncDelay != null ? G.puncDelay : null,
     ops: null            // 本务无调度按钮
   });
 
@@ -70467,6 +72460,8 @@ function atsRows(o) {
       v: (ai.v || 0) * 3.6,
       state: ai.state,
       hold: ai.holdT || 0,
+      /* 对向通过车没有停站时刻，偏差显示「—」 */
+      delay: ai.service ? (ai.delay || 0) : null,
       ops: ['hold', 'go', 'skip']   // UI 层据此生成按钮
     });
   }
@@ -70500,6 +72495,19 @@ function atsCommand(cmd) {
   return null;
 }
 
+/**
+ * 正晚点 → { text, cls }（P1-5 ATS 偏差列）。
+ * ±5 s 内视为正点；超过 ±60 s 转红告警，与司机室 HMI 同口径。
+ * @param {number|null} delay 秒，正为晚点
+ */
+function atsDelay(delay) {
+  if (delay == null || !isFinite(delay)) return { text: '—', cls: 'na' };
+  const d = Math.round(delay);
+  const text = Math.abs(d) <= 5 ? '正点' : (d > 0 ? '+' + d + 's' : d + 's');
+  const cls = Math.abs(d) > 60 ? 'bad' : Math.abs(d) > 15 ? 'late' : d < -5 ? 'early' : '';
+  return { text, cls };
+}
+
 /** 顶部副标题文案 */
 function atsSubtitle(o) {
   const line = o.line;
@@ -70507,7 +72515,7 @@ function atsSubtitle(o) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { atsTag, atsRows, atsCommand, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
+  module.exports = { atsTag, atsRows, atsCommand, atsDelay, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
 }
 
 
@@ -70747,6 +72755,876 @@ class AudioEngine {
 const AUDIO = new AudioEngine();
 
 
+/* ===== 65_session.js ===== */
+/* =====================================================================
+   运营日（P2）：时段编排 / 事件时间轴 / 运营结算 / 存档
+   ---------------------------------------------------------------------
+   本文件是纯逻辑，不依赖 THREE / DOM，可在 node 里直接 require 单测。
+
+   设计要点：
+   1. 一局 = 一个运营时段（默认约 2 小时），由若干「值乘段」组成。
+      每段是一个单程交路；段间有折返/交接时间（slack）。
+   2. 事件按「种子 + 难度 + 段内相对时刻」生成，同一 seed 必然得到
+      同一串事件——不依赖 Math.random，可复现、可回归。
+   3. 结算按段汇总：准点率、停站误差、能耗、故障处置、乘客满意度，
+      每个分项都能追溯到逐段记录，便于对账。
+   ===================================================================== */
+
+const SESSION_SCHEMA = 1;
+const SESSION_TARGET_SEC = 2 * 3600;   // 目标运营时段长度
+
+/* 三档难度：事件数量、段间余量、段数修正 */
+const SESSION_DIFF = {
+  easy:   { label: '见习', faults: 0, crowds: 1, slowzones: 0, dispatch: 1, slack: 360, legBonus: -1 },
+  normal: { label: '常规', faults: 2, crowds: 1, slowzones: 1, dispatch: 2, slack: 300, legBonus: 0 },
+  hard:   { label: '高峰', faults: 3, crowds: 2, slowzones: 2, dispatch: 2, slack: 240, legBonus: 1 }
+};
+
+/* 与 72_physics.js 的 FAULT_TYPES 权重保持一致（纯逻辑层不引用渲染文件） */
+const SESSION_FAULT_TYPES = [
+  { type: 'door', w: 0.34 },
+  { type: 'traction', w: 0.24 },
+  { type: 'signal', w: 0.20 },
+  { type: 'pantograph', w: 0.12 },
+  { type: 'brake', w: 0.10 }
+];
+
+function sessClamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+/* mulberry32：与项目里 RNG 同一套算法，但独立命名避免与全局冲突 */
+function sessMulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function sessInt(rng, a, b) { return a + Math.floor(rng() * (b - a + 1)); }
+
+function sessPickFault(rng) {
+  let r = rng();
+  for (const f of SESSION_FAULT_TYPES) {
+    r -= f.w;
+    if (r <= 0) return f.type;
+  }
+  return SESSION_FAULT_TYPES[0].type;
+}
+
+/* 故障文案：与 72_physics.FAULT_TYPES 的 make() 保持同样字段 */
+function sessFaultInfo(type, rng) {
+  if (type === 'door') {
+    const car = sessInt(rng, 2, 5);
+    return { type, name: `${car} 号车门`, brief: `${car} 号车门未关闭`, hint: '按 L 切除该车门' };
+  }
+  if (type === 'traction') return { type, name: '牵引逆变器', brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' };
+  if (type === 'signal') return { type, name: '车载 ATP', brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' };
+  if (type === 'pantograph') return { type, name: '受电弓', brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' };
+  return { type, name: '制动系统', brief: '制动缓解不良', hint: '制动力下降，按 L 复位' };
+}
+
+/* ---------------------------------------------------------------------
+   buildSessionPlan：生成整局运营时段
+   ---------------------------------------------------------------------
+   o {
+     seed, diff, legSeconds, reverseAllowed, legCount?
+   }
+   返回 {
+     schema, seed, diff, legSeconds, legCount, legs[], events[], totalSec
+   }
+   --------------------------------------------------------------------- */
+function buildSessionPlan(o) {
+  const opt = o || {};
+  const diff = SESSION_DIFF[opt.diff] ? opt.diff : 'normal';
+  const cfg = SESSION_DIFF[diff];
+  const seed = (opt.seed == null ? 20261020 : opt.seed) >>> 0;
+  const rng = sessMulberry32(seed ^ 0x9E3779B9);
+  const legSeconds = Math.round(sessClamp(opt.legSeconds || 900, 180, 7200));
+  const reverseAllowed = opt.reverseAllowed !== false;
+
+  /* 段数：尽量铺满目标时段（默认 2 小时），受难度修正；最短 2 段、最长 6 段 */
+  const targetSec = Math.max(600, opt.targetSec || SESSION_TARGET_SEC);
+  let legCount = opt.legCount;
+  if (!legCount) {
+    legCount = Math.round(targetSec / (legSeconds + cfg.slack));
+    legCount += cfg.legBonus;
+  }
+  legCount = Math.round(sessClamp(legCount, 2, 6));
+
+  const legs = [];
+  const events = [];
+  let cursor = 0;
+  for (let i = 0; i < legCount; i++) {
+    const dir = (!reverseAllowed || i % 2 === 0) ? 1 : -1;
+    legs.push({
+      i, dir,
+      startSec: cursor,
+      endSec: cursor + legSeconds,
+      slack: cfg.slack,
+      name: `第 ${i + 1} 段`
+    });
+    cursor += legSeconds + cfg.slack;
+  }
+
+  /* 事件分配：尽量一张一弛，不要把三条故障塞进同一段 */
+  const legOrder = [...Array(legCount).keys()];
+  const shuffled = legOrder.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = sessInt(rng, 0, i);
+    const t = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = t;
+  }
+  const pickLegs = n => shuffled.slice(0, Math.min(n, legCount));
+
+  const add = (legIndex, atSec, kind, extra) => {
+    events.push(Object.assign({
+      id: `L${legIndex}-${kind}-${events.length}`,
+      legIndex, atSec: Math.round(atSec), kind
+    }, extra || {}));
+  };
+
+  for (const li of pickLegs(cfg.faults)) {
+    const type = sessPickFault(rng);
+    const info = sessFaultInfo(type, rng);
+    add(li, legSeconds * (0.22 + rng() * 0.4), 'fault', { faultType: info.type, faultName: info.name });
+  }
+  for (const li of pickLegs(cfg.crowds)) {
+    add(li, legSeconds * (0.32 + rng() * 0.45), 'crowd', { surge: sessInt(rng, 10, 18) });
+  }
+  for (const li of pickLegs(cfg.slowzones)) {
+    add(li, legSeconds * (0.2 + rng() * 0.5), 'slowzone', {
+      limit: sessInt(rng, 30, 45) | 0,
+      duration: sessInt(rng, 90, 150)
+    });
+  }
+  /* 调度指令：首段发车后一条，中段一条（"中场有 ATS 调度指令"） */
+  add(0, 35 + rng() * 40, 'dispatch', { text: '调度：注意前方区间，按图行车' });
+  if (cfg.dispatch > 1) {
+    const mid = Math.floor(legCount / 2);
+    add(mid, legSeconds * 0.5, 'dispatch', { text: '调度：中段客流上升，注意停站时间' });
+  }
+
+  events.sort((a, b) => (a.legIndex - b.legIndex) || (a.atSec - b.atSec));
+
+  return {
+    schema: SESSION_SCHEMA,
+    seed, diff, legSeconds, legCount,
+    legs, events,
+    totalSec: cursor
+  };
+}
+
+/* 某一时刻该段已经/即将触发的事件（绝对时刻） */
+function sessEventsAt(plan, legIndex, legStart, now) {
+  if (!plan || !plan.events) return [];
+  return plan.events.filter(e => e.legIndex === legIndex && legStart + e.atSec <= now);
+}
+
+/* ---------------------------------------------------------------------
+   scoreSession：运营结算
+   ---------------------------------------------------------------------
+   legs: [{
+     punc, stopErr, energy, distanceKm,
+     faults, faultsFixed, crowds, crowdsServed
+   }]
+   返回 { score, grade, parts, totals, legs }
+   --------------------------------------------------------------------- */
+function scoreSession(legs, extra) {
+  const list = (legs || []).filter(Boolean);
+  const n = Math.max(1, list.length);
+  const sum = k => list.reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const avg = k => sum(k) / n;
+
+  const punc = sessClamp(avg('punc'), 0, 100);
+  const stopErr = Math.abs(avg('stopErr'));
+  const stop = sessClamp(100 - 26 * stopErr, 0, 100);
+  const energy = sum('energy');
+  const energyTraction = sum('energyTraction');
+  const regen = sum('regen');
+  const distanceKm = sum('distanceKm');
+  const kwhPerKm = energy / Math.max(0.5, distanceKm);
+  /* 能耗基准随线路最高速度走（120 km/h 的磁浮/16 号线每公里电耗更高），
+     高于基准每 1 kWh/km 扣 8 分；只用于同一线路内的驾驶习惯比较。 */
+  const vmax = (extra && extra.vmax) || 80;
+  const refKwhPerKm = 5.5 + 0.03 * vmax;
+  const energyScore = sessClamp(100 - (kwhPerKm - refKwhPerKm) * 8, 0, 100);
+  const faults = sum('faults');
+  const faultsFixed = sum('faultsFixed');
+  const faultScore = faults > 0 ? sessClamp(100 * faultsFixed / faults, 0, 100) : 100;
+  const crowds = sum('crowds');
+  const crowdsServed = sum('crowdsServed');
+  const satisfaction = sessClamp(100 - (crowds - crowdsServed) * 12 - (faults - faultsFixed) * 18, 0, 100);
+
+  const score = Math.round(
+    0.40 * punc + 0.22 * stop + 0.13 * energyScore + 0.15 * faultScore + 0.10 * satisfaction
+  );
+  const grade = score >= 93 ? 'S' : score >= 84 ? 'A' : score >= 72 ? 'B' : score >= 58 ? 'C' : 'D';
+
+  return {
+    score: sessClamp(score, 0, 100),
+    grade,
+    parts: {
+      punc: Math.round(punc),
+      stop: Math.round(stop),
+      energy: Math.round(energyScore),
+      fault: Math.round(faultScore),
+      satisfaction: Math.round(satisfaction)
+    },
+    totals: {
+      legs: list.length,
+      energy: Math.round(energy * 10) / 10,
+      energyTraction: Math.round(energyTraction * 10) / 10,
+      regen: Math.round(regen * 10) / 10,
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      faults, faultsFixed, crowds, crowdsServed,
+      avgStopErr: Math.round(stopErr * 100) / 100,
+      kwhPerKm: Math.round(kwhPerKm * 100) / 100
+    },
+    legs: list.map((r, i) => ({
+      i: i + 1,
+      punc: Math.round(Number(r.punc) || 0),
+      stopErr: Math.round((Number(r.stopErr) || 0) * 100) / 100,
+      energy: Math.round((Number(r.energy) || 0) * 10) / 10,
+      distanceKm: Math.round((Number(r.distanceKm) || 0) * 10) / 10,
+      faults: Number(r.faults) || 0,
+      faultsFixed: Number(r.faultsFixed) || 0,
+      crowds: Number(r.crowds) || 0,
+      crowdsServed: Number(r.crowdsServed) || 0
+    }))
+  };
+}
+
+/* ---------------------------------------------------------------------
+   存档：只做结构校验与版本迁移，不碰 localStorage（由 UI 层负责）
+   --------------------------------------------------------------------- */
+function sessionToSave(session) {
+  if (!session) return null;
+  return {
+    v: SESSION_SCHEMA,
+    routeId: session.routeId,
+    routeIdx: session.routeIdx,
+    seed: session.seed,
+    diff: session.diff,
+    legIndex: session.legIndex,
+    legCount: session.legCount,
+    pendingStart: session.pendingStart,
+    legStart: session.legStart,
+    phase: session.phase || 'driving',
+    log: session.log || [],
+    dispatch: session.dispatch || [],
+    plan: session.plan || null,
+    snap: session.snap || null,
+    savedAt: Date.now()
+  };
+}
+
+function sessionFromSave(text) {
+  let d;
+  try { d = typeof text === 'string' ? JSON.parse(text) : text; } catch (e) { return { ok: false, reason: '不是合法的 JSON' }; }
+  if (!d || typeof d !== 'object') return { ok: false, reason: '内容为空' };
+  if (d.v !== SESSION_SCHEMA) return { ok: false, reason: `不支持的运营日存档版本：${d.v}` };
+  if (!d.plan || !Array.isArray(d.plan.legs) || !Array.isArray(d.plan.events)) return { ok: false, reason: '缺少时段编排' };
+  const plan = d.plan;
+  if (!SESSION_DIFF[plan.diff] || typeof d.legIndex !== 'number') return { ok: false, reason: '运营日数据不完整' };
+  return { ok: true, data: d };
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    SESSION_SCHEMA, SESSION_TARGET_SEC, SESSION_DIFF, SESSION_FAULT_TYPES,
+    sessClamp, sessMulberry32, sessInt, sessPickFault, sessFaultInfo,
+    buildSessionPlan, sessEventsAt, scoreSession, sessionToSave, sessionFromSave
+  };
+}
+
+
+/* ===== 66_session_game.js ===== */
+/* =====================================================================
+   运营日运行时（P2）
+   ---------------------------------------------------------------------
+   纯逻辑在 65_session.js；本文件负责把它接进游戏：
+   - 开局建时段、逐段值乘、段间交接
+   - 事件时间轴的实际触发（故障/大客流/临时限速/调度指令）
+   - 运营结算与逐段对账
+   - 中途存档 / 继续运营日（localStorage: sm_session）
+   ===================================================================== */
+
+const SESSION_KEY = 'sm_session';
+const SESSION_DIR_NAME = '运营日';
+
+function sessionActive() {
+  return !!(G.session && G.session.plan);
+}
+
+function sessionLegLabel() {
+  const s = G.session;
+  if (!s) return '';
+  return `${SESSION_DIR_NAME} ${Math.min(s.legIndex + 1, s.legCount)}/${s.legCount}`;
+}
+
+/* ---------------------------------------------------------------- 开局 */
+/* 在 buildService 之后、beginDriving 之前调用：用本务车次的全程时长
+   估算一局能跑几段，并生成事件时间轴。 */
+function sessionStart(routeIdx) {
+  if (typeof buildSessionPlan !== 'function') return null;
+  const svc = path && path.playerService;
+  const legSeconds = svc ? Math.max(180, Math.round(svc.endSec - svc.startSec)) : 900;
+  const reverseAllowed = !(routeDef.loop || routeDef.stopPlan);
+  const seed = (G.sessionSeed != null)
+    ? (G.sessionSeed >>> 0)
+    : ((Date.now() ^ Math.floor(Math.random() * 0x7fffffff)) >>> 0);
+  const plan = buildSessionPlan({
+    seed, diff: G.diff, legSeconds, reverseAllowed,
+    targetSec: (G.sessionMinutes || 120) * 60,
+    legCount: G.sessionLegs || undefined
+  });
+  G.session = {
+    schema: SESSION_SCHEMA,
+    routeId: routeDef.id,
+    routeIdx,
+    seed,
+    diff: G.diff,
+    plan,
+    legIndex: 0,
+    legCount: plan.legCount,
+    legStart: path.startSec,
+    pendingStart: path.startSec,
+    events: [],
+    cursor: 0,
+    log: [],
+    dispatch: [],
+    legFaults: 0, legFaultsFixed: 0,
+    legCrowds: 0, legCrowdsServed: 0, crowdStation: -1,
+    phase: 'driving',
+    snap: null
+  };
+  sessionBeginLeg(0);
+  return G.session;
+}
+
+/* 进入某一段：把该段事件换算成绝对时刻，清段内计数 */
+function sessionBeginLeg(i) {
+  const s = G.session;
+  if (!s) return;
+  s.legIndex = i;
+  s.legStart = path.startSec;
+  s.pendingStart = path.startSec;
+  s.events = s.plan.events
+    .filter(e => e.legIndex === i)
+    .map(e => Object.assign({}, e, { at: s.legStart + e.atSec }));
+  s.cursor = 0;
+  s.legFaults = 0; s.legFaultsFixed = 0;
+  s.legCrowds = 0; s.legCrowdsServed = 0; s.crowdStation = -1;
+  s.phase = 'driving';
+  sessionSave(false);
+  sessionUpdateHud();
+}
+
+function sessionUpdateHud() {
+  const el = $('hudDuty');
+  if (!el) return;
+  if (!sessionActive()) { el.textContent = ''; el.classList.add('hidden'); return; }
+  const s = G.session;
+  el.classList.remove('hidden');
+  el.textContent = `${SESSION_DIR_NAME} ${s.legIndex + 1}/${s.legCount} · ${(SESSION_DIFF[s.diff] || {}).label || s.diff}`;
+}
+
+/* ---------------------------------------------------------------- 事件 */
+function sessionFaultText(type) {
+  if (type === 'door') return { brief: '车门未关闭', hint: '按 L 切除该车门' };
+  if (type === 'traction') return { brief: '牵引逆变器故障', hint: '限速 40 km/h，按 L 复位' };
+  if (type === 'signal') return { brief: '车载 ATP 故障', hint: '已转入固定闭塞，按 L 复位' };
+  if (type === 'pantograph') return { brief: '受电弓检测异常', hint: '牵引锁定，按 L 重启' };
+  return { brief: '制动缓解不良', hint: '制动力下降，按 L 复位' };
+}
+
+function sessionFire(e) {
+  const s = G.session;
+  if (!s || !e) return;
+  if (e.kind === 'fault') {
+    if (G.fault) return;                      // 同一时间只处理一条故障
+    const tx = sessionFaultText(e.faultType);
+    G.fault = { type: e.faultType, name: e.faultName || tx.brief, warned: false };
+    G.faultCount++;
+    s.legFaults++;
+    if (e.faultType === 'signal') G.sigMode = 'fixed';
+    toast(`⚠ ${e.faultName || tx.brief} · ${tx.hint}`, 'bad', 6800);
+    AUDIO.beep(true);
+    AUDIO.announce(`${tx.brief}，请司机处理。`);
+    updateHUD(true);
+    return;
+  }
+  if (e.kind === 'crowd') {
+    const idx = G.targetIdx;
+    const so = stationObjFor(idx);
+    if (so && so.crowd) {
+      so.crowd.waitingCount = Math.min(so.crowd.N - 2, so.crowd.waitingCount + (e.surge || 12));
+      so.crowd.reset();
+    }
+    s.legCrowds++;
+    s.crowdStation = idx;
+    const zh = path.stations[idx] ? path.stations[idx].zh : '下一站';
+    toast(`大客流预警 · ${zh}，请关注乘降安全`, 'warn', 6800);
+    AUDIO.announce(`${zh}站客流较大，请司机注意乘降安全。`);
+    return;
+  }
+  if (e.kind === 'slowzone') {
+    G.slowzone = { until: G.clock + (e.duration || 120), limit: e.limit || 40 };
+    toast(`临时限速 ${G.slowzone.limit} km/h · 持续 ${Math.round(e.duration || 120)} 秒`, 'warn', 6000);
+    AUDIO.announce(`前方临时限速，限速${G.slowzone.limit}公里。`);
+    return;
+  }
+  if (e.kind === 'dispatch') {
+    s.dispatch.push({ at: Math.round(G.clock), text: e.text || '按图行车' });
+    toast(`调度指令 · ${e.text || '按图行车'}`, 'info', 7000);
+    AUDIO.announce(e.text || '调度指令，请按图行车。');
+  }
+}
+
+/* 每帧推进事件时间轴；不依赖 Math.random，种子固定则序列固定 */
+function sessionTick() {
+  if (!sessionActive() || G.mode !== 'driving') return;
+  const s = G.session;
+  while (s.cursor < s.events.length && G.clock + 1e-6 >= s.events[s.cursor].at) {
+    const e = s.events[s.cursor];
+    /* 故障未处置完时先挂起后续事件，避免「第二条故障被静默丢弃」 */
+    if (e.kind === 'fault' && G.fault) return;
+    s.cursor++;
+    sessionFire(e);
+  }
+  if (G.slowzone && G.clock >= G.slowzone.until) {
+    G.slowzone = null;
+    toast('临时限速已解除', 'good', 3000);
+  }
+}
+
+/* 大客流站点办客（开门）时记为已服务 */
+function sessionCrowdServed(idx) {
+  const s = G.session;
+  if (!s || s.crowdStation !== idx) return;
+  s.legCrowdsServed++;
+  s.crowdStation = -1;
+}
+
+/* ---------------------------------------------------------------- 结算 */
+function sessionDistanceKm() {
+  if (!path || !path.stations.length) return 0;
+  const a = path.stations[0].stopS;
+  const b = path.stations[path.stations.length - 1].stopS;
+  return Math.abs(b - a) / 1000;
+}
+
+function sessionCommitLeg() {
+  const s = G.session;
+  if (!s || s.phase !== 'driving') return null;
+  const stops = G.results.filter(r => r.idx > 0);
+  const punc = stops.length ? stops.reduce((a, r) => a + (r.punc || 0), 0) / stops.length : 0;
+  const errs = stops.map(r => (r.err === 99 ? 5 : Math.abs(r.err || 0)));
+  const stopErr = errs.length ? errs.reduce((a, v) => a + v, 0) / errs.length : 0;
+  const rec = {
+    leg: s.legIndex + 1,
+    dir: G.reverse ? -1 : 1,
+    from: path.stations[0] ? path.stations[0].zh : '',
+    to: path.stations[path.stations.length - 1] ? path.stations[path.stations.length - 1].zh : '',
+    startClock: Math.round(s.legStart),
+    endClock: Math.round(G.clock),
+    punc: Math.round(punc),
+    stopErr: Math.round(stopErr * 100) / 100,
+    energy: Math.round(G.energy * 10) / 10,
+    energyTraction: Math.round((G.energyTraction || 0) * 10) / 10,
+    regen: Math.round((G.regen || 0) * 10) / 10,
+    distanceKm: Math.round(sessionDistanceKm() * 10) / 10,
+    penalties: G.penalties,
+    faults: s.legFaults,
+    faultsFixed: s.legFaultsFixed,
+    crowds: s.legCrowds,
+    crowdsServed: s.legCrowdsServed
+  };
+  s.log.push(rec);
+  s.phase = 'intermission';
+  return rec;
+}
+
+function sessionFmtClock(sec) {
+  if (typeof fmtClock === 'function') return fmtClock(sec);
+  const s = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const p = n => String(n).padStart(2, '0');
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
+function sessionFmtDuration(sec) {
+  const m = Math.max(0, Math.round(sec / 60));
+  if (m < 60) return `${m} 分`;
+  return `${Math.floor(m / 60)} 小时 ${m % 60} 分`;
+}
+
+function sessionResultHtml(score, final) {
+  const s = G.session;
+  if (!s) return '';
+  const t0 = s.log.length ? s.log[0].startClock : s.legStart;
+  const t1 = s.log.length ? s.log[s.log.length - 1].endClock : G.clock;
+  const parts = final ? `
+    <div class="sess-parts">
+      <div><i>准点</i><b>${score.parts.punc}</b></div>
+      <div><i>停站</i><b>${score.parts.stop}</b></div>
+      <div><i>能耗</i><b>${score.parts.energy}</b></div>
+      <div><i>故障处置</i><b>${score.parts.fault}</b></div>
+      <div><i>满意度</i><b>${score.parts.satisfaction}</b></div>
+    </div>` : '';
+  const rows = s.log.map(r => `<div class="sess-leg">
+      <span>${r.leg}</span>
+      <span class="seg">${r.from} → ${r.to}</span>
+      <span>${r.punc}%</span>
+      <span>${r.stopErr.toFixed(2)} m</span>
+      <span>${r.energy.toFixed(0)} kWh</span>
+      <span>${r.faults ? `${r.faultsFixed}/${r.faults}` : '—'}</span>
+    </div>`).join('');
+  const next = (!final && s.phase === 'intermission' && s.log.length < s.legCount)
+    ? `<div class="sess-next">下一段 ${sessionFmtClock(s.pendingStart)} 发车 · 交班余量 ${sessionFmtDuration(s.pendingStart - G.clock)}</div>`
+    : '';
+  return `<div class="sess-head"><b>${SESSION_DIR_NAME}</b><span>${(LINES[routeDef.line] || {}).name || ''} · ${s.legCount} 段 · ${sessionFmtClock(t0)}–${sessionFmtClock(t1)}</span></div>
+    ${parts}${next}
+    <div class="sess-legs">
+      <div class="sess-leg head"><span>段</span><span class="seg">区间</span><span>准点</span><span>停站</span><span>能耗</span><span>故障</span></div>
+      ${rows}
+    </div>
+    <div class="sess-foot">调度指令 ${s.dispatch.length} 条 · 种子 ${s.seed}</div>`;
+}
+
+function sessionShowIntermission(legScore, legGrade) {
+  const s = G.session;
+  if (!s) return;
+  const next = s.plan.legs[s.legIndex + 1];
+  s.pendingStart = Math.round(G.clock + (s.plan.legs[s.legIndex].slack || 300));
+  sessionSave(false);
+  $('resTitle').textContent = `第 ${s.legIndex + 1} 段完成 · 准备交班`;
+  $('resScoreLabel').textContent = '本段评分';
+  $('resGrade').textContent = legGrade;
+  $('resScore').textContent = legScore;
+  $('resSession').style.display = '';
+  $('resSession').innerHTML = sessionResultHtml(scoreSession(s.log, { vmax: path.vmax }), false);
+  $('resAgain').classList.add('hidden');
+  const rv = $('resReverse');
+  rv.classList.remove('hidden');
+  rv.textContent = next ? `开始下一段（第 ${s.legIndex + 2} 段）` : '开始下一段';
+  $('resMenu').textContent = '结束运营日并结算';
+  sessionUpdateHud();
+}
+
+function sessionShowFinal(early) {
+  const s = G.session;
+  if (!s) return;
+  if (!s.log.length) { sessionClearSave(); return; }
+  const score = scoreSession(s.log, { vmax: path.vmax });
+  $('resTitle').textContent = early ? '运营日提前结束 · 结算' : '运营日结算';
+  $('resScoreLabel').textContent = '运营总分';
+  $('resGrade').textContent = score.grade;
+  $('resScore').textContent = score.score;
+  $('resStop').innerHTML = score.totals.avgStopErr.toFixed(2) + '<small>m</small>';
+  $('resPunc').innerHTML = score.parts.punc + '<small>%</small>';
+  $('resKwh').innerHTML = Math.round(score.totals.energy) + '<small>kWh</small>';
+  $('resEnergy').innerHTML = `牵引 ${Math.round(score.totals.energyTraction)} kWh · 回馈 ${Math.round(score.totals.regen)} kWh · 净 ${Math.round(score.totals.energy)} kWh`;
+  const pen = s.log.reduce((a, r) => a + (r.penalties || 0), 0);
+  $('resPenalty').innerHTML = (pen > 0 ? '-' + pen : '0') + '<small>分</small>';
+  $('resSession').style.display = '';
+  $('resSession').innerHTML = sessionResultHtml(score, true);
+  $('resAgain').classList.add('hidden');
+  $('resReverse').classList.add('hidden');
+  $('resMenu').textContent = '返回线路选择';
+  if (typeof saveCareer === 'function' && routeDef) saveCareer(routeDef.id + ':day', score.score, score.grade);
+  s.phase = 'done';
+  sessionClearSave();
+  sessionUpdateHud();
+}
+
+/* 段间交接：重建下一方向交路，按下一段计划发车时刻开始 */
+async function sessionNextLeg() {
+  const s = G.session;
+  if (!s || s.phase !== 'intermission') return;
+  const next = s.plan.legs[s.legIndex + 1];
+  if (!next) { sessionShowFinal(false); return; }
+  s.pendingStart = Math.round(G.clock + (s.plan.legs[s.legIndex].slack || 300));
+  const dir = next.dir;
+  $('results').classList.add('hidden');
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = `第 ${next.i + 1} 段 · 正在准备${dir < 0 ? '反向' : '正向'}交路…`;
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  G.mode = 'loading';
+  try {
+    await buildService(s.routeIdx, dir < 0);
+    $('loading').classList.add('hidden');
+    G.turnback = null;
+    beginDriving();
+    sessionBeginLeg(next.i);
+    toast(`第 ${next.i + 1} 段开始 · ${sessionFmtClock(path.startSec)} 发车`, 'good', 4600);
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '交班失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+  }
+}
+
+function sessionFinishEarly() {
+  const s = G.session;
+  if (!s) return;
+  sessionShowFinal(true);
+}
+
+/* ---------------------------------------------------------------- 存档 */
+function sessionSnapshot() {
+  return {
+    clock: G.clock,
+    s: G.s,
+    targetIdx: G.targetIdx,
+    results: G.results.map(r => Object.assign({}, r)),
+    energy: G.energy,
+    penalties: G.penalties,
+    doorsOpen: G.doorsOpen,
+    stopState: G.stopState,
+    fault: G.fault ? Object.assign({}, G.fault) : null,
+    faultCount: G.faultCount,
+    legStart: G.session.legStart,
+    cursor: G.session.cursor,
+    legFaults: G.session.legFaults,
+    legFaultsFixed: G.session.legFaultsFixed,
+    legCrowds: G.session.legCrowds,
+    legCrowdsServed: G.session.legCrowdsServed,
+    crowdStation: G.session.crowdStation
+  };
+}
+
+function sessionSave(withSnap) {
+  const s = G.session;
+  if (!s) return;
+  s.snap = withSnap ? sessionSnapshot() : null;
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(sessionToSave(s)));
+  } catch (e) {
+    console.warn('[session] 存档写入失败', e);
+  }
+}
+
+function sessionClearSave() {
+  try { localStorage.removeItem(SESSION_KEY); } catch (e) { /* 忽略 */ }
+}
+
+function sessionReadSave() {
+  let txt = null;
+  try { txt = localStorage.getItem(SESSION_KEY); } catch (e) { return null; }
+  if (!txt) return null;
+  const r = sessionFromSave(txt);
+  return r.ok ? r.data : null;
+}
+
+/* 继续运营日：phase=intermission 时直接开下一段；driving 时恢复快照 */
+async function sessionResume() {
+  const data = sessionReadSave();
+  if (!data) { toast('没有可继续的运营日存档', 'warn', 3000); return false; }
+  const plan = data.plan;
+  let legIndex = data.legIndex;
+  let pendingStart = data.pendingStart;
+  if (data.phase === 'intermission') {
+    legIndex = data.legIndex + 1;
+    if (legIndex >= plan.legCount) { toast('这段运营日已经结束', 'warn', 3000); return false; }
+    pendingStart = data.pendingStart;
+  }
+  const leg = plan.legs[legIndex];
+  if (!leg) { toast('运营日存档已损坏', 'bad', 4000); return false; }
+  /* 用 routeId 反查交路：路线表顺序可能因版本变化，不能依赖存下来的下标 */
+  const routeIdx = ROUTES.findIndex(r => r.id === data.routeId);
+  if (routeIdx < 0) { toast('存档对应的交路已不存在', 'bad', 4000); return false; }
+
+  G.session = {
+    schema: SESSION_SCHEMA,
+    routeId: data.routeId, routeIdx,
+    seed: data.seed, diff: data.diff, plan,
+    legIndex, legCount: plan.legCount,
+    legStart: pendingStart, pendingStart,
+    events: [], cursor: 0, log: data.log || [], dispatch: data.dispatch || [],
+    legFaults: 0, legFaultsFixed: 0, legCrowds: 0, legCrowdsServed: 0, crowdStation: -1,
+    phase: 'driving', snap: data.snap || null
+  };
+  G.diff = data.diff;
+  G.sessionSeed = data.seed;
+  G.routeIdx = routeIdx;
+  G.playMode = 'day';
+  G.exam = false;
+
+  $('menu').classList.add('hidden');
+  $('hud').classList.remove('on');
+  $('loading').classList.remove('hidden');
+  $('loadStep').textContent = '正在恢复运营日…';
+  $('loadPct').textContent = '';
+  $('loadFill').style.width = '0%';
+  G.mode = 'loading';
+  try {
+    await buildService(routeIdx, leg.dir < 0);
+    $('loading').classList.add('hidden');
+    beginDriving();
+    if (data.snap && data.phase !== 'intermission') {
+      sessionRestoreSnap(data.snap);
+    } else {
+      sessionBeginLeg(legIndex);
+      toast(`继续运营日 · 第 ${legIndex + 1}/${plan.legCount} 段`, 'good', 4200);
+    }
+    return true;
+  } catch (err) {
+    console.error(err);
+    $('loadStep').textContent = '恢复失败：' + (err && err.message ? err.message : err);
+    $('loadPct').textContent = '请刷新页面重试';
+    return false;
+  }
+}
+
+function sessionRestoreSnap(snap) {
+  const s = G.session;
+  if (!s || !snap) return;
+  G.clock = snap.clock;
+  G.s = snap.s;
+  G.v = 0;
+  G.lever = 0;
+  G.targetIdx = snap.targetIdx;
+  G.results = snap.results || [];
+  G.energy = snap.energy || 0;
+  G.penalties = snap.penalties || 0;
+  G.fault = snap.fault || null;
+  G.faultCount = snap.faultCount || 0;
+  G.doorsOpen = !!snap.doorsOpen;
+  G.stopState = snap.stopState || 'dwell';
+  G.doorT = G.doorsOpen ? 1 : 0;
+  G.ato = false;
+  if (G.fault && G.fault.type === 'signal') G.sigMode = 'fixed';
+  train.carLag.fill(0);
+  train._lastV = 0;
+  train.update(G.s, 0, 0);
+  train.setDoorT(G.doorT);
+  const so = stationObjFor(G.targetIdx);
+  if (so) so.psdL.setOpen(G.doorsOpen ? 1 : 0);
+  /* 事件时刻以存档里的 legStart 为准，已触发过的事件跳过 */
+  s.legStart = snap.legStart || s.legStart;
+  s.events = s.plan.events.filter(e => e.legIndex === s.legIndex)
+    .map(e => Object.assign({}, e, { at: s.legStart + e.atSec }));
+  s.cursor = snap.cursor || 0;
+  s.legFaults = snap.legFaults || 0;
+  s.legFaultsFixed = snap.legFaultsFixed || 0;
+  s.legCrowds = snap.legCrowds || 0;
+  s.legCrowdsServed = snap.legCrowdsServed || 0;
+  s.crowdStation = snap.crowdStation == null ? -1 : snap.crowdStation;
+  s.phase = 'driving';
+  updateTimetable();
+  updateHUD(true);
+  sessionSave(true);
+  toast('运营日已恢复 · 继续驾驶', 'good', 3800);
+}
+
+/* 菜单里的「继续运营日」入口 */
+function sessionResumePrompt() {
+  const btn = $('resumeDay');
+  if (!btn) return;
+  const data = sessionReadSave();
+  const routeIdx = data ? ROUTES.findIndex(r => r.id === data.routeId) : -1;
+  const route = routeIdx >= 0 ? ROUTES[routeIdx] : null;
+  if (!data || !route) { btn.classList.add('hidden'); return; }
+  const legIndex = data.phase === 'intermission' ? data.legIndex + 1 : data.legIndex;
+  if (legIndex >= data.plan.legCount) { btn.classList.add('hidden'); return; }
+  const lineName = (LINES[route.line] || {}).name || '';
+  btn.innerHTML = `继续运营日 <span>${lineName} · 第 ${legIndex + 1}/${data.plan.legCount} 段 · ${sessionFmtClock(data.pendingStart)}</span>`;
+  btn.classList.remove('hidden');
+  btn.disabled = false;
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const ok = await sessionResume();
+    if (!ok) btn.disabled = false;
+  };
+}
+
+
+
+/* ===== 67_onboard.js ===== */
+/* =====================================================================
+   新手引导（P4-2）
+   ---------------------------------------------------------------------
+   首次进入驾驶时给出 3 步操作指引：起步 / 制动对位 / 开门。
+   引导打开期间冻结主循环，避免玩家还在读字车就动了。
+   `sm_onboarded` 记录已看过；暂停菜单可随时重看。
+   ===================================================================== */
+
+const ONBOARD_KEY = 'sm_onboarded';
+
+function onboardStepText(i) {
+  const touch = !!G.touchMode;
+  if (i === 0) {
+    return touch
+      ? '看屏幕底部的触屏手柄。把中间的圆钮向右拖到「牵引」区，列车就会起动；松手后手柄会停在原位。'
+      : '按住 W 给牵引，松开后手柄保持；按 S 回零或制动。列车起动后注意前方信号与限速。';
+  }
+  if (i === 1) {
+    return touch
+      ? '看左上角「停车标」的距离。提前把圆钮向左拖到「制动」区，让列车在停车标前停稳；偏差 0.35 m 内满分。'
+      : '看左上角「停车标」的距离。提前按 S 制动，让列车在停车标前停稳；偏差 0.35 m 内满分。';
+  }
+  return touch
+    ? '停稳后点「开门」。车门打开后才能办理乘降；关门后牵引联锁才会解除。'
+    : '停稳后按 O 开门、按 P 关门。车门未关闭时牵引会被联锁锁定。';
+}
+
+function onboardRender() {
+  const i = Math.max(0, Math.min(2, G.onboardStep || 0));
+  const title = ['起步', '制动对位', '开门办客'][i];
+  $('obTitle').textContent = `${i + 1} / 3 · ${title}`;
+  $('obText').textContent = onboardStepText(i);
+  const dots = $('obDots');
+  if (dots) [...dots.children].forEach((d, k) => d.classList.toggle('on', k <= i));
+  $('obNext').textContent = i >= 2 ? '开始值乘' : '下一步';
+}
+
+function onboardShow(force) {
+  if (!force && G.exam) return false;
+  if (!force) {
+    try { if (localStorage.getItem(ONBOARD_KEY)) return false; } catch (e) { /* 忽略 */ }
+  }
+  if (G.mode !== 'driving' && !force) return false;
+  G.onboardStep = 0;
+  G.onboardOpen = true;
+  onboardRender();
+  $('onboard').classList.remove('hidden');
+  return true;
+}
+
+function onboardFinish() {
+  G.onboardOpen = false;
+  $('onboard').classList.add('hidden');
+  try { localStorage.setItem(ONBOARD_KEY, '1'); } catch (e) { /* 忽略 */ }
+  if (G.mode === 'driving') { clock.getDelta(); }
+}
+
+function onboardNext() {
+  G.onboardStep = (G.onboardStep || 0) + 1;
+  if (G.onboardStep >= 3) { onboardFinish(); return; }
+  onboardRender();
+}
+
+function bindOnboard() {
+  const next = $('obNext'), skip = $('obSkip');
+  if (next) next.addEventListener('click', () => { AUDIO.beep(); onboardNext(); });
+  if (skip) skip.addEventListener('click', () => onboardFinish());
+  const guide = $('pGuide');
+  if (guide) guide.addEventListener('click', () => {
+    $('pause').classList.add('hidden');
+    G.mode = 'driving';
+    clock.getDelta();
+    onboardShow(true);
+  });
+}
+
+/* 首次进入驾驶时调用；force 时无视 sm_onboarded 重播 */
+function maybeShowOnboard(force) {
+  return onboardShow(!!force);
+}
+
+
 /* ===== 70_core.js ===== */
 /* ================================================================
    核心状态 / 渲染基础设施 / 主循环
@@ -70766,7 +73644,9 @@ const G = {
   clock: 0, targetIdx: 0, stopState: 'run',
   stopErr: 0, stopScore: 0,
   results: [], penalties: 0, atpViol: 0, ebCount: 0,
-  energy: 0, trainNo: '02014',
+  energy: 0, energyTraction: 0, regen: 0, regenOn: false,
+  slipping: false, _slipWarned: false,
+  couplerPeak: { tension: 0, compression: 0 }, trainNo: '02014',
   lastSoundDoor: -1,
   camMode: 0, yaw: 0, pitch: -0.02,
   orbit: { az: 0.7, el: 0.26, dist: 34 },
@@ -70778,10 +73658,14 @@ const G = {
   shakeOn: true, shakeAmp: 0.0022,
   fault: null, faultCount: 0, speedLog: [],
   sigMode: 'cbtc', exam: false, examTasks: [], examDone: 0, doorAt: {},
-  stopPlan: null, walk: null, turnback: null
+  stopPlan: null, walk: null, turnback: null,
+  /* 运营日（P2）：playMode 'single' | 'day'；session 由 66_session_game.js 维护 */
+  playMode: 'single', session: null, sessionSeed: null, sessionMinutes: 120,
+  sessionLegs: null, slowzone: null,
+  touchMode: false, onboardOpen: false, onboardStep: 0
 };
 
-let renderer, camera, scene, composer, bloomPass, sun, skyMesh, hemi;
+let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
 let path = null, line = null, routeDef = null, theme = THEMES.dusk;
 let train = null, aiTrains = [], stationObjs = [], worldGroup = null, stationLights = [];
 let tunnelLights = [];   // 隧道照明跟随灯（建模提升）
@@ -70811,20 +73695,40 @@ const PIXEL_BUDGET = {
 /** 按目标像素预算算 pixelRatio。
  *  three.js 里 setPixelRatio(pr) 的效果是「绘制缓冲 = CSS 尺寸 × pr」，
  *  所以要达到目标像素数，pr = sqrt(预算 / CSS 像素数)。
- *  不做超采样（上限 1.0 之外没有收益），下限 0.5 防止过度模糊。 */
+ *
+ *  上限必须取 devicePixelRatio，不能用 1.0：
+ *  Windows 显示缩放 150% 时，window.innerWidth 是 **CSS 像素**
+ *  （2560 物理宽 → 1707 CSS 宽），pr=1.0 意味着绘制缓冲只有 1707×960，
+ *  被拉伸到 2560×1440 显示 —— 所有 3D 里的文字（站名牌、PIS、
+ *  目的地屏）都会明显发虚。这正是「字体不清晰」的主因。
+ *  取 dpr 就正好落在原生物理分辨率上。 */
 function pixelRatioForBudget(budget) {
   const cssPx = window.innerWidth * window.innerHeight;
   if (cssPx <= 0) return 1;
+  const dpr = window.devicePixelRatio || 1;
   const raw = Math.sqrt(budget / cssPx);
-  return clamp(raw, 0.5, 1.0);
+  return clamp(raw, 0.5, Math.max(1, dpr));
 }
 
 function applyRenderScale() {
   if (!renderer) return;
-  const budget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
-  const pr = pixelRatioForBudget(budget);
+  const baseBudget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
+  const budget = G._diagHalf ? baseBudget * 0.25 : baseBudget;
+  /* 动态分辨率：在档位预算基础上再乘一个自适应系数。
+     实测（780M + 2K 屏）帧时间 ≈ 6.5 ms 固定 + 5.01 ms/MP，
+     要稳住 60fps 只能用约 2.03 MP —— 原生 3.69 MP 根本吃不下。
+     与其猜一个固定档位，不如让程序自己逼近：
+     慢了就缩、快了就涨，最终停在这台机器能维持 60fps 的最高分辨率。 */
+  const rscale = G.autoDRS === false ? 1 : (G.renderScale == null ? 1 : G.renderScale);
+  const pr = pixelRatioForBudget(budget) * rscale;
   renderer.setPixelRatio(pr);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
+  /* 关键：EffectComposer 在构造时把 renderer.getPixelRatio() 快照进
+     _pixelRatio，之后 setSize(w,h) 是按「w × _pixelRatio」算渲染目标尺寸的。
+     换档时只改 renderer 的 pixelRatio 而不告诉 composer，
+     后处理目标就一直是旧尺寸 —— 表现为「改档位后分辨率和画面都没变」，
+     以及最终 blit 多一次缩放。必须同步。 */
+  if (composer && composer.setPixelRatio) composer.setPixelRatio(pr);
   G.renderPR = pr;
   const w = Math.floor(window.innerWidth * pr);
   const h = Math.floor(window.innerHeight * pr);
@@ -70832,6 +73736,10 @@ function applyRenderScale() {
   if (composer && composer.setSize) {
     composer.setSize(window.innerWidth, window.innerHeight);
     if (bloomPass && bloomPass.resolution) bloomPass.resolution.set(w, h);
+  }
+  /* FXAA 的采样步长按绘制缓冲尺寸算，换档/缩放后必须同步，否则抗锯齿失效 */
+  if (fxaaPass && fxaaPass.material && fxaaPass.material.uniforms.resolution) {
+    fxaaPass.material.uniforms.resolution.value.set(1 / Math.max(1, w), 1 / Math.max(1, h));
   }
 }
 
@@ -70874,14 +73782,28 @@ function makeComposer(targetScene) {
      color 1.6/2.4/3.2）在 ToneMapping 之前就被裁到 1.0，画面整体过曝发白。
      HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
 
-     samples: 0 —— 核显上 4x MSAA 的填充率代价过高，而它只是「每像素 ×4」。
-     光靠关掉 MSAA 就把这块带宽从 32 B/px 降到 8 B/px（4 倍），已经够了。 */
+     MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿明显。
+     真机实测：MSAA 在这块核显上代价过高，且随分辨率非线性恶化
+       2.1 MP + 4x  = 100 fps（8.4M 采样）
+       3.69 MP + 4x =  39 fps（14.8M 采样）
+     采样数只涨 1.76 倍、帧时间涨 2.56 倍 —— 撞的是 UMA 带宽墙，
+     不是填充率。继续降 2x 也只敢保守估计 60 fps 上下。
+
+     所以换方案：**MSAA 全关，改用 FXAA 后处理**。
+     FXAA 是一次全屏 pass（十几次纹理采样），代价远低于 MSAA 的
+     多重采样缓冲；而分辨率保持原生，文字不会像降分辨率那样发虚。
+     对这块核显，「原生分辨率 + FXAA」是唯一同时满足
+     「文字锐利」和「跑得动」的组合。
+     流畅档不建 composer，直接出屏，靠低分辨率扛。 */
+  const MSAA = { high: 0, medium: 0, low: 0 };
+  const samples = MSAA[G.quality] != null ? MSAA[G.quality] : 2;
   const pr = G.renderPR || 1;
   const w = Math.max(1, Math.floor(window.innerWidth * pr));
   const h = Math.max(1, Math.floor(window.innerHeight * pr));
   const rt = new THREE.WebGLRenderTarget(w, h, {
-    type: THREE.HalfFloatType, samples: 0
+    type: THREE.HalfFloatType, samples
   });
+  G.msaa = samples;
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(targetScene, camera));
   G._bloomPending = targetScene;      // 交给主循环延后补装
@@ -70904,7 +73826,12 @@ function installBloomChain() {
     const pr = G.renderPR || 1;
     const w = Math.max(1, Math.floor(window.innerWidth * pr));
     const h = Math.max(1, Math.floor(window.innerHeight * pr));
-    const bScale = G.quality === 'medium' ? 0.5 : 1.0;
+    /* 泛光一律半分辨率：UnrealBloomPass 内部是 5 级 mip + 双向模糊，
+       整体片元量约为主画面的 1.33 倍。精细档原来用全分辨率，
+       在 3.69 MP 下这一项就要吃掉近 5 MP 的片元工作量 —— 是
+       「原生 2K 只有 40fps」的主要来源之一。
+       泛光本身是低频效果，半分辨率肉眼几乎看不出差别。 */
+    const bScale = 0.5;
     bloomPass = new UnrealBloomPass(
       new THREE.Vector2(Math.floor(w * bScale), Math.floor(h * bScale)),
       theme.bloom * 0.34, 0.55, 1.08
@@ -70913,20 +73840,101 @@ function installBloomChain() {
   } else {
     bloomPass = null;
   }
-  const vig = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, strength: { value: 0.55 }, time: { value: 0 } },
-    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `uniform sampler2D tDiffuse; uniform float strength; varying vec2 vUv;
-      void main(){ vec4 c=texture2D(tDiffuse,vUv); vec2 p=vUv-0.5; float v=smoothstep(0.85,0.18,length(p)*1.25);
-      c.rgb*=mix(1.0-strength*0.55,1.0,v); gl_FragColor=c; }`
-  });
-  composer.addPass(vig);
+  /* 暗角（vignette）不再单独占一个 pass：全屏 pass 在 3.69MP 下每个
+     就是 3.69 MP 的片元工作量，而暗角只是一次亮度乘法。
+     把它并到 FXAA 的着色器末尾，等于白拿 3.7 MP 的预算。 */
   composer.addPass(new OutputPass());
+
+  /* FXAA 放在 OutputPass 之后：抗锯齿在 sRGB 空间做效果最好。
+     resolution 传的是「1 / 绘制缓冲尺寸」，resize 与换档时都要更新。 */
+  /* 把 FXAA 的输出改写成「先算颜色，再乘暗角」。
+     锚点用正则匹配，避免三份 three.js 源码的缩进差异导致替换失败。 */
+  const vigFrag = FXAAShader.fragmentShader
+    .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float vigStrength;')
+    /* FxaaPixelShader 返回的是 vec4，不是 vec3 */
+    .replace(/gl_FragColor\s*=\s*FxaaPixelShader\(/, 'vec4 fxaaRgba = FxaaPixelShader(')
+    .replace(/invEdgeDetectionQuality\s*\)\s*;/,
+      'invEdgeDetectionQuality);\n' +
+      '\t\t\tvec2 vp = vUv - 0.5;\n' +
+      '\t\t\tfloat vv = smoothstep(0.85, 0.18, length(vp) * 1.25);\n' +
+      '\t\t\tfxaaRgba.rgb *= mix(1.0 - vigStrength * 0.55, 1.0, vv);\n' +
+      '\t\t\tgl_FragColor = fxaaRgba;');
+  if (vigFrag === FXAAShader.fragmentShader) {
+    console.warn('[fxaa] 暗角注入未生效，保持原样');
+  }
+  const fxaaShader = {
+    uniforms: { tDiffuse: { value: null }, resolution: { value: new THREE.Vector2(1, 1) }, vigStrength: { value: 0.55 } },
+    vertexShader: FXAAShader.vertexShader,
+    fragmentShader: vigFrag
+  };
+  fxaaPass = new ShaderPass(fxaaShader);
+  const prNow = G.renderPR || 1;
+  fxaaPass.material.uniforms.resolution.value.set(
+    1 / Math.max(1, window.innerWidth * prNow),
+    1 / Math.max(1, window.innerHeight * prNow)
+  );
+  composer.addPass(fxaaPass);
 }
 
 /* 切换画质档位后重建后期链路。
    低档要彻底拆掉 composer（走 renderer.render 直出），
    中/高档重新建 RT 并把 bloom 挂上。 */
+/* ---------------- 动态分辨率（DRS） ----------------
+   每 1.2 秒看一次最近的平均帧时间：
+     超过 17.0 ms（< 59fps）-> 缩放 -0.06
+     低于 13.5 ms（> 74fps）-> 缩放 +0.03
+   其它区间不动（死区，避免来回抖）。
+   只在分辨率变化时重建 render target，不重编译着色器，所以代价很低。 */
+const DRS_TARGET = 16.67;
+const DRS_SLOW = 17.0;        // 超过这个就缩
+const DRS_FAST = 13.5;        // 低于这个才涨
+const DRS_MIN = 0.42;
+const DRS_MAX = 1.0;
+
+function tuneDRS(avgMs) {
+  if (G.autoDRS === false) return;
+  let s = G.renderScale == null ? 1 : G.renderScale;
+  let next = s;
+  if (avgMs > DRS_SLOW) next = s - 0.06;
+  else if (avgMs < DRS_FAST) next = s + 0.03;
+  next = clamp(next, DRS_MIN, DRS_MAX);
+  if (Math.abs(next - s) < 0.005) return;
+  G.renderScale = next;
+  applyRenderScale();
+  /* 缩放后重建 render target 会有一次小抖动，清空采样重新计 */
+  G._fpsBuf = null;
+  G._fpsSum = 0;
+}
+
+/* ---------------- F4 逐项诊断 ----------------
+   当「减掉 40% 片元量却完全没变化」时，说明瓶颈不在我以为的地方。
+   与其继续猜，不如把这台机器上的各项开销逐个关掉实测：
+     正常 -> 关泛光 -> 关阴影 -> 半分辨率 -> 关阴影+半分辨率
+   按 F4 循环，徽章会显示当前模式；对比各模式的 fps 就能定位。 */
+const DIAG_MODES = ['正常', '关泛光', '关阴影', '半分辨率', '关阴影+半分辨率'];
+function cycleDiag() {
+  G.diagIdx = ((G.diagIdx || 0) + 1) % DIAG_MODES.length;
+  applyDiag();
+  toast('诊断模式：' + DIAG_MODES[G.diagIdx], 'info', 1800);
+}
+
+function applyDiag() {
+  const i = G.diagIdx || 0;
+  const noBloom = i === 1;
+  const noShadow = i === 2 || i === 4;
+  const halfRes = i === 3 || i === 4;
+
+  if (bloomPass) bloomPass.enabled = !noBloom;
+  if (sun && sun.shadow) sun.castShadow = (G.quality !== 'low') && !noShadow;
+
+  if (!!G._diagHalf !== halfRes) {
+    G._diagHalf = halfRes;
+    if (typeof applyRenderScale === 'function') applyRenderScale();
+    G._fpsCooldown = 1.5;
+    G._fpsBuf = null; G._fpsSum = 0; G.fps = 0; G.frameMs = 0;
+  }
+}
+
 function rebuildPostChain() {
   const targetScene = (G.mode === 'menu' && hero) ? hero.scene : scene;
   if (!targetScene) return;
@@ -70943,6 +73951,7 @@ function rebuildPostChain() {
 function updateGame(dt) {
   if (!G.ready || G.mode !== 'driving') return;
   if (G.paused) return;
+  if (G.onboardOpen) return;   // 新手引导期间冻结世界（P4-2）
   let remain = Math.min(dt, 0.1);
   while (remain > 0.0001) {
     const h = Math.min(1 / 120, remain);
@@ -70950,6 +73959,8 @@ function updateGame(dt) {
     remain -= h;
   }
   G.clock += dt;
+  /* 运营日事件时间轴：到点触发故障/客流/限速/调度指令（P2-2） */
+  if (typeof sessionTick === 'function') sessionTick();
   if (G.finishTimer > 0) {
     G.finishTimer -= dt;
     if (G.finishTimer <= 0) finishService();
@@ -70999,6 +74010,9 @@ function updateGame(dt) {
   updateHUD();
   if (train && train.cabDisplay) {
     const st = path.stations[G.targetIdx];
+    /* 从运行图取本务计划时刻（planStopOf 内部已含旧字段回退） */
+    const plan = planStopOf(G.targetIdx);
+    const planArr = plan.arr, planDep = plan.dep;
     const sig = nextSignalAhead();
     train.cabDisplay.update(dt, {
       signal: sig ? sig.state : 2,
@@ -71018,13 +74032,16 @@ function updateGame(dt) {
       lineBadge: line.badge,
       lineName: line.name,
       nextZh: st.zh, nextEn: st.en,
-      schArr: st.schArr, schDep: st.schDep,
+      /* 时刻来源（P1-2）：优先用运行图里「本务那趟车」的计划到发。
+         运行图与旧的 st.schArr/schDep 逐站一致（交叉校验 0 秒偏差），
+         所以视觉上无变化；但换成运行图后，将来一局里跑多趟车、
+         或者车上绑定不同车次时，HMI 不需要再改。 */
+      schArr: planArr, schDep: planDep,
       clock: G.clock,
-      delay: (() => {
-        const dd = Math.max(0, st.stopS - G.s);
-        const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
-        return eta - st.schArr;
-      })(),
+      /* 正晚点由 currentDelay() 统一计算（updateHUD 已写进 G.puncDelay） */
+      delay: G.puncDelay != null ? G.puncDelay : currentDelay(),
+      /* 发车余时：停稳在站时，距离计划发车还有多少秒（负值表示已晚点） */
+      depLeft: G.doorT > 0.1 || G.stopState === 'stop' ? (planDep - G.clock) : null,
       progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
       fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
     });
@@ -71067,6 +74084,8 @@ function updateGame(dt) {
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
+  /* 城市 LOD：只遍历约 25 个块，不做矩阵运算，开销可忽略 */
+  if (typeof updateCityLOD === 'function') updateCityLOD(camera.position);
 
   /* ---- 隧道照明跟随（建模提升）----
      3 盏灯放在玩家前/中/后各一盏（间隔 22 m，与 buildTunnels 的灯具间距一致），
@@ -71161,6 +74180,11 @@ const FPS_TARGET_MS = 1000 / 60;       // 60 fps
 
 function sampleFrame(dt) {
   if (G.mode !== 'driving') { G._fpsBuf = null; return; }
+  /* 降档后必须先冷却：切换档位会重建 composer，触发一批着色器编译，
+     那一两帧会形成几百毫秒的长任务。如果不冷却，这个假尖峰会被
+     当成「还是很慢」，于是继续降档 —— 这正是「39fps 一路降到流畅」
+     的成因。冷却期内不采样、不判定。 */
+  if (G._fpsCooldown > 0) { G._fpsCooldown -= dt; G._fpsBuf = null; G._fpsSum = 0; return; }
   if (!G._fpsBuf) { G._fpsBuf = []; G._fpsSum = 0; }
   const ms = dt * 1000;
   G._fpsBuf.push(ms);
@@ -71175,6 +74199,8 @@ function sampleFrame(dt) {
   G.fps = 1000 / avg;
   G.fpsProvisional = G._fpsBuf.length < FPS_SAMPLE;
   updatePerfBadge();
+  /* 每满一个采样窗口尝试调一次渲染缩放（内部有死区与步长限制） */
+  if (G._fpsBuf.length >= FPS_SAMPLE) tuneDRS(avg);
   /* 自适应：连续 2 个窗口超过 60fps 预算 1.3 倍才降档，避免误判 */
   if (G.autoQuality !== false && avg > FPS_TARGET_MS * 1.3) {
     G._slowStreak = (G._slowStreak || 0) + 1;
@@ -71187,6 +74213,12 @@ function sampleFrame(dt) {
         saveSettings({ quality: G.quality });
         if (typeof applyRenderScale === 'function') applyRenderScale();
         if (typeof rebuildPostChain === 'function') rebuildPostChain();
+        /* 冷却 2.5 秒，跳过切换引起的编译尖峰 */
+        G._fpsCooldown = 2.5;
+        G._fpsBuf = null;
+        G._fpsSum = 0;
+        G.fps = 0;
+        G._slowStreak = 0;
         const names = { high: '精细', medium: '标准', low: '流畅' };
         toast(`帧率偏低（${G.fps.toFixed(0)} fps）· 已自动降到「${names[G.quality]}」`, 'warn', 4200);
       }
@@ -71198,9 +74230,26 @@ function sampleFrame(dt) {
 
 /* 性能徽章：F3 开关。显示 fps / 帧时间 / 渲染分辨率 / 档位，
    让玩家（和我）能直接判断当前设备是否达到 60 fps 目标。 */
+/* 分辨率 + 档位文案，徽章里多处用到 */
+function res0() {
+  const w = Math.round(window.innerWidth * (G.renderPR || 1));
+  const h = Math.round(window.innerHeight * (G.renderPR || 1));
+  const names = { high: '精细', medium: '标准', low: '流畅' };
+  const dm = (typeof DIAG_MODES !== 'undefined' && G.diagIdx) ? '  [' + DIAG_MODES[G.diagIdx] + ']' : '';
+  const rs = G.renderScale == null ? 1 : G.renderScale;
+  const rsTxt = rs < 0.995 ? '  缩放 ' + rs.toFixed(2) : '';
+  return w + '×' + h + '  ' + (names[G.quality] || G.quality) + rsTxt + dm;
+}
+
 function updatePerfBadge() {
   const el = $('perfBadge');
   if (!el || !el.classList.contains('on')) return;
+  /* 换档后的冷却期：明确提示「预热中」，而不是显示一个看起来像
+     「0 fps」的采样进度，避免误以为性能掉了。 */
+  if (G._fpsCooldown > 0) {
+    el.innerHTML = '<b style="color:#7f939f">预热中…</b>  ' + G._fpsCooldown.toFixed(1) + 's\n' + res0();
+    return;
+  }
   const n = G._fpsBuf ? G._fpsBuf.length : 0;
   const w = Math.round(window.innerWidth * (G.renderPR || 1));
   const h = Math.round(window.innerHeight * (G.renderPR || 1));
@@ -71256,6 +74305,8 @@ function togglePause(on) {
     G.mode = 'paused';
     $('pause').classList.remove('hidden');
     $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
+    const saveBtn = $('pSaveQuit');
+    if (saveBtn) saveBtn.classList.toggle('hidden', !(typeof sessionActive === 'function' && sessionActive()));
     if (window.speechSynthesis) window.speechSynthesis.cancel();
   } else if (G.mode === 'paused' && !on) {
     G.mode = 'driving';
@@ -71450,6 +74501,68 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在解算线路中心线…', 0.04);
   path = new RoutePath(routeDef, line);
 
+  /* 运营日（P2-1）：下一段按「交班时刻」而不是交路首班车时刻排点。
+     buildSchedule 会把 st.schArr/schDep 一起重排，HUD 时刻表与运行图口径一致。 */
+  const sessionStart = (typeof G.session !== 'undefined' && G.session && G.session.pendingStart != null)
+    ? G.session.pendingStart : null;
+  if (sessionStart != null) path.buildSchedule(sessionStart);
+
+  /* ---------------- 运行图（P1-1） ----------------
+     RoutePath 里已有单趟时刻表（buildSchedule 把 schArr/schDep 写在车站对象上），
+     但它本质只能表示「一趟车」。这里用 57_timetable.js 的纯函数生成真正的
+     运行图：一个时段内的全部车次，为后续 AI 按图运行、正晚点统计做准备。
+
+     本步不改任何现有行为，只做两件事：
+       1) 生成运行图并挂到 path.timetable
+       2) 把「本务对应的那一趟车」与现有 schArr/schDep 逐站比对，
+          偏差记到 G.ttStats —— 用旧的实现校验新的实现 */
+  if (typeof ttBuildTimetable === 'function') {
+    const ttStations = path.stations.map(st => ({ stopS: st.stopS, served: st.served !== false }));
+    const off = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[routeDef.id])
+      || (typeof OFFICIAL_RUN_NETWORK !== 'undefined' && OFFICIAL_RUN_NETWORK[routeDef.id])
+      || null;
+    const startSec = path.startSec != null ? path.startSec : 6 * 3600;
+    path.timetable = ttBuildTimetable(ttStations, {
+      fromSec: startSec - 1800,
+      toSec: startSec + 3 * 3600,
+      dwell: routeDef.dwell,
+      vmax: line.vmax,
+      runTimes: off
+    });
+    /* 找首站发车时刻与本务一致的那趟车 */
+    let best = null, bd = 1e9;
+    for (const svc of path.timetable.services) {
+      const d = Math.abs(svc.startSec - startSec);
+      if (d < bd) { bd = d; best = svc; }
+    }
+    /* 运营日下一段的发车时刻不一定落在发车间隔网格上：
+       整张运行图平移，让本务那趟车精确从 pendingStart 发车，
+       否则 HUD/ATO/AI 三方会差出半个间隔（最多 150 s）。 */
+    if (best && typeof ttShiftTimetable === 'function' && Math.abs(best.startSec - startSec) > 1e-6) {
+      ttShiftTimetable(path.timetable, startSec - best.startSec);
+    }
+    path.playerService = best;
+
+    /* 交叉校验：新运行图 vs 旧的 schArr/schDep */
+    let maxArr = 0, maxDep = 0, cmp = 0;
+    if (best) {
+      for (const sp of best.stops) {
+        const st = path.stations[sp.idx];
+        if (!st || st.schArr == null) continue;
+        maxArr = Math.max(maxArr, Math.abs(sp.arr - st.schArr));
+        maxDep = Math.max(maxDep, Math.abs(sp.dep - st.schDep));
+        cmp++;
+      }
+    }
+    G.ttStats = {
+      services: path.timetable.services.length,
+      playerNo: best ? best.no : null,
+      compared: cmp,
+      maxArrDiff: Math.round(maxArr),
+      maxDepDiff: Math.round(maxDep)
+    };
+  }
+
   await loadStep('正在初始化材质…', 0.1);
   initMaterials(renderer, theme);
   matInited = true;
@@ -71470,7 +74583,9 @@ async function buildService(routeIdx, reverse) {
   sun = new THREE.DirectionalLight(theme.sun, theme.sunI);
   sun.position.copy(theme.sunDir).multiplyScalar(200);
   sun.castShadow = G.quality !== 'low';
-  sun.shadow.mapSize.set(2048, 2048);
+  /* 阴影贴图尺寸改由 applyQualityEffects() 按档位决定（精细 1536、其余 1024）。
+     2048² 相当于每帧多渲染一整遍场景，是 3.69MP 下最大的隐藏开销之一。 */
+  sun.shadow.mapSize.set(1536, 1536);
   sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
   sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
   sun.shadow.camera.near = 1; sun.shadow.camera.far = 500;
@@ -71515,6 +74630,9 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在还原黄浦江与地面…', 0.5);
   const river = buildGround(path, root);
 
+  await loadStep('正在铺设地面道路…', 0.56);
+  buildRoads(path, root);
+
   await loadStep('正在生成沿线城市…', 0.6);
   buildCity(path, root, river.riverPts);
 
@@ -71547,6 +74665,12 @@ async function buildService(routeIdx, reverse) {
   buildWeather(scene);
   applyWeather(G.weather, scene);
   spawnAiTrains(path, line, root);
+  /* 给同向 AI 车绑运行图（P1-3）。锚点与 resetService 的开车时钟一致，
+     这样进入驾驶时 AI 正好在自己的计划位置上。 */
+  G.aiSched = {
+    bound: bindAiSchedules(aiTrains, path, (path.startSec != null ? path.startSec : 0) - 30),
+    total: aiTrains.length
+  };
 
   await loadStep('完成', 1.0);
   makeComposer(scene);
@@ -71559,6 +74683,41 @@ async function buildService(routeIdx, reverse) {
    动力学 / 停站判定 / ATO / 车门 / 故障演练
    （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
+/* ---------------------------------------------------------------- 时刻 */
+/* 本务在某站的计划到发：优先取运行图里「这趟车」的计划，
+   取不到就回退到车站对象上的旧字段（兼容没生成运行图的加载路径）。
+   HUD / 司机室 HMI / 结算记录都走这一个入口，避免三处口径不一致。 */
+function planStopOf(idx) {
+  if (typeof path !== 'undefined' && path && path.playerService && typeof ttStopOf === 'function') {
+    const sp = ttStopOf(path.playerService, idx);
+    if (sp) return sp;
+  }
+  const st = (typeof path !== 'undefined' && path && path.stations[idx]) || {};
+  return { arr: st.schArr, dep: st.schDep };
+}
+
+/* 当前正晚点（秒，正为晚点）。
+   停稳/停站时用「现在 - 计划到达」；运行中用「预计到达 - 计划到达」。 */
+function currentDelay() {
+  if (typeof path === 'undefined' || !path || !path.stations[G.targetIdx]) return 0;
+  const st = path.stations[G.targetIdx];
+  const plan = planStopOf(G.targetIdx);
+  if (G.stopState === 'stop' || G.stopState === 'dwell' || G.doorsOpen) {
+    return Math.round(G.clock - plan.arr);
+  }
+  /* 运行中：和 AI 一样用「此刻计划应在的里程」和实际里程比。
+     原来用 estimateRunTime(剩余距离, 当前速度)，列车刚起步时速度很低，
+     会把 4 km 的区间估成 300 s，HUD 瞬间跳到「晚点 303 s」。 */
+  if (path.playerService && typeof ttServicePosition === 'function') {
+    const schedPos = ttServicePosition(path.playerService, G.clock);
+    const behind = schedPos - G.s;
+    return Math.round(behind / Math.max(6, G.v));
+  }
+  const dd = Math.max(0, st.stopS - G.s);
+  const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
+  return Math.round(eta - plan.arr);
+}
+
 /* ---------------------------------------------------------------- 物理 */
 function stationDist() {
   const st = path.stations[G.targetIdx];
@@ -71590,6 +74749,8 @@ function physics(dt) {
   if (G.sigMode === 'fixed') limit = Math.min(limit, fixedBlockLimit());
   // 牵引故障限速必须先于超速判定生效
   if (G.fault && G.fault.type === 'traction') limit = Math.min(limit, 40);
+  /* 运营日临时限速（P2-2）：时间窗内的全线限速 */
+  if (G.slowzone && G.clock < G.slowzone.until) limit = Math.min(limit, G.slowzone.limit);
   if (typeof interlockSpeedLimit === 'function') limit = interlockSpeedLimit(G.s, limit);
   G.limit = limit;
   const overBy = speedKmh - limit;
@@ -71641,13 +74802,25 @@ function physics(dt) {
   if (!G.doorsOpen && G.doorT < 0.02) G.doorWarned = false;
 
   // 牵引/制动 + 阻力 + 坡道 → 加速度（纯函数）
+  const muNow = indoor ? 0.33 : weatherMu();
   const dyn = accelFromTraction({
     traction, brake, v, eb: G.eb,
+    mu: muNow,
     grip: indoor ? 1 : weatherGrip(),
     grade: path.gradeAt(G.s)
   });
   let a = dyn.a;
   let force = dyn.force;
+
+  /* 空转提示：只在进入空转的那一帧报一次，避免每帧刷屏 */
+  G.slipping = !!dyn.slip;
+  if (dyn.slip && !G._slipWarned) {
+    G._slipWarned = true;
+    toast(`轮对空转 · 黏着系数 ${muNow.toFixed(2)}，牵引力受限`, 'warn', 4200);
+    AUDIO.beep(true);
+  } else if (!dyn.slip) {
+    G._slipWarned = false;
+  }
 
   /* ---- 多质点车钩：车头加速度由车链解算，后车通过车钩反作用于车头 ----
      这才是真的多质点：车头不再由单质点公式直接积分，而是取车链第 0 节车的
@@ -71670,8 +74843,14 @@ function physics(dt) {
     train.chainOffsets = ch.offsets();
     train.chainCoupler = ch.summary();
     G.coupler = train.chainCoupler;
-    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死 */
-    G.v = vNew;
+    /* 车钩力峰值（P3-4）：与加速度方向对应——起动拉伸、制动压缩 */
+    if (!G.couplerPeak) G.couplerPeak = { tension: 0, compression: 0 };
+    if (G.coupler.tension > G.couplerPeak.tension) G.couplerPeak.tension = G.coupler.tension;
+    if (G.coupler.compression < G.couplerPeak.compression) G.couplerPeak.compression = G.coupler.compression;
+    /* 后车拖拽的真实反馈：车头速度跟随车链，而不是被单质点公式钉死。
+       车链解算在制动末端可能给出微小负速度（车厢回弹），车头不允许倒行。 */
+    G.v = Math.max(0, vNew);
+    if (G.v < 0.02 && brake > 0.02) G.v = 0;
   } else {
     const nv = v + a * dt;
     if (nv < 0 && brake > 0.01) { G.v = 0; }
@@ -71686,8 +74865,20 @@ function physics(dt) {
   G.s += G.v * dt;
   G.s = clamp(G.s, 0, path.length - 12);
 
-  // 能耗
-  if (force > 0) G.energy += force * Math.max(0, G.v) * dt / 3.6e6;
+  // 能耗（P3-2）：牵引电耗与再生回馈分开累计，净能耗 = 牵引 - 回馈
+  const massNow = 230000;
+  let regenForce = 0;
+  if (brake > 0.01 && !G.eb && v > 0.6) {
+    /* 常用制动优先用电制动；受黏着限制，紧急制动不走回馈。
+       低速段回馈快速衰减（真实列车约 10 km/h 以下转空气制动）。 */
+    const fade = clamp((v - 0.6) / 3.0, 0, 1);
+    regenForce = Math.min(massNow * BRK_SRV * brake, massNow * muNow * 9.81 * 0.98) * fade;
+  }
+  const es = energyStep({ force, regenForce, v: G.v, dt });
+  G.energyTraction += es.traction;
+  G.regen += es.regen;
+  G.energy = Math.max(0, G.energyTraction - G.regen);
+  G.regenOn = regenForce > 0;
 
   // 停站判定
   if (st) {
@@ -71800,11 +74991,19 @@ function atoStep(dt) {
         }
       }
       break;
-    case 'dwell':
+    case 'dwell': {
       G.atoTimer += dt;
+      /* 停站时长按运行图计划发车时刻：早到多等，晚点只停最短办客时间。
+         提前 5 s 关门（关门动画约 3 s + 出发确认 1.5 s）。 */
+      const plan = planStopOf(G.targetIdx);
+      const closeAt = plan && plan.dep != null ? plan.dep - 5 : null;
+      const wantClose = closeAt != null
+        ? (G.atoTimer > 8 && G.clock >= closeAt)
+        : G.atoTimer > (routeDef.dwell || 30);
       if (!G.doorsOpen && G.doorT < 0.02) { G.atoState = 'waitdepart'; G.atoTimer = 0; }
-      else if (G.atoTimer > (routeDef.dwell || 30)) { closeDoors(); G.atoTimer = 0; }
+      else if (wantClose) { closeDoors(); G.atoTimer = 0; }
       break;
+    }
     case 'waitdepart':
       G.atoTimer += dt;
       if (G.atoTimer > 1.5) { G.atoState = 'depart'; G.atoTimer = 0; }
@@ -71826,7 +75025,20 @@ function atoCommand() {
   const d = st.stopS - G.s;
   if (d <= 0.3) return v > 0.08 ? -0.7 : 0;
 
-  const vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+  let vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+
+  /* ATO 也按图运行（P1-2 的延伸）：用剩余距离与计划到达剩余时间反解巡航速度。
+     否则 ATO 会以线路限速一路追上前车，被压住后逐站累积晚点。
+     手动驾驶不受影响——司机本来就可以选择跑到限速。 */
+  const plan = planStopOf(G.targetIdx);
+  if (plan && plan.arr != null && typeof ttSolveCruiseFrom === 'function') {
+    const tLeft = plan.arr - G.clock;
+    if (tLeft > 0 && d > 1) {
+      const vC = ttSolveCruiseFrom(d, tLeft, v, path.vmax, 1.3, 0.95);
+      vLim = Math.min(vLim, Math.max(vC, d > 30 ? 3 : 0));
+    }
+  }
+
   const req = (v * v) / (2 * Math.max(0.35, d - 1.1));
 
   // 低速精确对位
@@ -71841,7 +75053,9 @@ function atoCommand() {
   if (brakeCmd > 0.02) return -brakeCmd;
 
   const vT = Math.min(vLim, Math.sqrt(2 * 0.95 * Math.max(0, d - 2.0)));
-  if (v < vT - 0.12) return clamp(0.22 + (vT - v) * 0.5, 0, 0.85);
+  /* 牵引爬升按运行图口径（约 1.3 m/s²）：原来 0.85 m/s² 的温和曲线
+     会让每段都比计划慢几秒，逐站累积成十几秒晚点。 */
+  if (v < vT - 0.12) return clamp(0.5 + (vT - v) * 1.1, 0, 1.3);
   return 0;
 }
 function onStopped(st, dist) {
@@ -71861,9 +75075,10 @@ function onStopped(st, dist) {
     toast(`停车偏差 ${(G.stopErr >= 0 ? '+' : '')}${G.stopErr.toFixed(2)} m  ·  +${Math.round(base)}`, 'warn', 4600);
   }
   if (G.targetIdx > 0) {
+    const plan = planStopOf(G.targetIdx);
     G.results.push({
       idx: G.targetIdx, zh: st.zh, err: G.stopErr, stopScore: base,
-      arrClock: G.clock, schArr: st.schArr, depDelay: 0, punc: 0
+      arrClock: G.clock, schArr: plan.arr, arrDelay: Math.round(G.clock - plan.arr), depDelay: 0, punc: 0
     });
   }
   AUDIO.announce(`${st.zh}站，到了。`);
@@ -71874,7 +75089,7 @@ function onDeparture(st) {
   if (G.exam && st.index > 0 && !G.doorAt[st.index]) examEvent('door', false);
   G.stopState = 'run';
   const rec = G.results.find(r => r.idx === G.targetIdx);
-  const delay = G.clock - st.schDep;
+  const delay = G.clock - planStopOf(G.targetIdx).dep;
   if (rec) {
     rec.depClock = G.clock; rec.depDelay = delay;
     rec.punc = clamp(100 - 1.5 * Math.abs(delay), 0, 100);
@@ -71899,7 +75114,7 @@ function missedStation(st) {
   if (G.exam) { examEvent('door', false); examEvent('stop', 99); }
   G.penalties += 30;
   const prevIdx = G.targetIdx;
-  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: st.schArr, punc: 0 });
+  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: planStopOf(prevIdx).arr, arrDelay: 99, punc: 0 });
   G.stopState = 'run';
   const prev = stationObjFor(prevIdx);
   if (prev) { prev.psdL.setOpen(0); }
@@ -71923,6 +75138,8 @@ function openDoors() {
   G.doorsOpen = true;
   G.stopState = 'dwell';
   G.doorAt[G.targetIdx] = true;
+  /* 运营日：大客流站点办客即记为已服务（P2-2/P2-4 满意度） */
+  if (typeof sessionCrowdServed === 'function') sessionCrowdServed(G.targetIdx);
   AUDIO.hiss(1.1, 0.05);
   setTimeout(() => AUDIO.thud(), 340);
   AUDIO.chime('open');
@@ -71931,14 +75148,15 @@ function openDoors() {
   AUDIO.announce('车门已开启，请先下后上，注意站台间隙。');
   const rec = G.results.find(r => r.idx === G.targetIdx);
   if (rec) {
-    rec.arrDelay = G.clock - st.schArr;
+    rec.arrDelay = Math.round(G.clock - planStopOf(G.targetIdx).arr);
   }
   if (isLastServed(G.targetIdx)) {
     G.finishTimer = 6;
-    const rec = G.results.find(r => r.idx === G.targetIdx);
-    if (rec) {
-      rec.punc = clamp(100 - 1.5 * Math.abs(G.clock - st.schArr), 0, 100);
-      rec.depDelay = G.clock - st.schArr;
+    const plan = planStopOf(G.targetIdx);
+    const rec2 = G.results.find(r => r.idx === G.targetIdx);
+    if (rec2) {
+      rec2.punc = clamp(100 - 1.5 * Math.abs(G.clock - plan.arr), 0, 100);
+      rec2.depDelay = G.clock - plan.arr;
     }
     toast('终到站 · 本次值乘即将结束', 'good', 5000);
   }
@@ -71956,6 +75174,8 @@ const FAULT_TYPES = [
 ];
 
 function maybeFault() {
+  /* 运营日的故障由种子时间轴触发（66_session_game.js），不再走随机 */
+  if (G.session) return;
   const chance = G.diff === 'hard' ? 0.24 : G.diff === 'easy' ? 0.05 : 0.13;
   if (G.fault || G.targetIdx === 0) return;
   if (Math.random() > chance) return;
@@ -71975,6 +75195,7 @@ function clearFault() {
   if (!G.fault) return;
   const n = G.fault.name, ty = G.fault.type;
   G.fault = null;
+  if (G.session) G.session.legFaultsFixed++;
   G.penalties += 6;
   AUDIO.beep();
   AUDIO.hiss(0.3, 0.04);
@@ -72017,14 +75238,16 @@ function resetService() {
   G.stopState = 'dwell';
   G.stopErr = 0; G.stopScore = 0;
   G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-  G.energy = 0; G.finishTimer = -1;
+  G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false;
+  G.slipping = false; G._slipWarned = false;
+  G.couplerPeak = { tension: 0, compression: 0 }; G.finishTimer = -1;
   G.announced = {};
   G.camMode = 0; G.yaw = 0; G.pitch = -0.02;
   G.ato = false; G.atoState = 'run'; G.atoTimer = 0; G.atpBrake = false; G.doorWarned = false;
   if (typeof IX !== 'undefined' && IX.routes.length) IX.applyRoute('main', true);
   G.fault = null; G.faultCount = 0; G.speedLog = [];
   G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
-  G.walk = null; G.turnback = null;
+  G.walk = null; G.turnback = null; G.slowzone = null;
   hideTransferPanel();
   if (G.exam) examInit();
 
@@ -72042,6 +75265,7 @@ function resetService() {
   G.leaderGap = null; G.leaderNo = '';
   buildTimetable();
   updateHUD(true);
+  if (typeof sessionUpdateHud === 'function') sessionUpdateHud();
   showBanner(st[0].zh, st[0].en);
   toast(`值乘开始 · ${st[0].zh} 站，请关闭车门`, 'good', 5200);
   AUDIO.announce(`欢迎乘坐上海地铁${line.name}，本次列车开往${st[st.length - 1].zh}方向。请关闭车门，准备发车。`);
@@ -72055,6 +75279,7 @@ function beginDriving() {
   clock.getDelta();
   resetService();
   updateCamera(0, true);
+  if (typeof maybeShowOnboard === 'function') maybeShowOnboard(false);
 }
 /* ---------------- 站内步行 ---------------- */
 function enterWalk(idx) {
@@ -72152,6 +75377,11 @@ function hideTransferPanel() {
 }
 async function performTransfer(lineName) {
   if (!G.walk || !G.walk.active) return;
+  /* 运营日是一整段交路，中途换线会打断时段编排与逐段对账 */
+  if (typeof sessionActive === 'function' && sessionActive()) {
+    toast('运营日期间不可换乘 · 请按交路完成本段值乘', 'warn', 3600);
+    return;
+  }
   const from = path.stations[G.walk.station];
   const ri = transferRouteFor(lineName);
   if (ri < 0) { toast(`${lineName} 暂无可用交路`, 'warn', 3000); return; }
@@ -72176,7 +75406,9 @@ async function performTransfer(lineName) {
     G.clock = st.schArr;
     G.doorAt = {}; G.announced = {};
     G.results = []; G.penalties = 0; G.atpViol = 0; G.ebCount = 0;
-    G.energy = 0; G.speedLog = [];
+    G.energy = 0; G.energyTraction = 0; G.regen = 0; G.regenOn = false; G.speedLog = [];
+    G.slipping = false; G._slipWarned = false;
+    G.couplerPeak = { tension: 0, compression: 0 };
     G.finishTimer = -1; G.ato = false; G.atoState = 'run';
     G.exam = false; G.examTasks = []; G.fault = null; G.faultCount = 0;
     G.sigMode = 'cbtc'; G.walk = null; G.turnback = null;
@@ -72308,6 +75540,7 @@ function isLastServed(idx) {
 function finishService() {
   if (G.mode === 'results') return;
   G.mode = 'results';
+  const isSession = (typeof sessionActive === 'function') && sessionActive();
   const stops = G.results.filter(r => r.idx > 0);
   const avgStop = stops.length ? stops.reduce((a, r) => a + r.stopScore, 0) / stops.length : 0;
   const avgPunc = stops.length ? stops.reduce((a, r) => a + r.punc, 0) / stops.length : 0;
@@ -72320,6 +75553,9 @@ function finishService() {
   $('resStop').innerHTML = (stops.length ? (stops.reduce((a, r) => a + Math.abs(r.err), 0) / stops.length).toFixed(2) : '—') + '<small>m</small>';
   $('resPunc').innerHTML = Math.round(avgPunc) + '<small>%</small>';
   $('resKwh').innerHTML = Math.round(G.energy) + '<small>kWh</small>';
+  const cpk = G.couplerPeak || { tension: 0, compression: 0 };
+  $('resEnergy').innerHTML = `牵引 ${Math.round(G.energyTraction || 0)} kWh · 回馈 ${Math.round(G.regen || 0)} kWh · 净 ${Math.round(G.energy || 0)} kWh`
+    + `<br>车钩峰值 拉 ${Math.round(cpk.tension)} kN / 压 ${Math.abs(Math.round(cpk.compression))} kN`;
   const pen = $('resPenalty');
   if (pen) pen.innerHTML = (G.penalties > 0 ? '-' + G.penalties : '0') + '<small>分</small>';
   let rows = `<div class="stop-line head"><span>车站</span><span>停车偏差</span><span>发车偏差</span><span>得分</span></div>`;
@@ -72348,9 +75584,35 @@ function finishService() {
     }
   }
   drawSpeedChart();
+  drawDelayChart();
+
+  /* ---- 运营日（P2）：提交本段成绩，进入段间交接或最终结算 ---- */
+  if (isSession) {
+    sessionCommitLeg();
+    const sess = G.session;
+    const more = sess && sess.legIndex < sess.legCount - 1;
+    $('resAgain').classList.add('hidden');
+    $('resReverse').classList.remove('hidden');
+    $('resReverse').style.display = '';
+    if (more) {
+      sessionShowIntermission(score, grade);
+      AUDIO.announce(`第${sess.legIndex + 1}段值乘结束，准备交班。`);
+    } else {
+      sessionShowFinal(false);
+      AUDIO.announce('本次运营日结束，正在结算。');
+    }
+    $('results').classList.remove('hidden');
+    $('hud').classList.remove('on');
+    return;
+  }
+
   if (typeof routeDef !== 'undefined' && routeDef) saveCareer(routeDef.id + (G.reverse ? ':rev' : ''), score, grade);
   const rvBtn = $('resReverse');
   if (rvBtn) rvBtn.style.display = (G.reverse || (routeDef && (routeDef.loop || routeDef.stopPlan))) ? 'none' : '';
+  $('resSession') && ($('resSession').style.display = 'none');
+  $('resScoreLabel') && ($('resScoreLabel').textContent = '总评分');
+  $('resAgain').classList.remove('hidden');
+  $('resMenu').textContent = '返回线路选择';
   $('results').classList.remove('hidden');
   $('hud').classList.remove('on');
   AUDIO.announce(`本次值乘结束，综合评分${score}分，${grade}级。感谢您的驾驶。`);
@@ -72392,6 +75654,74 @@ function drawSpeedChart() {
   ctx.fillStyle = 'rgba(140,198,63,.10)'; ctx.fill();
   ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
   ctx.fillText('全程速度曲线', x0 + 4, y0 + 14);
+}
+
+/* ---------------------------------------------------------------- 晚点曲线（P1-5）
+   逐站发车正晚点。数据直接取结算表同源的 G.results[].depDelay，
+   保证「曲线与逐站数据一致」；±60 s 画告警线，与 HMI/ATS 同口径。 */
+function drawDelayChart() {
+  const cv = $('resDelay');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const rows = (G.results || []).filter(r =>
+    r.idx > 0 && (r.depDelay != null || r.arrDelay != null));
+  const x0 = 46, x1 = W - 14, y0 = 18, y1 = H - 24;
+  ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
+  ctx.fillText('逐站发车正晚点  s', x0, 13);
+  if (!rows.length) {
+    ctx.fillStyle = '#5f7280'; ctx.fillText('无正晚点数据', x0 + 10, (y0 + y1) / 2);
+    return;
+  }
+  const vals = rows.map(r => (r.depDelay != null ? r.depDelay : r.arrDelay) || 0);
+  const maxAbs = Math.max(30, ...vals.map(v => Math.abs(v)));
+  const span = Math.max(30, Math.ceil(maxAbs / 30) * 30);
+  const Y = v => (y0 + y1) / 2 - (v / span) * ((y1 - y0) / 2 - 4);
+  const X = i => rows.length === 1 ? (x0 + x1) / 2 : x0 + (i / (rows.length - 1)) * (x1 - x0);
+
+  /* ±60 s 告警带（若量程够） */
+  if (span >= 60) {
+    for (const s of [-60, 60]) {
+      ctx.strokeStyle = 'rgba(255,107,90,.28)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, Y(s)); ctx.lineTo(x1, Y(s)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  /* 零线与刻度 */
+  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, Y(0)); ctx.lineTo(x1, Y(0)); ctx.stroke();
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px ui-monospace,monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', x0 - 6, Y(0) + 4);
+  ctx.fillText('+' + span, x0 - 6, Y(span) + 4);
+  ctx.fillText('-' + span, x0 - 6, Y(-span) + 4);
+  ctx.textAlign = 'left';
+
+  /* 晚点为正（琥珀），早点为负（蓝） */
+  ctx.beginPath();
+  vals.forEach((v, i) => { i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); });
+  ctx.strokeStyle = 'rgba(140,198,63,.85)'; ctx.lineWidth = 2.2; ctx.stroke();
+  vals.forEach((v, i) => {
+    const bad = Math.abs(v) > 60;
+    ctx.fillStyle = bad ? '#ff6b5a' : v > 5 ? '#ffb020' : v < -5 ? '#6fd3ff' : '#3ddc97';
+    ctx.beginPath(); ctx.arc(X(i), Y(v), 3.2, 0, Math.PI * 2); ctx.fill();
+    if (rows.length <= 14) {
+      ctx.fillStyle = '#93a9b6'; ctx.font = '500 10px ui-monospace,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText((v > 0 ? '+' : '') + Math.round(v), X(i), Y(v) - 7);
+      ctx.textAlign = 'left';
+    }
+  });
+  /* 站名刻度：只标首末与中间，避免拥挤 */
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px "Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  const step = Math.max(1, Math.ceil(rows.length / 8));
+  rows.forEach((r, i) => {
+    if (i % step && i !== rows.length - 1) return;
+    ctx.fillText(r.zh, X(i), y1 + 16);
+  });
+  ctx.textAlign = 'left';
 }
 
 
@@ -72557,6 +75887,15 @@ function updateAiPsd() {
 function updateHUD(force = false) {
   if (!path || !train) return;
   const st = path.stations[G.targetIdx];
+  /* 正晚点（P1-2）：司机室 HMI 之外，主 HUD 也给一个读数。
+     口径与 HMI 一致（currentDelay），±5 s 内按正点处理。 */
+  const dv = currentDelay();
+  G.puncDelay = dv;
+  const pEl = $('hudPunc');
+  if (pEl) {
+    pEl.textContent = Math.abs(dv) <= 5 ? '正点' : (dv > 0 ? `晚点 ${dv} s` : `早点 ${-dv} s`);
+    pEl.className = Math.abs(dv) > 60 ? 'bad' : Math.abs(dv) > 15 ? 'late' : dv < -5 ? 'early' : '';
+  }
   const dist = Math.max(0, st.stopS - G.s);
   $('hudNextZh').textContent = st.zh;
   $('hudNextEn').textContent = st.en;
@@ -72609,6 +75948,9 @@ function updateHUD(force = false) {
             : '制动故障 · 制动力下降';
   }
   else if (G.eb) status = '紧急制动';
+  else if (G.slipping) status = '轮对空转 · 黏着受限';
+  else if (G.slowzone && G.clock < G.slowzone.until) status = `临时限速 ${G.slowzone.limit} km/h`;
+  else if (G.regenOn && G.v > 1) status = '再生制动 · 能量回馈';
   else if (G.ato) status = G.atoState === 'dwell' ? 'ATO 停站' : 'ATO 自动运行';
   else if (G.stopState === 'dwell') status = '停站作业';
   else if (G.stopState === 'stop') status = '停稳';
@@ -72646,6 +75988,7 @@ function updateHUD(force = false) {
     $('hudDwell').textContent = G.v > 0.1 ? '运行中' : '待发车';
     $('hudDwell').style.color = '';
   }
+  if (G.touchMode && typeof updateTouchUI === 'function') updateTouchUI();
 }
 
 
@@ -72737,7 +76080,97 @@ function updateCamera(dt, snap = false) {
   }
   if (G.camMode === 0 && !snap) camera.updateProjectionMatrix();
 }
+/* ---------------- 触屏手柄（P4-1） ---------------- */
+function setTouchMode(on) {
+  G.touchMode = !!on;
+  document.body.classList.toggle('touch-mode', G.touchMode);
+  if (G.touchMode && typeof updateTouchUI === 'function') updateTouchUI();
+}
+
+function updateTouchUI() {
+  if (!G.touchMode) return;
+  const knob = $('tKnob'), fill = $('tFill'), txt = $('tLeverTxt');
+  if (!knob || !fill) return;
+  const pct = (clamp(G.lever, -1, 1) + 1) / 2;
+  knob.style.left = (pct * 100).toFixed(1) + '%';
+  if (G.lever >= 0) {
+    fill.style.left = '50%';
+    fill.style.width = ((pct - 0.5) * 100).toFixed(1) + '%';
+    fill.style.background = 'rgba(140,198,63,.55)';
+  } else {
+    fill.style.left = (pct * 100).toFixed(1) + '%';
+    fill.style.width = ((0.5 - pct) * 100).toFixed(1) + '%';
+    fill.style.background = 'rgba(255,107,90,.55)';
+  }
+  if (txt) txt.textContent = G.eb ? '紧急制动' : G.lever > 0.005 ? `牵引 ${Math.round(G.lever * 100)}%`
+    : G.lever < -0.005 ? `制动 ${Math.round(-G.lever * 100)}%` : '0%';
+  const d = $('tDoor');
+  if (d) d.textContent = G.doorsOpen ? '关门' : '开门';
+  const a = $('tAto');
+  if (a) a.classList.toggle('on', !!G.ato);
+  const e = $('tEb');
+  if (e) e.classList.toggle('on', !!G.eb);
+  const s = $('tSpeed'), l = $('tLimit');
+  if (s) s.textContent = Math.round(G.v * 3.6);
+  if (l) l.textContent = Math.round(G.limit || 80);
+}
+
+function bindTouch() {
+  const box = $('touch');
+  if (!box) return;
+  const track = $('tTrack');
+  let dragging = false;
+  const setFromX = clientX => {
+    const r = track.getBoundingClientRect();
+    if (r.width <= 0) return;
+    const t = clamp((clientX - r.left) / r.width, 0, 1);
+    G.lever = clamp((t - 0.5) * 2, -1, 1);
+    if (G.ato) {
+      G.ato = false; G.atoState = 'run';
+      toast('司机接管 · ATO 已退出', 'info', 2400);
+    }
+    updateTouchUI();
+  };
+  if (track) {
+    track.addEventListener('pointerdown', e => {
+      if (G.mode !== 'driving') return;
+      dragging = true;
+      try { track.setPointerCapture(e.pointerId); } catch (err) { /* 部分浏览器不支持 */ }
+      setFromX(e.clientX);
+      e.preventDefault();
+    });
+    track.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      setFromX(e.clientX);
+      e.preventDefault();
+    });
+    const end = () => { dragging = false; };
+    track.addEventListener('pointerup', end);
+    track.addEventListener('pointercancel', end);
+    track.addEventListener('lostpointercapture', end);
+  }
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button[data-touch]');
+    if (!b) return;
+    if (G.mode !== 'driving') return;
+    const k = b.dataset.touch;
+    if (k === 'door') { if (G.ato) toggleATO(false); if (G.doorsOpen) closeDoors(); else openDoors(); }
+    else if (k === 'ato') toggleATO();
+    else if (k === 'horn') AUDIO.horn();
+    else if (k === 'eb') { if (G.eb) releaseEB(); else triggerEB('触屏紧急制动'); }
+    else if (k === 'zero') G.lever = 0;
+    updateTouchUI();
+    e.preventDefault();
+  });
+  /* 自动识别：粗指针 / 触摸屏 / 窄屏。?touch=1 可强制开启（调试用） */
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+  const forced = /(?:\?|&)touch=1/.test(location.search);
+  setTouchMode(forced || coarse || (hasTouch && window.innerWidth < 1100));
+}
+
 function bindInput() {
+  bindTouch();
   window.addEventListener('keydown', e => {
     if (e.repeat) return;
     keys[e.code] = true;
@@ -72774,6 +76207,12 @@ function bindInput() {
       if (e.code === 'F3') {
         e.preventDefault();
         togglePerfBadge();
+      }
+      /* F4：逐项关效果做性能诊断（正常/关泛光/关阴影/半分辨率） */
+      if (e.code === 'F4') {
+        e.preventDefault();
+        if (!$('perfBadge').classList.contains('on')) togglePerfBadge();
+        cycleDiag();
       }
       if (e.code === 'Escape') togglePause(true);
     } else if (G.mode === 'paused') {
@@ -73031,6 +76470,7 @@ const ATS = {
 
     box.innerHTML = rows.map(r => {
       const { tag, cls } = atsTag(r);
+      const dev = atsDelay(r.delay);
       /* 本务行没有 ops；AI 行按 ops 里的命令名生成按钮 */
       const opsHtml = r.ops === null
         ? '<span style="font-size:9px;color:#5f7280">值乘中</span>'
@@ -73042,6 +76482,7 @@ const ATS = {
       return `<div class="ats-row${r.me ? ' me' : ''}">
         <div class="ats-no">${r.no}<i>${r.sub}</i></div>
         <div class="ats-mid"><b>${r.from} → ${r.to}</b><span>${Math.round(r.v)} km/h · <span class="ats-tag ${cls}">${tag}</span></span></div>
+        <div class="ats-dev ${dev.cls}">${dev.text}</div>
         <div class="ats-ops">${opsHtml}</div>
       </div>`;
     }).join('');
@@ -73114,7 +76555,7 @@ function careerByLine() {
   const c = loadCareer();
   const out = {};
   for (const id in c) {
-    const base = id.replace(/:rev$/, '');
+    const base = id.replace(/:rev$|:day$/, '');
     const r = (typeof ROUTES !== 'undefined') ? ROUTES.find(x => x.id === base) : null;
     if (!r) continue;
     const l = LINES[r.line];
@@ -73225,6 +76666,14 @@ function applySettings() {
   G.shakeOn = s.shakeOn;
   theme = THEMES[G.tod];
 
+  /* 关键：读档后必须按新档位重算像素预算。
+     不重算的后果 —— initRenderer 里先用 'medium'（2.1 MP）建好渲染器，
+     之后 applySettings 把 G.quality 改成用户存的 'high'，但 renderer
+     的 pixelRatio 一直是 medium 的值。表现是：设置里选「精细」，
+     实际仍按 1930×1086 渲染再拉伸到 2K/4K 屏，所有 3D 文字都发虚。
+     这正是「字体不清晰」的第二个主因。 */
+  if (typeof applyRenderScale === 'function') applyRenderScale();
+
   /* 回填按钮选中态：分组按钮用 data-v 与设置值比对 */
   const mark = (groupId, val) => {
     const box = $(groupId);
@@ -73258,10 +76707,10 @@ function renderRouteCards() {
       card.style.setProperty('--rc2', l.color2);
     }
     card.dataset.i = i;
-    const best = career[r.id], rev = career[r.id + ':rev'];
+    const best = career[r.id], rev = career[r.id + ':rev'], day = career[r.id + ':day'];
     card.innerHTML = `
       <div>
-        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}</div>
+        <div class="rc-line"><span class="rc-badge">${l.badge}</span><span class="rc-seg">${l.name} · ${r.seg} · ${r.segEn}</span>${best ? `<span class="rc-career">${best.grade} · ${best.score}</span>` : ''}${rev ? `<span class="rc-career rev">反 ${rev.grade} · ${rev.score}</span>` : ''}${day ? `<span class="rc-career day">日 ${day.grade} · ${day.score}</span>` : ''}</div>
         <div class="rc-title">${r.title}<small>${r.sub}</small></div>
         <div class="rc-meta"><span><i>里程</i> ${km.toFixed(1)} km</span><span><i>车站</i> ${r.stopPlan ? r.stopPlan.length : (r.stations || l.stations).length} 座</span><span><i>车底</i> ${l.stock}</span><span><i>编组</i> ${l.cars} 辆</span></div>
         <div class="rc-desc">${r.desc}</div>
@@ -73315,9 +76764,23 @@ function bindMenu() {
   });
   $('modeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    G.exam = b.dataset.v === 'exam';
+    const v = b.dataset.v;
+    G.playMode = v === 'day' ? 'day' : 'single';
+    G.exam = v === 'exam';
     [...$('modeGroup').children].forEach(x => x.classList.toggle('on', x === b));
-    toast(G.exam ? '执照考试模式 · 五项考核全部达标才算通过' : '普通值乘模式', 'info', 2600);
+    const label = v === 'day' ? '运营日 · 多段连续值乘，按图行车'
+      : v === 'exam' ? '执照考试 · 五项考核全部达标才算通过'
+        : '单趟值乘';
+    toast(label, 'info', 2600);
+  });
+  const shiftGroup = $('shiftGroup');
+  if (shiftGroup) shiftGroup.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    G.sessionMinutes = Number(b.dataset.v) || 120;
+    [...shiftGroup.children].forEach(x => x.classList.toggle('on', x === b));
+    if ($('brDay')) $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
   });
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -73348,6 +76811,9 @@ function bindMenu() {
     const hasOfficial = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[def.id])
       || (typeof OFFICIAL_RUN_NETWORK !== 'undefined' && OFFICIAL_RUN_NETWORK[def.id]);
     $('brTimes').textContent = hasOfficial ? '官方首末班车推导' : '物理曲线估算';
+    $('brDay').textContent = G.playMode === 'day'
+      ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
+      : '单趟值乘';
     $('brDist').textContent = routeTT(def).toFixed(1) + ' km';
     $('brStops').textContent = (def.stopPlan ? def.stopPlan.length - 1 : (st.length - 1 + (def.loop ? 1 : 0))) + ' 站';
     $('brShift').textContent = 'SHIFT ' + (l.badge === '1' ? '0118' : l.badge === '3' ? '0306' : '0214');
@@ -73360,8 +76826,13 @@ function bindMenu() {
     $('hud').classList.remove('on');
     $('loading').classList.remove('hidden');
     G.mode = 'loading';
+    G.session = null;
     try {
       await buildService(G.routeIdx);
+      /* 运营日：建时段编排与事件时间轴；单趟/考试保持原流程 */
+      if (G.playMode === 'day' && !G.exam && typeof sessionStart === 'function') {
+        sessionStart(G.routeIdx);
+      }
       $('loading').classList.add('hidden');
       beginDriving();
     } catch (err) {
@@ -73378,6 +76849,11 @@ function bindMenu() {
     G.mode = 'driving';
     clock.getDelta();
     resetService();
+    /* 运营日：重开本段而不是整局（已完成段不丢），事件时间轴从本段开头重放 */
+    if (typeof sessionActive === 'function' && sessionActive()) {
+      sessionBeginLeg(G.session.legIndex);
+      toast(`第 ${G.session.legIndex + 1} 段重新开始`, 'info', 3200);
+    }
   });
   $('pQuit').addEventListener('click', () => location.reload());
   $('volRange').addEventListener('input', e => {
@@ -73393,7 +76869,21 @@ function bindMenu() {
     if (sun) sun.castShadow = G.quality !== 'low';
     /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
     if (typeof applyRenderScale === 'function') applyRenderScale();
+    if (typeof applyQualityEffects === 'function') applyQualityEffects();
     if (typeof rebuildPostChain === 'function') rebuildPostChain();
+    /* 换档会重建后处理管线并编译着色器，前后几帧是几百毫秒的长任务。
+       必须冷却，否则会被自动降档逻辑误判成「还是很慢」而继续降档
+       —— 这就是「显示 0 fps 然后一档一档降到流畅」的成因。
+       同时，用户手动选了档位就是对画质的明确取舍，自动降档应当停手。 */
+    G.autoQuality = false;
+    /* 换档是重新选上限，把动态分辨率重置回 1.0 再重新收敛 */
+    G.renderScale = 1.0;
+    G._fpsCooldown = 3.0;
+    G._fpsBuf = null;
+    G._fpsSum = 0;
+    G.fps = 0;
+    G.frameMs = 0;
+    G._slowStreak = 0;
   });
   $('shakeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -73408,8 +76898,28 @@ function bindMenu() {
     clock.getDelta();
     resetService();
   });
-  $('resReverse') && $('resReverse').addEventListener('click', () => startTurnback());
-  $('resMenu').addEventListener('click', () => location.reload());
+  $('resReverse') && $('resReverse').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionNextLeg();
+    } else {
+      startTurnback();
+    }
+  });
+  $('resMenu').addEventListener('click', () => {
+    if (typeof sessionActive === 'function' && sessionActive() && G.session.phase === 'intermission') {
+      sessionFinishEarly();       // 段间提前收工：按已完成段结算
+    } else {
+      location.reload();
+    }
+  });
+  /* 运营日中途保存（P2-3）：保存当前段快照后退出，下次从菜单继续 */
+  const saveQuit = $('pSaveQuit');
+  if (saveQuit) saveQuit.addEventListener('click', () => {
+    if (!(typeof sessionActive === 'function' && sessionActive())) return;
+    sessionSave(true);
+    toast('运营日已保存 · 下次可从菜单继续', 'good', 3200);
+    setTimeout(() => location.reload(), 400);
+  });
 
   /* ---------------- 存档导出 / 导入（P3-3）---------------- */
   const expBtn = $('saveExport');
@@ -73478,6 +76988,8 @@ function boot() {
   initMaterials(renderer, theme);
   renderRouteCards();
   bindMenu();
+  if (typeof sessionResumePrompt === 'function') sessionResumePrompt();
+  if (typeof bindOnboard === 'function') bindOnboard();
   bindInput();
   ATS.init();
   IX.init();
@@ -73512,16 +77024,35 @@ window.__sim = {
   showTransferPanel, clampWalk,
   get signals() { return signals; },
   get IX() { return IX; },
+  get interlockTable() { return IX.table || null; },
+  get interlockLocks() { return IX.locks || []; },
+  interlockCheck(id) {
+    if (!IX.table || typeof checkRouteRequest !== 'function') return { ok: false, reason: '无进路表' };
+    const rid = IX.routeTableId(id);
+    return rid ? checkRouteRequest(IX.table, rid, IX.locks || [], IX.occupiedRes || [])
+      : { ok: false, reason: '未知进路' };
+  },
   get sigMeshes() { return sigLampMeshes; },
   snapCam() { updateCamera(0, true); },
   snapTrain() { if (train) train.update(G.s, G.v, 0); },
   advance(sec) {
     const h = 0.02; const n = Math.round(sec / h);
-    for (let i = 0; i < n; i++) { physics(h); for (const ai of aiTrains) ai.update(h); G.clock += h; }
+    for (let i = 0; i < n; i++) {
+      physics(h);
+      for (const ai of aiTrains) ai.update(h);
+      G.clock += h;
+      if (typeof sessionTick === 'function') sessionTick();
+      /* 与主循环一致：终到开门后的 6 s 倒计时也要在固定步长推进里结算 */
+      if (G.finishTimer > 0) {
+        G.finishTimer -= h;
+        if (G.finishTimer <= 0) finishService();
+      }
+    }
     train.update(G.s, G.v, 0); updateHUD(true); return { s: G.s, v: G.v, state: G.stopState, target: G.targetIdx, doors: G.doorT };
   },
   setLever(v) { G.lever = v; },
-  openDoors, closeDoors, finishService, releaseEB, triggerEB, toggleATO,
+  setTouchMode, maybeShowOnboard, onboardNext, onboardFinish,
+  openDoors, closeDoors, finishService, clearFault, releaseEB, triggerEB, toggleATO,
   installBloomChain, makeComposer,
   startTurnback, performTransfer,
   advanceTurnback(sec) {
@@ -73538,7 +77069,17 @@ window.__sim = {
   get frameMs() { return G.frameMs || 0; },
   get renderPx() { return G.renderPx || 0; },
   get renderPR() { return G.renderPR || 1; },
-  applyRenderScale, rebuildPostChain,
+  applyRenderScale, rebuildPostChain, tuneDRS, applyDiag, cycleDiag,
+  get ttStats() { return G.ttStats || null; },
+  get timetable() { return path && path.timetable ? path.timetable : null; },
+  get playerService() { return path && path.playerService ? path.playerService : null; },
+  /* 运营日（P2）：调试与回归入口 */
+  get session() { return G.session; },
+  sessionStart, sessionSave, sessionResume, sessionResumePrompt, sessionTick,
+  sessionNextLeg, sessionFinishEarly, sessionCommitLeg, sessionShowFinal,
+  sessionReadSave, sessionClearSave, buildSessionPlan, scoreSession,
+  get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
+  get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };

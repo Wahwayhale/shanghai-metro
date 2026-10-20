@@ -42,6 +42,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   /* 关闭随机故障与自动画质，保证确定性 */
   await page.evaluate(() => {
     const S = window.__sim;
+    if (S.G.onboardOpen) S.onboardFinish();
     Math.random = () => 0.99;
     S.G.autoQuality = false;
     S.toggleATO(true);

@@ -54,6 +54,7 @@ function beginDriving() {
   clock.getDelta();
   resetService();
   updateCamera(0, true);
+  if (typeof maybeShowOnboard === 'function') maybeShowOnboard(false);
 }
 /* ---------------- 站内步行 ---------------- */
 function enterWalk(idx) {

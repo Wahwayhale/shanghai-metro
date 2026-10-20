@@ -119,6 +119,7 @@ function compare(golden, actual) {
          归一后所有时间量完全确定，物理行为不受影响。 */
       const t0 = S.path.startSec - 30;
       G.clock = t0;
+      if (G.onboardOpen) S.onboardFinish();         // 新手引导（P4-2）
 
       S.toggleATO(true);                            // ATO 全程
       let vMax = 0;

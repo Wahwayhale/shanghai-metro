@@ -85,7 +85,97 @@ function updateCamera(dt, snap = false) {
   }
   if (G.camMode === 0 && !snap) camera.updateProjectionMatrix();
 }
+/* ---------------- 触屏手柄（P4-1） ---------------- */
+function setTouchMode(on) {
+  G.touchMode = !!on;
+  document.body.classList.toggle('touch-mode', G.touchMode);
+  if (G.touchMode && typeof updateTouchUI === 'function') updateTouchUI();
+}
+
+function updateTouchUI() {
+  if (!G.touchMode) return;
+  const knob = $('tKnob'), fill = $('tFill'), txt = $('tLeverTxt');
+  if (!knob || !fill) return;
+  const pct = (clamp(G.lever, -1, 1) + 1) / 2;
+  knob.style.left = (pct * 100).toFixed(1) + '%';
+  if (G.lever >= 0) {
+    fill.style.left = '50%';
+    fill.style.width = ((pct - 0.5) * 100).toFixed(1) + '%';
+    fill.style.background = 'rgba(140,198,63,.55)';
+  } else {
+    fill.style.left = (pct * 100).toFixed(1) + '%';
+    fill.style.width = ((0.5 - pct) * 100).toFixed(1) + '%';
+    fill.style.background = 'rgba(255,107,90,.55)';
+  }
+  if (txt) txt.textContent = G.eb ? '紧急制动' : G.lever > 0.005 ? `牵引 ${Math.round(G.lever * 100)}%`
+    : G.lever < -0.005 ? `制动 ${Math.round(-G.lever * 100)}%` : '0%';
+  const d = $('tDoor');
+  if (d) d.textContent = G.doorsOpen ? '关门' : '开门';
+  const a = $('tAto');
+  if (a) a.classList.toggle('on', !!G.ato);
+  const e = $('tEb');
+  if (e) e.classList.toggle('on', !!G.eb);
+  const s = $('tSpeed'), l = $('tLimit');
+  if (s) s.textContent = Math.round(G.v * 3.6);
+  if (l) l.textContent = Math.round(G.limit || 80);
+}
+
+function bindTouch() {
+  const box = $('touch');
+  if (!box) return;
+  const track = $('tTrack');
+  let dragging = false;
+  const setFromX = clientX => {
+    const r = track.getBoundingClientRect();
+    if (r.width <= 0) return;
+    const t = clamp((clientX - r.left) / r.width, 0, 1);
+    G.lever = clamp((t - 0.5) * 2, -1, 1);
+    if (G.ato) {
+      G.ato = false; G.atoState = 'run';
+      toast('司机接管 · ATO 已退出', 'info', 2400);
+    }
+    updateTouchUI();
+  };
+  if (track) {
+    track.addEventListener('pointerdown', e => {
+      if (G.mode !== 'driving') return;
+      dragging = true;
+      try { track.setPointerCapture(e.pointerId); } catch (err) { /* 部分浏览器不支持 */ }
+      setFromX(e.clientX);
+      e.preventDefault();
+    });
+    track.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      setFromX(e.clientX);
+      e.preventDefault();
+    });
+    const end = () => { dragging = false; };
+    track.addEventListener('pointerup', end);
+    track.addEventListener('pointercancel', end);
+    track.addEventListener('lostpointercapture', end);
+  }
+  box.addEventListener('click', e => {
+    const b = e.target.closest('button[data-touch]');
+    if (!b) return;
+    if (G.mode !== 'driving') return;
+    const k = b.dataset.touch;
+    if (k === 'door') { if (G.ato) toggleATO(false); if (G.doorsOpen) closeDoors(); else openDoors(); }
+    else if (k === 'ato') toggleATO();
+    else if (k === 'horn') AUDIO.horn();
+    else if (k === 'eb') { if (G.eb) releaseEB(); else triggerEB('触屏紧急制动'); }
+    else if (k === 'zero') G.lever = 0;
+    updateTouchUI();
+    e.preventDefault();
+  });
+  /* 自动识别：粗指针 / 触摸屏 / 窄屏。?touch=1 可强制开启（调试用） */
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+  const forced = /(?:\?|&)touch=1/.test(location.search);
+  setTouchMode(forced || coarse || (hasTouch && window.innerWidth < 1100));
+}
+
 function bindInput() {
+  bindTouch();
   window.addEventListener('keydown', e => {
     if (e.repeat) return;
     keys[e.code] = true;

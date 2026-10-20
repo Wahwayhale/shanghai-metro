@@ -260,4 +260,5 @@ function updateHUD(force = false) {
     $('hudDwell').textContent = G.v > 0.1 ? '运行中' : '待发车';
     $('hudDwell').style.color = '';
   }
+  if (G.touchMode && typeof updateTouchUI === 'function') updateTouchUI();
 }

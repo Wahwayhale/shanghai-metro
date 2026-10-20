@@ -147,6 +147,42 @@
     padding:2px 7px;border-radius:6px;background:rgba(140,198,63,.14);border:1px solid rgba(140,198,63,.28)}
   .hud-duty.hidden{display:none}
 
+  /* ---------------- 触屏手柄（P4-1） ---------------- */
+  #touch{display:none}
+  body.touch-mode #touch{display:flex}
+  body.touch-mode .hud-bottom{display:none}
+  body.touch-mode .keys-hint{display:none}
+  body.touch-mode .hud-right{max-height:52vh}
+  body.touch-mode .hud-left{top:70px;width:190px;padding:10px 12px 8px}
+  body.touch-mode .hud-left .next-zh{font-size:21px}
+  body.touch-mode .hud-left .dist-row b{font-size:26px}
+  body.touch-mode .hud-left .hud-sub:last-child{display:none}
+  body.touch-mode .hud-clock b{font-size:16px}
+  #touch{position:absolute;left:12px;right:12px;bottom:12px;z-index:14;gap:10px;align-items:stretch}
+  .touch-card{background:rgba(7,11,14,.74);border:1px solid var(--stroke);border-radius:14px;backdrop-filter:blur(14px)}
+  .touch-btns{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:8px;width:164px}
+  .touch-btns button{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe0ea;
+    border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;padding:10px 6px;touch-action:manipulation}
+  .touch-btns button:active{background:rgba(140,198,63,.22);border-color:var(--line)}
+  .touch-btns button.on{background:rgba(140,198,63,.22);border-color:var(--line);color:#c9f07a}
+  .touch-btns button.eb{border-color:rgba(255,107,90,.42);color:#ff8f80}
+  .touch-btns button.eb.on{background:rgba(255,107,90,.24)}
+  .touch-mid{flex:1;min-width:0;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+  .touch-track{position:relative;height:38px;border-radius:11px;background:linear-gradient(90deg,rgba(255,107,90,.22),rgba(255,255,255,.05) 50%,rgba(140,198,63,.22));
+    border:1px solid rgba(255,255,255,.1);touch-action:none;overflow:hidden}
+  .touch-track .zero{position:absolute;left:50%;top:5px;bottom:5px;width:2px;margin-left:-1px;background:rgba(255,255,255,.28)}
+  .touch-track i{position:absolute;top:5px;bottom:5px;border-radius:5px;background:rgba(140,198,63,.55);width:0}
+  .touch-knob{position:absolute;top:50%;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+    background:#e8f5d0;border:3px solid #0b0f12;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+  .touch-read{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10.5px;color:#8fa2ae}
+  .touch-read b{color:#dfeefb;font-variant-numeric:tabular-nums}
+  .touch-read .t-zero{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#b9ccd7;
+    border-radius:7px;font-family:inherit;font-size:10px;padding:4px 8px}
+  @media (orientation:portrait) and (pointer:coarse){
+    #touch{flex-direction:column}
+    .touch-btns{width:auto;grid-template-columns:repeat(4,1fr)}
+  }
+
   .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
   .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
   .hud-left .next-en{font-size:9.5px;color:#7f939f;letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
@@ -376,6 +412,10 @@
   .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
   .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
   .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .ob-text{font-size:12.5px;line-height:1.95;color:#b9ccd7;margin:12px 0 14px;min-height:76px}
+  .ob-dots{display:flex;gap:6px;margin-bottom:16px}
+  .ob-dots i{width:22px;height:4px;border-radius:3px;background:rgba(255,255,255,.14)}
+  .ob-dots i.on{background:var(--line);box-shadow:0 0 10px var(--line-glow)}
   .energy-note{font-size:10px;color:#7f939f;letter-spacing:.03em;margin:-12px 0 14px;text-align:right}
   .energy-note b{color:#3ddc97;font-weight:600}
   .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
@@ -575,6 +615,26 @@
     <div class="keys-hint">
       <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 切除车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span><span><b>F4</b> 诊断</span>
     </div>
+
+    <!-- 触屏手柄（P4-1）：body.touch-mode 时才显示 -->
+    <div id="touch">
+      <div class="touch-btns touch-card">
+        <button data-touch="door" id="tDoor">开门</button>
+        <button data-touch="ato" id="tAto">ATO</button>
+        <button data-touch="horn">鸣笛</button>
+        <button data-touch="eb" id="tEb">紧急</button>
+      </div>
+      <div class="touch-mid touch-card">
+        <div class="touch-track" id="tTrack">
+          <span class="zero"></span><i id="tFill"></i><b class="touch-knob" id="tKnob"></b>
+        </div>
+        <div class="touch-read">
+          <span id="tLeverTxt">0%</span>
+          <span><b id="tSpeed">0</b> km/h · 限 <b id="tLimit">80</b></span>
+          <button class="t-zero" data-touch="zero">回零</button>
+        </div>
+      </div>
+    </div>
     <div class="exam-panel" id="examPanel"></div>
     <div class="toast-area" id="toastArea"></div>
     <div class="eb-banner" id="ebBanner"><b>紧急制动已施加</b><span>列车停稳后按 空格 或 R 缓解</span></div>
@@ -646,6 +706,20 @@
     <div class="ats-foot"><span>按住列车可下达调度命令</span><span>Tab 关闭</span></div>
   </div>
 
+  <!-- ===================== 新手引导（P4-2） ===================== -->
+  <div id="onboard" class="modal-mask hidden">
+    <div class="modal panel" style="width:min(520px,90vw)">
+      <span class="kicker">FIRST RUN</span>
+      <h3 id="obTitle" style="margin-top:6px">1 / 3 · 起步</h3>
+      <p class="ob-text" id="obText"></p>
+      <div class="ob-dots" id="obDots"><i class="on"></i><i></i><i></i></div>
+      <div class="modal-actions">
+        <button class="btn acc" id="obNext">下一步</button>
+        <button class="btn" id="obSkip">跳过引导</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== 暂停 ===================== -->
   <div id="pause" class="modal-mask hidden">
     <div class="modal panel">
@@ -665,6 +739,7 @@
       <div class="modal-actions">
         <button class="btn acc" id="pResume">继续驾驶</button>
         <button class="btn" id="pSaveQuit">保存并退出</button>
+        <button class="btn" id="pGuide">操作指引</button>
         <button class="btn" id="pRestart">重新开始本次任务</button>
         <button class="btn" id="pQuit">返回线路选择</button>
       </div>

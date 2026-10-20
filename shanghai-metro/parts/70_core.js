@@ -33,7 +33,8 @@ const G = {
   stopPlan: null, walk: null, turnback: null,
   /* 运营日（P2）：playMode 'single' | 'day'；session 由 66_session_game.js 维护 */
   playMode: 'single', session: null, sessionSeed: null, sessionMinutes: 120,
-  sessionLegs: null, slowzone: null
+  sessionLegs: null, slowzone: null,
+  touchMode: false, onboardOpen: false, onboardStep: 0
 };
 
 let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
@@ -322,6 +323,7 @@ function rebuildPostChain() {
 function updateGame(dt) {
   if (!G.ready || G.mode !== 'driving') return;
   if (G.paused) return;
+  if (G.onboardOpen) return;   // 新手引导期间冻结世界（P4-2）
   let remain = Math.min(dt, 0.1);
   while (remain > 0.0001) {
     const h = Math.min(1 / 120, remain);

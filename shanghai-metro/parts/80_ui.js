@@ -495,6 +495,7 @@ function boot() {
   renderRouteCards();
   bindMenu();
   if (typeof sessionResumePrompt === 'function') sessionResumePrompt();
+  if (typeof bindOnboard === 'function') bindOnboard();
   bindInput();
   ATS.init();
   IX.init();
@@ -556,6 +557,7 @@ window.__sim = {
     train.update(G.s, G.v, 0); updateHUD(true); return { s: G.s, v: G.v, state: G.stopState, target: G.targetIdx, doors: G.doorT };
   },
   setLever(v) { G.lever = v; },
+  setTouchMode, maybeShowOnboard, onboardNext, onboardFinish,
   openDoors, closeDoors, finishService, clearFault, releaseEB, triggerEB, toggleATO,
   installBloomChain, makeComposer,
   startTurnback, performTransfer,
