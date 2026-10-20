@@ -780,8 +780,11 @@ function buildCity(route, group, riverPts) {
         if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 30) continue;
 
         let blocked = false;
+        let nearestSt = 1e9;
         for (const st of route.stations) {
-          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 36) { blocked = true; break; }
+          const dSt = Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z);
+          if (dSt < nearestSt) nearestSt = dSt;
+          if (dSt < 36) { blocked = true; break; }
           if (st.y < -2) {
             const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
             if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
@@ -810,7 +813,17 @@ function buildCity(route, group, riverPts) {
            这里兜底成「以自身为原点」，衰减取最大值。 */
         const cx = dist.x == null ? p.x : dist.x;
         const cz = dist.z == null ? p.z : dist.z;
-        const h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        let h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        /* 车站周边限高：真实车站是开放空间（站前广场、公交枢纽、低层配套），
+           不会紧贴着盖一栋 150 m 塔楼。原来建筑高度只看分区与离中心的距离，
+           完全不知道车站在哪，导致站旁天际线不合理。
+             60 m 内   -> 压到 35%
+             60–220 m  -> 从 35% 线性恢复到 100%
+             220 m 外  -> 不限制 */
+        if (nearestSt < 220) {
+          const k = nearestSt <= 60 ? 0.35 : 0.35 + 0.65 * ((nearestSt - 60) / 160);
+          h *= k;
+        }
         items.push({
           proto: cityPickProto(dist.kind, rP),
           x: p.x, y: 0, z: p.z,
@@ -826,13 +839,46 @@ function buildCity(route, group, riverPts) {
 
   /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
      用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
+  /* 高架站下方铺一块站前广场：否则车站像是「立在一片空地上」。
+     全部用实例化，26 个站只占 1 个 draw call。 */
+  const plazaStations = route.stations.filter(st => st.frame.pos.y > 3 && !st.synthetic);
+  if (plazaStations.length) {
+    const plazaGeo = new THREE.BoxGeometry(1, 1, 1);
+    const plazaMat = new THREE.MeshStandardMaterial({ color: 0x9a9fa2, roughness: 0.94, metalness: 0.02 });
+    const plazas = new THREE.InstancedMesh(plazaGeo, plazaMat, plazaStations.length);
+    const dp = new THREE.Object3D();
+    plazaStations.forEach((st, k) => {
+      const f = st.frame;
+      dp.position.set(f.pos.x, 0.10, f.pos.z);
+      dp.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+      dp.scale.set(30, 0.2, 118);   /* 比两侧道路内缘（21.2 m）略宽即可，太宽会盖住车道 */
+      dp.updateMatrix();
+      plazas.setMatrixAt(k, dp.matrix);
+    });
+    plazas.instanceMatrix.needsUpdate = true;
+    plazas.frustumCulled = false;
+    group.add(plazas);
+  }
+
   const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
   const built = buildCityChunked(group, items, cityMat);
+  /* 站周限高验证：统计距最近车站 100 m 内的最高建筑 */
+  let maxNearSt = 0, cntNearSt = 0;
+  for (const it of items) {
+    let d = 1e9;
+    for (const st of route.stations) {
+      const dd = Math.hypot(it.x - st.frame.pos.x, it.z - st.frame.pos.z);
+      if (dd < d) d = dd;
+    }
+    if (d < 100) { cntNearSt++; if (it.h > maxNearSt) maxNearSt = it.h; }
+  }
   G.cityStats = {
     buildings: items.length,
     chunks: built.chunks,
     meshes: built.meshes,
-    districts: districtHits.size
+    districts: districtHits.size,
+    nearStation: cntNearSt,
+    maxHeightNearStation: Math.round(maxNearSt)
   };
   /* 首次建好后立刻按当前相机刷一次可见性，避免第一帧整城不显示 */
   if (camera) updateCityLOD(camera.position);
