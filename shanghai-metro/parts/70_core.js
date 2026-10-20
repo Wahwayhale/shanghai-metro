@@ -31,7 +31,7 @@ const G = {
   stopPlan: null, walk: null, turnback: null
 };
 
-let renderer, camera, scene, composer, bloomPass, sun, skyMesh, hemi;
+let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
 let path = null, line = null, routeDef = null, theme = THEMES.dusk;
 let train = null, aiTrains = [], stationObjs = [], worldGroup = null, stationLights = [];
 let tunnelLights = [];   // 隧道照明跟随灯（建模提升）
@@ -90,6 +90,10 @@ function applyRenderScale() {
     composer.setSize(window.innerWidth, window.innerHeight);
     if (bloomPass && bloomPass.resolution) bloomPass.resolution.set(w, h);
   }
+  /* FXAA 的采样步长按绘制缓冲尺寸算，换档/缩放后必须同步，否则抗锯齿失效 */
+  if (fxaaPass && fxaaPass.material && fxaaPass.material.uniforms.resolution) {
+    fxaaPass.material.uniforms.resolution.value.set(1 / Math.max(1, w), 1 / Math.max(1, h));
+  }
 }
 
 function initRenderer() {
@@ -132,17 +136,19 @@ function makeComposer(targetScene) {
      HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
 
      MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿明显。
-     曾经想用 4x 补回来，但真机实测撞墙：
+     真机实测：MSAA 在这块核显上代价过高，且随分辨率非线性恶化
        2.1 MP + 4x  = 100 fps（8.4M 采样）
        3.69 MP + 4x =  39 fps（14.8M 采样）
-     采样数只涨 1.76 倍，帧时间涨 2.56 倍 —— 不是线性填充率关系，
-     而是 HalfFloat 颜色缓冲在 3.69MP×4x 时达到 118 MB，核显 UMA
-     带宽扛不住。所以下调到 2x：
-       精细 = 3.69 MP + 2x（7.4M 采样，比已知 100fps 的 8.4M 还低）
-       标准 = 2.1 MP + 2x
-       流畅 = 1.4 MP + 0（且不建 composer，直接出屏）
-     这样既能保住原生分辨率的文字清晰度，采样预算又不超过已知安全值。 */
-  const MSAA = { high: 2, medium: 2, low: 0 };
+     采样数只涨 1.76 倍、帧时间涨 2.56 倍 —— 撞的是 UMA 带宽墙，
+     不是填充率。继续降 2x 也只敢保守估计 60 fps 上下。
+
+     所以换方案：**MSAA 全关，改用 FXAA 后处理**。
+     FXAA 是一次全屏 pass（十几次纹理采样），代价远低于 MSAA 的
+     多重采样缓冲；而分辨率保持原生，文字不会像降分辨率那样发虚。
+     对这块核显，「原生分辨率 + FXAA」是唯一同时满足
+     「文字锐利」和「跑得动」的组合。
+     流畅档不建 composer，直接出屏，靠低分辨率扛。 */
+  const MSAA = { high: 0, medium: 0, low: 0 };
   const samples = MSAA[G.quality] != null ? MSAA[G.quality] : 2;
   const pr = G.renderPR || 1;
   const w = Math.max(1, Math.floor(window.innerWidth * pr));
@@ -191,6 +197,16 @@ function installBloomChain() {
   });
   composer.addPass(vig);
   composer.addPass(new OutputPass());
+
+  /* FXAA 放在 OutputPass 之后：抗锯齿在 sRGB 空间做效果最好。
+     resolution 传的是「1 / 绘制缓冲尺寸」，resize 与换档时都要更新。 */
+  fxaaPass = new ShaderPass(FXAAShader);
+  const prNow = G.renderPR || 1;
+  fxaaPass.material.uniforms.resolution.value.set(
+    1 / Math.max(1, window.innerWidth * prNow),
+    1 / Math.max(1, window.innerHeight * prNow)
+  );
+  composer.addPass(fxaaPass);
 }
 
 /* 切换画质档位后重建后期链路。
@@ -480,9 +496,23 @@ function sampleFrame(dt) {
 
 /* 性能徽章：F3 开关。显示 fps / 帧时间 / 渲染分辨率 / 档位，
    让玩家（和我）能直接判断当前设备是否达到 60 fps 目标。 */
+/* 分辨率 + 档位文案，徽章里多处用到 */
+function res0() {
+  const w = Math.round(window.innerWidth * (G.renderPR || 1));
+  const h = Math.round(window.innerHeight * (G.renderPR || 1));
+  const names = { high: '精细', medium: '标准', low: '流畅' };
+  return w + '×' + h + '  ' + (names[G.quality] || G.quality);
+}
+
 function updatePerfBadge() {
   const el = $('perfBadge');
   if (!el || !el.classList.contains('on')) return;
+  /* 换档后的冷却期：明确提示「预热中」，而不是显示一个看起来像
+     「0 fps」的采样进度，避免误以为性能掉了。 */
+  if (G._fpsCooldown > 0) {
+    el.innerHTML = '<b style="color:#7f939f">预热中…</b>  ' + G._fpsCooldown.toFixed(1) + 's\n' + res0();
+    return;
+  }
   const n = G._fpsBuf ? G._fpsBuf.length : 0;
   const w = Math.round(window.innerWidth * (G.renderPR || 1));
   const h = Math.round(window.innerHeight * (G.renderPR || 1));

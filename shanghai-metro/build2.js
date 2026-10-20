@@ -71,6 +71,7 @@ const ENTRIES = [
   'three/examples/jsm/postprocessing/UnrealBloomPass.js',
   'three/examples/jsm/postprocessing/ShaderPass.js',
   'three/examples/jsm/postprocessing/OutputPass.js',
+  'three/examples/jsm/shaders/FXAAShader.js',
   'three/examples/jsm/utils/BufferGeometryUtils.js'
 ];
 
@@ -134,7 +135,7 @@ function load(file) {
 for (const e of ENTRIES) load(path.join(NM, e));
 
 const jsmSrc = order.map(o => `/* ${path.basename(o.file)} */\n${o.src}`).join('\n');
-const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'BufferGeometryUtils'];
+const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'FXAAShader', 'BufferGeometryUtils'];
 const bguFile = path.join(NM, 'three/examples/jsm/utils/BufferGeometryUtils.js');
 const bguNames = exportsByName.get(bguFile) || [];
 const jsmBlock = `const { ${want.join(', ')} } = (function(){

@@ -349,6 +349,17 @@ function bindMenu() {
     /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
     if (typeof applyRenderScale === 'function') applyRenderScale();
     if (typeof rebuildPostChain === 'function') rebuildPostChain();
+    /* 换档会重建后处理管线并编译着色器，前后几帧是几百毫秒的长任务。
+       必须冷却，否则会被自动降档逻辑误判成「还是很慢」而继续降档
+       —— 这就是「显示 0 fps 然后一档一档降到流畅」的成因。
+       同时，用户手动选了档位就是对画质的明确取舍，自动降档应当停手。 */
+    G.autoQuality = false;
+    G._fpsCooldown = 3.0;
+    G._fpsBuf = null;
+    G._fpsSum = 0;
+    G.fps = 0;
+    G.frameMs = 0;
+    G._slowStreak = 0;
   });
   $('shakeGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
