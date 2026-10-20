@@ -348,6 +348,7 @@ function bindMenu() {
     if (sun) sun.castShadow = G.quality !== 'low';
     /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
     if (typeof applyRenderScale === 'function') applyRenderScale();
+    if (typeof applyQualityEffects === 'function') applyQualityEffects();
     if (typeof rebuildPostChain === 'function') rebuildPostChain();
     /* 换档会重建后处理管线并编译着色器，前后几帧是几百毫秒的长任务。
        必须冷却，否则会被自动降档逻辑误判成「还是很慢」而继续降档

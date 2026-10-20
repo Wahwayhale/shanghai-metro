@@ -202,7 +202,9 @@ async function buildService(routeIdx, reverse) {
   sun = new THREE.DirectionalLight(theme.sun, theme.sunI);
   sun.position.copy(theme.sunDir).multiplyScalar(200);
   sun.castShadow = G.quality !== 'low';
-  sun.shadow.mapSize.set(2048, 2048);
+  /* 阴影贴图尺寸改由 applyQualityEffects() 按档位决定（精细 1536、其余 1024）。
+     2048² 相当于每帧多渲染一整遍场景，是 3.69MP 下最大的隐藏开销之一。 */
+  sun.shadow.mapSize.set(1536, 1536);
   sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
   sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
   sun.shadow.camera.near = 1; sun.shadow.camera.far = 500;

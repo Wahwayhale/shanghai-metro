@@ -10782,7 +10782,12 @@ function installBloomChain() {
     const pr = G.renderPR || 1;
     const w = Math.max(1, Math.floor(window.innerWidth * pr));
     const h = Math.max(1, Math.floor(window.innerHeight * pr));
-    const bScale = G.quality === 'medium' ? 0.5 : 1.0;
+    /* 泛光一律半分辨率：UnrealBloomPass 内部是 5 级 mip + 双向模糊，
+       整体片元量约为主画面的 1.33 倍。精细档原来用全分辨率，
+       在 3.69 MP 下这一项就要吃掉近 5 MP 的片元工作量 —— 是
+       「原生 2K 只有 40fps」的主要来源之一。
+       泛光本身是低频效果，半分辨率肉眼几乎看不出差别。 */
+    const bScale = 0.5;
     bloomPass = new UnrealBloomPass(
       new THREE.Vector2(Math.floor(w * bScale), Math.floor(h * bScale)),
       theme.bloom * 0.34, 0.55, 1.08
@@ -10791,19 +10796,34 @@ function installBloomChain() {
   } else {
     bloomPass = null;
   }
-  const vig = new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, strength: { value: 0.55 }, time: { value: 0 } },
-    vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
-    fragmentShader: `uniform sampler2D tDiffuse; uniform float strength; varying vec2 vUv;
-      void main(){ vec4 c=texture2D(tDiffuse,vUv); vec2 p=vUv-0.5; float v=smoothstep(0.85,0.18,length(p)*1.25);
-      c.rgb*=mix(1.0-strength*0.55,1.0,v); gl_FragColor=c; }`
-  });
-  composer.addPass(vig);
+  /* 暗角（vignette）不再单独占一个 pass：全屏 pass 在 3.69MP 下每个
+     就是 3.69 MP 的片元工作量，而暗角只是一次亮度乘法。
+     把它并到 FXAA 的着色器末尾，等于白拿 3.7 MP 的预算。 */
   composer.addPass(new OutputPass());
 
   /* FXAA 放在 OutputPass 之后：抗锯齿在 sRGB 空间做效果最好。
      resolution 传的是「1 / 绘制缓冲尺寸」，resize 与换档时都要更新。 */
-  fxaaPass = new ShaderPass(FXAAShader);
+  /* 把 FXAA 的输出改写成「先算颜色，再乘暗角」。
+     锚点用正则匹配，避免三份 three.js 源码的缩进差异导致替换失败。 */
+  const vigFrag = FXAAShader.fragmentShader
+    .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float vigStrength;')
+    /* FxaaPixelShader 返回的是 vec4，不是 vec3 */
+    .replace(/gl_FragColor\s*=\s*FxaaPixelShader\(/, 'vec4 fxaaRgba = FxaaPixelShader(')
+    .replace(/invEdgeDetectionQuality\s*\)\s*;/,
+      'invEdgeDetectionQuality);\n' +
+      '\t\t\tvec2 vp = vUv - 0.5;\n' +
+      '\t\t\tfloat vv = smoothstep(0.85, 0.18, length(vp) * 1.25);\n' +
+      '\t\t\tfxaaRgba.rgb *= mix(1.0 - vigStrength * 0.55, 1.0, vv);\n' +
+      '\t\t\tgl_FragColor = fxaaRgba;');
+  if (vigFrag === FXAAShader.fragmentShader) {
+    console.warn('[fxaa] 暗角注入未生效，保持原样');
+  }
+  const fxaaShader = {
+    uniforms: { tDiffuse: { value: null }, resolution: { value: new THREE.Vector2(1, 1) }, vigStrength: { value: 0.55 } },
+    vertexShader: FXAAShader.vertexShader,
+    fragmentShader: vigFrag
+  };
+  fxaaPass = new ShaderPass(fxaaShader);
   const prNow = G.renderPR || 1;
   fxaaPass.material.uniforms.resolution.value.set(
     1 / Math.max(1, window.innerWidth * prNow),
@@ -11385,7 +11405,9 @@ async function buildService(routeIdx, reverse) {
   sun = new THREE.DirectionalLight(theme.sun, theme.sunI);
   sun.position.copy(theme.sunDir).multiplyScalar(200);
   sun.castShadow = G.quality !== 'low';
-  sun.shadow.mapSize.set(2048, 2048);
+  /* 阴影贴图尺寸改由 applyQualityEffects() 按档位决定（精细 1536、其余 1024）。
+     2048² 相当于每帧多渲染一整遍场景，是 3.69MP 下最大的隐藏开销之一。 */
+  sun.shadow.mapSize.set(1536, 1536);
   sun.shadow.camera.left = -90; sun.shadow.camera.right = 90;
   sun.shadow.camera.top = 90; sun.shadow.camera.bottom = -90;
   sun.shadow.camera.near = 1; sun.shadow.camera.far = 500;
@@ -13316,6 +13338,7 @@ function bindMenu() {
     if (sun) sun.castShadow = G.quality !== 'low';
     /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
     if (typeof applyRenderScale === 'function') applyRenderScale();
+    if (typeof applyQualityEffects === 'function') applyQualityEffects();
     if (typeof rebuildPostChain === 'function') rebuildPostChain();
     /* 换档会重建后处理管线并编译着色器，前后几帧是几百毫秒的长任务。
        必须冷却，否则会被自动降档逻辑误判成「还是很慢」而继续降档
