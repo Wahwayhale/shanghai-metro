@@ -302,7 +302,15 @@ const LANDMARKS = [
   { id: 'jinmao', zh: '金茂大厦', lat: 31.23673, lon: 121.50531, h: 421, kind: 'jinmao' },
   { id: 'bund', zh: '外滩', lat: 31.24010, lon: 121.49020, h: 40, kind: 'bund' },
   { id: 'stadium', zh: '虹口足球场', lat: 31.27055, lon: 121.47812, h: 45, kind: 'stadium' },
-  { id: 'museum', zh: '上海科技馆', lat: 31.21950, lon: 121.54190, h: 32, kind: 'museum' }
+  { id: 'museum', zh: '上海科技馆', lat: 31.21950, lon: 121.54190, h: 32, kind: 'museum' },
+  /* ---- P5-3 新增 7 个：把「一眼认出是上海」的锚点补全 ---- */
+  { id: 'jingan', zh: '静安寺', lat: 31.22370, lon: 121.44530, h: 46, kind: 'temple' },
+  { id: 'longhua', zh: '龙华塔', lat: 31.18170, lon: 121.45220, h: 41, kind: 'pagoda' },
+  { id: 'xujiahui_church', zh: '徐家汇天主教堂', lat: 31.19300, lon: 121.43850, h: 50, kind: 'church' },
+  { id: 'sports_center', zh: '东方体育中心', lat: 31.15260, lon: 121.47900, h: 58, kind: 'shells' },
+  { id: 'south_station', zh: '上海南站', lat: 31.15450, lon: 121.42900, h: 47, kind: 'dome_station' },
+  { id: 'wujiaochang', zh: '五角场彩蛋', lat: 31.30060, lon: 121.51460, h: 32, kind: 'egg' },
+  { id: 'expo_axis', zh: '世博轴阳光谷', lat: 31.18770, lon: 121.49000, h: 41, kind: 'funnel' }
 ];
 
 /* 黄浦江中心线（纬度, 经度） */

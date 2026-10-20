@@ -599,6 +599,24 @@ function buildCity(route, group, riverPts) {
      分区数据在 45_city_data.js，原型几何在 47_city_proto.js。
      draw call 预算：8 种原型 × 1 个材质 = 8，远低于原来的 3 桶 + 树。 */
   const districts = resolveCityDistricts(route);
+
+  /* 地标避让表：城市建筑不能压在地标上。
+     半径按地标体量给：塔类/穹顶类大（150-200 m），塔/寺/教堂中等（90 m）。
+     不避让的后果是「静安寺被一栋 140 m 塔楼盖住」，而且相机贴近时会
+     直接黑屏（在建筑内部）。 */
+  const LM_CLEAR = {
+    pearl: 200, twist: 190, swfc: 180, jinmao: 170, bund: 260,
+    stadium: 160, museum: 150, temple: 110, pagoda: 90, church: 100,
+    shells: 170, dome_station: 210, egg: 110, funnel: 160
+  };
+  const lmSites = [];
+  if (typeof LANDMARKS !== 'undefined') {
+    for (const lm of LANDMARKS) {
+      const w = route.projectLL(lm.lat, lm.lon);
+      lmSites.push({ x: w.x, z: w.z, r: LM_CLEAR[lm.kind] || 120 });
+    }
+  }
+
   const rng = mulberry32(77123);
   const items = [];
   const districtHits = new Set();
@@ -635,6 +653,12 @@ function buildCity(route, group, riverPts) {
           if (st.y < -2) {
             const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
             if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
+          }
+        }
+        /* 地标避让 */
+        if (!blocked) {
+          for (const lm of lmSites) {
+            if (Math.hypot(p.x - lm.x, p.z - lm.z) < lm.r) { blocked = true; break; }
           }
         }
         if (blocked) continue;
@@ -718,11 +742,15 @@ function buildLandmarks(route, group, theme) {
   });
   const concreteMat = new THREE.MeshStandardMaterial({ color: 0xb9b3a8, roughness: 0.8, metalness: 0.1 });
 
+  let builtCount = 0;
+  const builtKinds = [];
   for (const lm of LANDMARKS) {
     const p = route.projectLL(lm.lat, lm.lon);
     let nearest = 1e9;
     for (const st of route.stations) nearest = Math.min(nearest, Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z));
     if (nearest > 3600) continue;
+    builtCount++;
+    builtKinds.push(lm.kind);
     const g = new THREE.Group();
     g.position.set(p.x, 0, p.z);
 
@@ -818,7 +846,152 @@ function buildLandmarks(route, group, theme) {
         color: 0x9fc6d8, roughness: 0.08, metalness: 0.5, transparent: true, opacity: 0.55, envMapIntensity: 1.3
       }));
       dome.position.y = 22; g.add(dome);
+
+    /* ================= P5-3 新增 7 个地标 ================= */
+
+    } else if (lm.kind === 'temple') {
+      /* 静安寺：台基 + 主殿 + 金色歇山顶 + 左右配殿 */
+      const stone = new THREE.MeshStandardMaterial({ color: 0x8a7f6d, roughness: 0.85 });
+      const gold = new THREE.MeshStandardMaterial({
+        color: 0xc9a24a, roughness: 0.35, metalness: 0.75,
+        emissive: new THREE.Color(0x6b4a10), emissiveIntensity: 0.35
+      });
+      const base = new THREE.Mesh(new THREE.BoxGeometry(76, 6, 56), stone);
+      base.position.y = 3; g.add(base);
+      const hall = new THREE.Mesh(new THREE.BoxGeometry(52, 20, 34), stone);
+      hall.position.y = 16; g.add(hall);
+      /* 歇山顶：用四坡四边形近似 —— 上小下大的两段 */
+      const roof1 = new THREE.Mesh(new THREE.CylinderGeometry(19, 40, 9, 4), gold);
+      roof1.position.y = 30.5; roof1.rotation.y = PI / 4; roof1.scale.z = 0.72;
+      g.add(roof1);
+      const roof2 = new THREE.Mesh(new THREE.CylinderGeometry(6, 19, 6, 4), gold);
+      roof2.position.y = 38; roof2.rotation.y = PI / 4; roof2.scale.z = 0.72;
+      g.add(roof2);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(20, 12, 22), stone);
+        wing.position.set(sx * 40, 12, 6); g.add(wing);
+        const wr = new THREE.Mesh(new THREE.CylinderGeometry(8, 16, 6, 4), gold);
+        wr.position.set(sx * 40, 21, 6); wr.rotation.y = PI / 4; wr.scale.z = 0.8;
+        g.add(wr);
+      }
+
+    } else if (lm.kind === 'pagoda') {
+      /* 龙华塔：八角七层，逐层收分，塔刹 */
+      const brick = new THREE.MeshStandardMaterial({ color: 0x9d7a5c, roughness: 0.9 });
+      const eave = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.75 });
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(11, 12, 5, 8), brick);
+      base.position.y = 2.5; g.add(base);
+      let y = 5;
+      for (let i = 0; i < 7; i++) {
+        const r = 7.4 - i * 0.72;
+        const h = 4.4 - i * 0.18;
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.82, r, h, 8), brick);
+        body.position.y = y + h / 2; g.add(body);
+        const eaveRing = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.28, r * 1.12, 0.7, 8), eave);
+        eaveRing.position.y = y + h; g.add(eaveRing);
+        y += h + 0.7;
+      }
+      /* 塔刹用铜金色。注意不能引用 temple 分支里的 gold ——
+         那是块级作用域，在 pagoda 分支里取不到，运行时会抛 ReferenceError。 */
+      const spireMat = new THREE.MeshStandardMaterial({ color: 0xb08d3f, roughness: 0.4, metalness: 0.7 });
+      const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.1, 7, 8), spireMat);
+      spire.position.y = y + 3.5; g.add(spire);
+
+    } else if (lm.kind === 'church') {
+      /* 徐家汇天主教堂：中殿 + 双尖塔 + 玫瑰窗 */
+      const brickM = new THREE.MeshStandardMaterial({ color: 0x8d5a44, roughness: 0.9 });
+      const roofM = new THREE.MeshStandardMaterial({ color: 0x3b3a3c, roughness: 0.8 });
+      const nave = new THREE.Mesh(new THREE.BoxGeometry(28, 22, 64), brickM);
+      nave.position.y = 11; g.add(nave);
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 64, 3), roofM);
+      ridge.rotation.z = PI / 2; ridge.rotation.y = PI / 2;
+      ridge.position.y = 27; ridge.scale.z = 0.55; g.add(ridge);
+      for (const sx of [-1, 1]) {
+        const tower = new THREE.Mesh(new THREE.BoxGeometry(11, 42, 11), brickM);
+        tower.position.set(sx * 15, 21, 34); g.add(tower);
+        const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 7.6, 18, 8), roofM);
+        spire.position.set(sx * 15, 51, 34); g.add(spire);
+      }
+      const rose = new THREE.Mesh(new THREE.CircleGeometry(5, 16), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.4, 1.15, 0.75), toneMapped: false
+      }));
+      rose.position.set(0, 20, 32.2); g.add(rose);
+
+    } else if (lm.kind === 'shells') {
+      /* 东方体育中心：三片弧形壳体 */
+      const shellM = new THREE.MeshStandardMaterial({
+        color: 0xd7dee2, roughness: 0.3, metalness: 0.55, side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 3; i++) {
+        const s = new THREE.Mesh(
+          new THREE.SphereGeometry(34 + i * 6, 22, 12, 0, TAU, 0, PI * 0.42),
+          shellM
+        );
+        s.position.set((i - 1) * 44, 6, (i - 1) * 16);
+        s.scale.set(1.25, 1.0, 0.85);
+        s.rotation.y = i * 0.5;
+        g.add(s);
+      }
+      const pool = new THREE.Mesh(new THREE.CylinderGeometry(80, 80, 0.6, 28), MAT.water || shellM);
+      pool.position.y = 0.3; g.add(pool);
+
+    } else if (lm.kind === 'dome_station') {
+      /* 上海南站：圆形大屋盖 + 环状基座 */
+      const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(105, 112, 16, 32, 1, true), new THREE.MeshStandardMaterial({
+        color: 0xa8b0b3, roughness: 0.65, metalness: 0.25, side: THREE.DoubleSide
+      }));
+      baseRing.position.y = 8; g.add(baseRing);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 32, 14, 0, TAU, 0, PI * 0.34), new THREE.MeshPhysicalMaterial({
+        color: 0xcfd8dc, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.62, envMapIntensity: 1.4,
+        side: THREE.DoubleSide
+      }));
+      dome.position.y = 14; g.add(dome);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(112, 2.2, 8, 40), MAT.metal);
+      rim.position.y = 16; rim.rotation.x = PI / 2; g.add(rim);
+      const plaza = new THREE.Mesh(new THREE.CylinderGeometry(150, 150, 0.8, 32), new THREE.MeshStandardMaterial({ color: 0x6e7376, roughness: 0.95 }));
+      plaza.position.y = 0.4; g.add(plaza);
+
+    } else if (lm.kind === 'egg') {
+      /* 五角场彩蛋：椭球发光体 + 环形基座 */
+      const eggMat = new THREE.MeshPhysicalMaterial({
+        color: 0xdfe9ee, roughness: 0.18, metalness: 0.4,
+        emissive: new THREE.Color(0x2a4a66), emissiveIntensity: 0.8,
+        transparent: true, opacity: 0.78, envMapIntensity: 1.6
+      });
+      const egg = new THREE.Mesh(new THREE.SphereGeometry(15, 24, 18), eggMat);
+      egg.position.y = 22; egg.scale.set(1, 1.35, 1);
+      g.add(egg);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 4, 28), new THREE.MeshStandardMaterial({
+        color: 0x8f979b, roughness: 0.5, metalness: 0.5
+      }));
+      ring.position.y = 2; g.add(ring);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(23, 28), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0.6, 1.1, 1.5), toneMapped: false, transparent: true, opacity: 0.5
+      }));
+      glow.position.y = 4.1; glow.rotation.x = -PI / 2; g.add(glow);
+
+    } else if (lm.kind === 'funnel') {
+      /* 世博轴阳光谷：六个倒锥形采光罩 */
+      const funnelMat = new THREE.MeshStandardMaterial({
+        color: 0xcfe0e6, roughness: 0.2, metalness: 0.45, side: THREE.DoubleSide
+      });
+      const glassM = new THREE.MeshPhysicalMaterial({
+        color: 0x9fc6d8, roughness: 0.06, metalness: 0.5, transparent: true, opacity: 0.42, envMapIntensity: 1.5,
+        side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 6; i++) {
+        const f = new THREE.Mesh(new THREE.CylinderGeometry(26, 7, 30, 20, 1, true), glassM);
+        f.position.set(0, 15, -160 + i * 64);
+        g.add(f);
+        const lip = new THREE.Mesh(new THREE.TorusGeometry(26, 1.1, 6, 28), funnelMat);
+        lip.position.set(0, 30, -160 + i * 64); lip.rotation.x = PI / 2;
+        g.add(lip);
+      }
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(30, 3, 420), new THREE.MeshStandardMaterial({ color: 0x9aa3a6, roughness: 0.7, metalness: 0.3 }));
+      deck.position.y = 1.5; g.add(deck);
     }
     group.add(g);
   }
+  /* 统计本次实际建造的地标（离线路 3.6 km 内的才建），供回归与调试用 */
+  if (typeof G !== 'undefined' && G) G.landmarks = { total: LANDMARKS.length, built: builtCount, kinds: builtKinds };
 }
