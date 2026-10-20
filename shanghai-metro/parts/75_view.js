@@ -123,6 +123,12 @@ function bindInput() {
         e.preventDefault();
         togglePerfBadge();
       }
+      /* F4：逐项关效果做性能诊断（正常/关泛光/关阴影/半分辨率） */
+      if (e.code === 'F4') {
+        e.preventDefault();
+        if (!$('perfBadge').classList.contains('on')) togglePerfBadge();
+        cycleDiag();
+      }
       if (e.code === 'Escape') togglePause(true);
     } else if (G.mode === 'paused') {
       if (e.code === 'Escape') togglePause(false);

@@ -78,10 +78,17 @@ function pixelRatioForBudget(budget) {
 
 function applyRenderScale() {
   if (!renderer) return;
-  const budget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
+  const baseBudget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
+  const budget = G._diagHalf ? baseBudget * 0.25 : baseBudget;
   const pr = pixelRatioForBudget(budget);
   renderer.setPixelRatio(pr);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
+  /* 关键：EffectComposer 在构造时把 renderer.getPixelRatio() 快照进
+     _pixelRatio，之后 setSize(w,h) 是按「w × _pixelRatio」算渲染目标尺寸的。
+     换档时只改 renderer 的 pixelRatio 而不告诉 composer，
+     后处理目标就一直是旧尺寸 —— 表现为「改档位后分辨率和画面都没变」，
+     以及最终 blit 多一次缩放。必须同步。 */
+  if (composer && composer.setPixelRatio) composer.setPixelRatio(pr);
   G.renderPR = pr;
   const w = Math.floor(window.innerWidth * pr);
   const h = Math.floor(window.innerHeight * pr);
@@ -232,6 +239,35 @@ function installBloomChain() {
 /* 切换画质档位后重建后期链路。
    低档要彻底拆掉 composer（走 renderer.render 直出），
    中/高档重新建 RT 并把 bloom 挂上。 */
+/* ---------------- F4 逐项诊断 ----------------
+   当「减掉 40% 片元量却完全没变化」时，说明瓶颈不在我以为的地方。
+   与其继续猜，不如把这台机器上的各项开销逐个关掉实测：
+     正常 -> 关泛光 -> 关阴影 -> 半分辨率 -> 关阴影+半分辨率
+   按 F4 循环，徽章会显示当前模式；对比各模式的 fps 就能定位。 */
+const DIAG_MODES = ['正常', '关泛光', '关阴影', '半分辨率', '关阴影+半分辨率'];
+function cycleDiag() {
+  G.diagIdx = ((G.diagIdx || 0) + 1) % DIAG_MODES.length;
+  applyDiag();
+  toast('诊断模式：' + DIAG_MODES[G.diagIdx], 'info', 1800);
+}
+
+function applyDiag() {
+  const i = G.diagIdx || 0;
+  const noBloom = i === 1;
+  const noShadow = i === 2 || i === 4;
+  const halfRes = i === 3 || i === 4;
+
+  if (bloomPass) bloomPass.enabled = !noBloom;
+  if (sun && sun.shadow) sun.castShadow = (G.quality !== 'low') && !noShadow;
+
+  if (!!G._diagHalf !== halfRes) {
+    G._diagHalf = halfRes;
+    if (typeof applyRenderScale === 'function') applyRenderScale();
+    G._fpsCooldown = 1.5;
+    G._fpsBuf = null; G._fpsSum = 0; G.fps = 0; G.frameMs = 0;
+  }
+}
+
 function rebuildPostChain() {
   const targetScene = (G.mode === 'menu' && hero) ? hero.scene : scene;
   if (!targetScene) return;
@@ -521,7 +557,8 @@ function res0() {
   const w = Math.round(window.innerWidth * (G.renderPR || 1));
   const h = Math.round(window.innerHeight * (G.renderPR || 1));
   const names = { high: '精细', medium: '标准', low: '流畅' };
-  return w + '×' + h + '  ' + (names[G.quality] || G.quality);
+  const dm = (typeof DIAG_MODES !== 'undefined' && G.diagIdx) ? '  [' + DIAG_MODES[G.diagIdx] + ']' : '';
+  return w + '×' + h + '  ' + (names[G.quality] || G.quality) + dm;
 }
 
 function updatePerfBadge() {
