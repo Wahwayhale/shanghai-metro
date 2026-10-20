@@ -5839,6 +5839,105 @@ function buildViaduct(route, group) {
   }
 }
 
+/* ---------------- 街道层（P5-4） ----------------
+   高架段下面的地面原本是空的，看起来像浮在空中。
+   真实的高架地铁绝大多数沿城市主干道走，所以这里沿线路在两侧各铺一条
+   道路 + 人行道，再加车道虚线。全部用带状几何 + 实例化，draw call 控制在
+   个位数（当前固定成本 6.5 ms，加 draw call 会直接吃掉分辨率预算）。
+
+   ribbonY 的帮助函数：按给定的横向偏移与宽度，沿线路生成一条水平带。
+   y 用固定值（地面高度），不跟随线路起伏 —— 线路是架在空中的。 */
+function cityRibbon(route, a, b, side, latCenter, width, y, mat, step) {
+  const pos = [], idx = [];
+  const st = step || 3;
+  let n = 0;
+  for (let i = a; i <= b; i += st) {
+    const P = route.P[i], R = route.R[i];
+    const cx = P.x + R.x * side * latCenter;
+    const cz = P.z + R.z * side * latCenter;
+    const hw = width / 2;
+    pos.push(cx - R.x * hw, y, cz - R.z * hw);
+    pos.push(cx + R.x * hw, y, cz + R.z * hw);
+    if (n > 0) {
+      const k = (n - 1) * 2;
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.receiveShadow = false;
+  return m;
+}
+
+function buildRoads(route, group) {
+  /* 只在高架段铺路：地下段的地面在城市建筑之间，铺了也看不见 */
+  const runs = [];
+  let cur = null;
+  for (let i = 0; i <= route.N; i++) {
+    const on = route.P[i].y > 3.2;
+    if (on && !cur) cur = { a: i, b: i };
+    else if (on && cur) cur.b = i;
+    else if (!on && cur) { if (cur.b - cur.a > 4) runs.push(cur); cur = null; }
+  }
+  if (cur && cur.b - cur.a > 4) runs.push(cur);
+  if (typeof G !== 'undefined' && G) G.roadRuns = runs.length;
+  if (!runs.length) return 0;
+
+  /* 带状几何的三角形绕序容易朝下，被背面剔除后就整条看不见。
+     路面是平面条带，用 DoubleSide 的代价可以忽略，省掉绕序调试。 */
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.95, metalness: 0.02, side: THREE.DoubleSide });
+  const walkMat = new THREE.MeshStandardMaterial({ color: 0xa8adb2, roughness: 0.90, metalness: 0.02, side: THREE.DoubleSide });
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xd2d6d6, roughness: 0.82, side: THREE.DoubleSide });
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xd8d2b8, toneMapped: false });
+
+  let meshes = 0;
+  for (const run of runs) {
+    for (const side of [-1, 1]) {
+      /* 车行道：中心距线路 18 m，宽 12 m（双向四车道） */
+      group.add(cityRibbon(route, run.a, run.b, side, 18, 12, 0.03, roadMat)); meshes++;
+      /* 人行道：靠线路一侧 3 m */
+      group.add(cityRibbon(route, run.a, run.b, side, 10.6, 3.0, 0.14, walkMat)); meshes++;
+      /* 路缘石 */
+      group.add(cityRibbon(route, run.a, run.b, side, 12.25, 0.35, 0.16, curbMat)); meshes++;
+      /* 外侧人行道 */
+      group.add(cityRibbon(route, run.a, run.b, side, 25.6, 3.0, 0.14, walkMat)); meshes++;
+    }
+
+    /* 车道虚线：沿道路中心线每 12 m 一段 5 m 长的短条，实例化 */
+    const dashGeo = new THREE.BoxGeometry(0.16, 0.02, 5);
+    const totalLen = route.S[run.b] - route.S[run.a];
+    const cnt = Math.max(1, Math.floor(totalLen / 12));
+    const dashes = new THREE.InstancedMesh(dashGeo, lineMat, cnt * 2);
+    const d = new THREE.Object3D();
+    let di = 0;
+    for (let k = 0; k < cnt; k++) {
+      const s = route.S[run.a] + k * 12 + 3;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        d.position.set(
+          f.pos.x + f.right.x * side * 18,
+          0.05,
+          f.pos.z + f.right.z * side * 18
+        );
+        d.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        d.updateMatrix();
+        dashes.setMatrixAt(di++, d.matrix);
+      }
+    }
+    dashes.count = di;
+    dashes.instanceMatrix.needsUpdate = true;
+    dashes.frustumCulled = false;
+    group.add(dashes);
+    meshes++;
+  }
+  if (typeof G !== 'undefined' && G) G.roadStats = { runs: runs.length, meshes };
+  return meshes;
+}
+
 /* ---------------- 地面 / 河流 ---------------- */
 function buildGround(route, group) {
   /* 地面平面必须盖住整条线路：线路可延伸到 ±20 km，
@@ -11525,6 +11624,9 @@ async function buildService(routeIdx, reverse) {
 
   await loadStep('正在还原黄浦江与地面…', 0.5);
   const river = buildGround(path, root);
+
+  await loadStep('正在铺设地面道路…', 0.56);
+  buildRoads(path, root);
 
   await loadStep('正在生成沿线城市…', 0.6);
   buildCity(path, root, river.riverPts);

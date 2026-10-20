@@ -249,6 +249,9 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在还原黄浦江与地面…', 0.5);
   const river = buildGround(path, root);
 
+  await loadStep('正在铺设地面道路…', 0.56);
+  buildRoads(path, root);
+
   await loadStep('正在生成沿线城市…', 0.6);
   buildCity(path, root, river.riverPts);
 
