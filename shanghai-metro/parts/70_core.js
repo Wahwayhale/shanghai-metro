@@ -124,14 +124,21 @@ function makeComposer(targetScene) {
      color 1.6/2.4/3.2）在 ToneMapping 之前就被裁到 1.0，画面整体过曝发白。
      HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
 
-     samples: 0 —— 核显上 4x MSAA 的填充率代价过高，而它只是「每像素 ×4」。
-     光靠关掉 MSAA 就把这块带宽从 32 B/px 降到 8 B/px（4 倍），已经够了。 */
+     MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿
+     明显（钢轨、接触网、建筑轮廓尤其严重）。现在实测 110 fps / 9 ms，
+     距 60 fps 预算还有 7 ms 余量，按档位重新开启：
+       精细 = 4x、标准 = 2x、流畅 = 0（且不建 composer，直接出屏）
+     注意这是**渲染目标**的 MSAA，与 canvas 的 antialias 无关 ——
+     走后处理时画面先进 RT，所以真正决定抗锯齿的是这里的 samples。 */
+  const MSAA = { high: 4, medium: 2, low: 0 };
+  const samples = MSAA[G.quality] != null ? MSAA[G.quality] : 2;
   const pr = G.renderPR || 1;
   const w = Math.max(1, Math.floor(window.innerWidth * pr));
   const h = Math.max(1, Math.floor(window.innerHeight * pr));
   const rt = new THREE.WebGLRenderTarget(w, h, {
-    type: THREE.HalfFloatType, samples: 0
+    type: THREE.HalfFloatType, samples
   });
+  G.msaa = samples;
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(targetScene, camera));
   G._bloomPending = targetScene;      // 交给主循环延后补装
