@@ -10683,7 +10683,13 @@ function applyRenderScale() {
   if (!renderer) return;
   const baseBudget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
   const budget = G._diagHalf ? baseBudget * 0.25 : baseBudget;
-  const pr = pixelRatioForBudget(budget);
+  /* 动态分辨率：在档位预算基础上再乘一个自适应系数。
+     实测（780M + 2K 屏）帧时间 ≈ 6.5 ms 固定 + 5.01 ms/MP，
+     要稳住 60fps 只能用约 2.03 MP —— 原生 3.69 MP 根本吃不下。
+     与其猜一个固定档位，不如让程序自己逼近：
+     慢了就缩、快了就涨，最终停在这台机器能维持 60fps 的最高分辨率。 */
+  const rscale = G.autoDRS === false ? 1 : (G.renderScale == null ? 1 : G.renderScale);
+  const pr = pixelRatioForBudget(budget) * rscale;
   renderer.setPixelRatio(pr);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   /* 关键：EffectComposer 在构造时把 renderer.getPixelRatio() 快照进
@@ -10842,6 +10848,33 @@ function installBloomChain() {
 /* 切换画质档位后重建后期链路。
    低档要彻底拆掉 composer（走 renderer.render 直出），
    中/高档重新建 RT 并把 bloom 挂上。 */
+/* ---------------- 动态分辨率（DRS） ----------------
+   每 1.2 秒看一次最近的平均帧时间：
+     超过 17.0 ms（< 59fps）-> 缩放 -0.06
+     低于 13.5 ms（> 74fps）-> 缩放 +0.03
+   其它区间不动（死区，避免来回抖）。
+   只在分辨率变化时重建 render target，不重编译着色器，所以代价很低。 */
+const DRS_TARGET = 16.67;
+const DRS_SLOW = 17.0;        // 超过这个就缩
+const DRS_FAST = 13.5;        // 低于这个才涨
+const DRS_MIN = 0.42;
+const DRS_MAX = 1.0;
+
+function tuneDRS(avgMs) {
+  if (G.autoDRS === false) return;
+  let s = G.renderScale == null ? 1 : G.renderScale;
+  let next = s;
+  if (avgMs > DRS_SLOW) next = s - 0.06;
+  else if (avgMs < DRS_FAST) next = s + 0.03;
+  next = clamp(next, DRS_MIN, DRS_MAX);
+  if (Math.abs(next - s) < 0.005) return;
+  G.renderScale = next;
+  applyRenderScale();
+  /* 缩放后重建 render target 会有一次小抖动，清空采样重新计 */
+  G._fpsBuf = null;
+  G._fpsSum = 0;
+}
+
 /* ---------------- F4 逐项诊断 ----------------
    当「减掉 40% 片元量却完全没变化」时，说明瓶颈不在我以为的地方。
    与其继续猜，不如把这台机器上的各项开销逐个关掉实测：
@@ -11126,6 +11159,8 @@ function sampleFrame(dt) {
   G.fps = 1000 / avg;
   G.fpsProvisional = G._fpsBuf.length < FPS_SAMPLE;
   updatePerfBadge();
+  /* 每满一个采样窗口尝试调一次渲染缩放（内部有死区与步长限制） */
+  if (G._fpsBuf.length >= FPS_SAMPLE) tuneDRS(avg);
   /* 自适应：连续 2 个窗口超过 60fps 预算 1.3 倍才降档，避免误判 */
   if (G.autoQuality !== false && avg > FPS_TARGET_MS * 1.3) {
     G._slowStreak = (G._slowStreak || 0) + 1;
@@ -11161,7 +11196,9 @@ function res0() {
   const h = Math.round(window.innerHeight * (G.renderPR || 1));
   const names = { high: '精细', medium: '标准', low: '流畅' };
   const dm = (typeof DIAG_MODES !== 'undefined' && G.diagIdx) ? '  [' + DIAG_MODES[G.diagIdx] + ']' : '';
-  return w + '×' + h + '  ' + (names[G.quality] || G.quality) + dm;
+  const rs = G.renderScale == null ? 1 : G.renderScale;
+  const rsTxt = rs < 0.995 ? '  缩放 ' + rs.toFixed(2) : '';
+  return w + '×' + h + '  ' + (names[G.quality] || G.quality) + rsTxt + dm;
 }
 
 function updatePerfBadge() {
@@ -13388,6 +13425,8 @@ function bindMenu() {
        —— 这就是「显示 0 fps 然后一档一档降到流畅」的成因。
        同时，用户手动选了档位就是对画质的明确取舍，自动降档应当停手。 */
     G.autoQuality = false;
+    /* 换档是重新选上限，把动态分辨率重置回 1.0 再重新收敛 */
+    G.renderScale = 1.0;
     G._fpsCooldown = 3.0;
     G._fpsBuf = null;
     G._fpsSum = 0;
@@ -13538,7 +13577,9 @@ window.__sim = {
   get frameMs() { return G.frameMs || 0; },
   get renderPx() { return G.renderPx || 0; },
   get renderPR() { return G.renderPR || 1; },
-  applyRenderScale, rebuildPostChain,
+  applyRenderScale, rebuildPostChain, tuneDRS, applyDiag, cycleDiag,
+  get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
+  get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };

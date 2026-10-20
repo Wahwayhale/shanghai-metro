@@ -355,6 +355,8 @@ function bindMenu() {
        —— 这就是「显示 0 fps 然后一档一档降到流畅」的成因。
        同时，用户手动选了档位就是对画质的明确取舍，自动降档应当停手。 */
     G.autoQuality = false;
+    /* 换档是重新选上限，把动态分辨率重置回 1.0 再重新收敛 */
+    G.renderScale = 1.0;
     G._fpsCooldown = 3.0;
     G._fpsBuf = null;
     G._fpsSum = 0;
@@ -505,7 +507,9 @@ window.__sim = {
   get frameMs() { return G.frameMs || 0; },
   get renderPx() { return G.renderPx || 0; },
   get renderPR() { return G.renderPR || 1; },
-  applyRenderScale, rebuildPostChain,
+  applyRenderScale, rebuildPostChain, tuneDRS, applyDiag, cycleDiag,
+  get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
+  get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
   setFreeCam(pos, look, fov) { G.freeCam = pos ? { pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov } : null; }
 };
