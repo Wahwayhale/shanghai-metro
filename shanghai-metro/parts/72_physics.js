@@ -2,6 +2,41 @@
    动力学 / 停站判定 / ATO / 车门 / 故障演练
    （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
+/* ---------------------------------------------------------------- 时刻 */
+/* 本务在某站的计划到发：优先取运行图里「这趟车」的计划，
+   取不到就回退到车站对象上的旧字段（兼容没生成运行图的加载路径）。
+   HUD / 司机室 HMI / 结算记录都走这一个入口，避免三处口径不一致。 */
+function planStopOf(idx) {
+  if (typeof path !== 'undefined' && path && path.playerService && typeof ttStopOf === 'function') {
+    const sp = ttStopOf(path.playerService, idx);
+    if (sp) return sp;
+  }
+  const st = (typeof path !== 'undefined' && path && path.stations[idx]) || {};
+  return { arr: st.schArr, dep: st.schDep };
+}
+
+/* 当前正晚点（秒，正为晚点）。
+   停稳/停站时用「现在 - 计划到达」；运行中用「预计到达 - 计划到达」。 */
+function currentDelay() {
+  if (typeof path === 'undefined' || !path || !path.stations[G.targetIdx]) return 0;
+  const st = path.stations[G.targetIdx];
+  const plan = planStopOf(G.targetIdx);
+  if (G.stopState === 'stop' || G.stopState === 'dwell' || G.doorsOpen) {
+    return Math.round(G.clock - plan.arr);
+  }
+  /* 运行中：和 AI 一样用「此刻计划应在的里程」和实际里程比。
+     原来用 estimateRunTime(剩余距离, 当前速度)，列车刚起步时速度很低，
+     会把 4 km 的区间估成 300 s，HUD 瞬间跳到「晚点 303 s」。 */
+  if (path.playerService && typeof ttServicePosition === 'function') {
+    const schedPos = ttServicePosition(path.playerService, G.clock);
+    const behind = schedPos - G.s;
+    return Math.round(behind / Math.max(6, G.v));
+  }
+  const dd = Math.max(0, st.stopS - G.s);
+  const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
+  return Math.round(eta - plan.arr);
+}
+
 /* ---------------------------------------------------------------- 物理 */
 function stationDist() {
   const st = path.stations[G.targetIdx];
@@ -243,11 +278,19 @@ function atoStep(dt) {
         }
       }
       break;
-    case 'dwell':
+    case 'dwell': {
       G.atoTimer += dt;
+      /* 停站时长按运行图计划发车时刻：早到多等，晚点只停最短办客时间。
+         提前 5 s 关门（关门动画约 3 s + 出发确认 1.5 s）。 */
+      const plan = planStopOf(G.targetIdx);
+      const closeAt = plan && plan.dep != null ? plan.dep - 5 : null;
+      const wantClose = closeAt != null
+        ? (G.atoTimer > 8 && G.clock >= closeAt)
+        : G.atoTimer > (routeDef.dwell || 30);
       if (!G.doorsOpen && G.doorT < 0.02) { G.atoState = 'waitdepart'; G.atoTimer = 0; }
-      else if (G.atoTimer > (routeDef.dwell || 30)) { closeDoors(); G.atoTimer = 0; }
+      else if (wantClose) { closeDoors(); G.atoTimer = 0; }
       break;
+    }
     case 'waitdepart':
       G.atoTimer += dt;
       if (G.atoTimer > 1.5) { G.atoState = 'depart'; G.atoTimer = 0; }
@@ -269,7 +312,20 @@ function atoCommand() {
   const d = st.stopS - G.s;
   if (d <= 0.3) return v > 0.08 ? -0.7 : 0;
 
-  const vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+  let vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+
+  /* ATO 也按图运行（P1-2 的延伸）：用剩余距离与计划到达剩余时间反解巡航速度。
+     否则 ATO 会以线路限速一路追上前车，被压住后逐站累积晚点。
+     手动驾驶不受影响——司机本来就可以选择跑到限速。 */
+  const plan = planStopOf(G.targetIdx);
+  if (plan && plan.arr != null && typeof ttSolveCruiseFrom === 'function') {
+    const tLeft = plan.arr - G.clock;
+    if (tLeft > 0 && d > 1) {
+      const vC = ttSolveCruiseFrom(d, tLeft, v, path.vmax, 1.3, 0.95);
+      vLim = Math.min(vLim, Math.max(vC, d > 30 ? 3 : 0));
+    }
+  }
+
   const req = (v * v) / (2 * Math.max(0.35, d - 1.1));
 
   // 低速精确对位
@@ -284,7 +340,9 @@ function atoCommand() {
   if (brakeCmd > 0.02) return -brakeCmd;
 
   const vT = Math.min(vLim, Math.sqrt(2 * 0.95 * Math.max(0, d - 2.0)));
-  if (v < vT - 0.12) return clamp(0.22 + (vT - v) * 0.5, 0, 0.85);
+  /* 牵引爬升按运行图口径（约 1.3 m/s²）：原来 0.85 m/s² 的温和曲线
+     会让每段都比计划慢几秒，逐站累积成十几秒晚点。 */
+  if (v < vT - 0.12) return clamp(0.5 + (vT - v) * 1.1, 0, 1.3);
   return 0;
 }
 function onStopped(st, dist) {
@@ -304,9 +362,10 @@ function onStopped(st, dist) {
     toast(`停车偏差 ${(G.stopErr >= 0 ? '+' : '')}${G.stopErr.toFixed(2)} m  ·  +${Math.round(base)}`, 'warn', 4600);
   }
   if (G.targetIdx > 0) {
+    const plan = planStopOf(G.targetIdx);
     G.results.push({
       idx: G.targetIdx, zh: st.zh, err: G.stopErr, stopScore: base,
-      arrClock: G.clock, schArr: st.schArr, depDelay: 0, punc: 0
+      arrClock: G.clock, schArr: plan.arr, arrDelay: Math.round(G.clock - plan.arr), depDelay: 0, punc: 0
     });
   }
   AUDIO.announce(`${st.zh}站，到了。`);
@@ -317,7 +376,7 @@ function onDeparture(st) {
   if (G.exam && st.index > 0 && !G.doorAt[st.index]) examEvent('door', false);
   G.stopState = 'run';
   const rec = G.results.find(r => r.idx === G.targetIdx);
-  const delay = G.clock - st.schDep;
+  const delay = G.clock - planStopOf(G.targetIdx).dep;
   if (rec) {
     rec.depClock = G.clock; rec.depDelay = delay;
     rec.punc = clamp(100 - 1.5 * Math.abs(delay), 0, 100);
@@ -342,7 +401,7 @@ function missedStation(st) {
   if (G.exam) { examEvent('door', false); examEvent('stop', 99); }
   G.penalties += 30;
   const prevIdx = G.targetIdx;
-  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: st.schArr, punc: 0 });
+  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: planStopOf(prevIdx).arr, arrDelay: 99, punc: 0 });
   G.stopState = 'run';
   const prev = stationObjFor(prevIdx);
   if (prev) { prev.psdL.setOpen(0); }
@@ -374,14 +433,15 @@ function openDoors() {
   AUDIO.announce('车门已开启，请先下后上，注意站台间隙。');
   const rec = G.results.find(r => r.idx === G.targetIdx);
   if (rec) {
-    rec.arrDelay = G.clock - st.schArr;
+    rec.arrDelay = Math.round(G.clock - planStopOf(G.targetIdx).arr);
   }
   if (isLastServed(G.targetIdx)) {
     G.finishTimer = 6;
-    const rec = G.results.find(r => r.idx === G.targetIdx);
-    if (rec) {
-      rec.punc = clamp(100 - 1.5 * Math.abs(G.clock - st.schArr), 0, 100);
-      rec.depDelay = G.clock - st.schArr;
+    const plan = planStopOf(G.targetIdx);
+    const rec2 = G.results.find(r => r.idx === G.targetIdx);
+    if (rec2) {
+      rec2.punc = clamp(100 - 1.5 * Math.abs(G.clock - plan.arr), 0, 100);
+      rec2.depDelay = G.clock - plan.arr;
     }
     toast('终到站 · 本次值乘即将结束', 'good', 5000);
   }

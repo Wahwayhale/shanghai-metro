@@ -42,9 +42,16 @@ class AiTrain {
     this.phase = 0;
     this.s0 = this.s; this.v0 = this.v; this.idx0 = this.idx;
     this.dir0 = this.dir; this.lat0 = this.lateral;
-    /* 决策用的常量包（与全局常量一致，便于单测覆盖） */
-    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH };
+    /* 决策用的常量包（与全局常量一致，便于单测覆盖）。
+       clock 每帧由 update() 从 G.clock 同步：绑定车次后 aiUpdate 用它算正晚点。 */
+    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH, clock: null };
     this._events = [];
+    /* P1-3：运行图班次（由 bindAiSchedules 在布置场景时挂上） */
+    this.service = opts.service || null;
+    this.delay = 0;          // 正晚点（秒，正为晚点）
+    this.planArr = null;     // 下一站计划到达（秒）
+    this.lastArrDelay = null;// 最近一次到达偏差
+    this.arrLog = [];        // 到站偏差日志（回归脚本读它）
   }
 
   reset() {
@@ -52,6 +59,7 @@ class AiTrain {
     this.dir = this.dir0; this.lateral = this.lat0;
     this.state = 'run'; this.dwellT = 0; this.dwellNeed = 0;
     this.holdT = 0; this.skip = false; this.doorT = 0;
+    this.delay = 0; this.lastArrDelay = null; this.arrLog = [];
     this.train.lateral = this.lateral;
     this.train.dir = this.dir;
     this.train.setDoorT(0);
@@ -87,7 +95,9 @@ class AiTrain {
   update(dt) {
     if (this.dead) return;
     /* 决策逻辑在 54_aibody.js（纯函数，可脱离浏览器测试）；
-       这里只负责把结果同步到 Three.js 车辆上。 */
+       这里只负责把结果同步到 Three.js 车辆上。
+       时钟走 _C 传进去，是为了让 aiUpdate 保持零全局依赖、可在 node 里单测。 */
+    this._C.clock = G.clock;
     const r = aiUpdate(this, dt, this.leader(), this._C);
     this._events = r.events;
     if (this.train) {
@@ -173,6 +183,38 @@ function spawnAiTrains(path, line, root) {
   aiTrains.push(rear);
 
   return aiTrains;
+}
+
+/* ------------------------------------------------------------------
+   运行图绑定（P1-3）
+   ------------------------------------------------------------------
+   AI 的初始位置由场景布置决定（本务前方 1 km / 2.5 km），不能为了
+   对齐运行图把车挪走。做法：取本务车次的运行时分与停站时间，
+   整体平移到「AI 在 clockSec 时刻正好位于当前里程」—— 相当于给这
+   列车生成一张属于它自己的班次表，之后按图行车。
+   对向通过车不停站，没有可追踪的停站时刻，保持自由运行。
+   ------------------------------------------------------------------ */
+function bindAiSchedules(list, path, clockSec) {
+  if (typeof ttShiftService !== 'function' || !path || !path.playerService) return 0;
+  let bound = 0;
+  for (const ai of list) {
+    if (!ai || ai.dead || ai.dir < 0 || !ai.stops) continue;
+    const tAt = ttTimeAtPosition(path.playerService, ai.s);
+    const svc = ttShiftService(path.playerService, clockSec - tAt, ai.carNo);
+    if (!svc) continue;
+    /* 下一站必须在这个车次里停靠；跳站交路则顺延到下一个停靠站 */
+    let target = ai.idx;
+    while (target > 0 && target < path.stations.length && !ttStopOf(svc, target)) target++;
+    if (target >= path.stations.length) continue;
+    ai.service = svc;
+    ai.idx = target;
+    ai.delay = 0;
+    ai.lastArrDelay = null;
+    const sp = ttStopOf(svc, target);
+    ai.planArr = sp ? sp.arr : null;
+    bound++;
+  }
+  return bound;
 }
 
 /* ------------------------------------------------------------------ 本务的前车 */

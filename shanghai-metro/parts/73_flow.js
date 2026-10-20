@@ -344,6 +344,7 @@ function finishService() {
     }
   }
   drawSpeedChart();
+  drawDelayChart();
   if (typeof routeDef !== 'undefined' && routeDef) saveCareer(routeDef.id + (G.reverse ? ':rev' : ''), score, grade);
   const rvBtn = $('resReverse');
   if (rvBtn) rvBtn.style.display = (G.reverse || (routeDef && (routeDef.loop || routeDef.stopPlan))) ? 'none' : '';
@@ -388,4 +389,72 @@ function drawSpeedChart() {
   ctx.fillStyle = 'rgba(140,198,63,.10)'; ctx.fill();
   ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
   ctx.fillText('全程速度曲线', x0 + 4, y0 + 14);
+}
+
+/* ---------------------------------------------------------------- 晚点曲线（P1-5）
+   逐站发车正晚点。数据直接取结算表同源的 G.results[].depDelay，
+   保证「曲线与逐站数据一致」；±60 s 画告警线，与 HMI/ATS 同口径。 */
+function drawDelayChart() {
+  const cv = $('resDelay');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const rows = (G.results || []).filter(r =>
+    r.idx > 0 && (r.depDelay != null || r.arrDelay != null));
+  const x0 = 46, x1 = W - 14, y0 = 18, y1 = H - 24;
+  ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
+  ctx.fillText('逐站发车正晚点  s', x0, 13);
+  if (!rows.length) {
+    ctx.fillStyle = '#5f7280'; ctx.fillText('无正晚点数据', x0 + 10, (y0 + y1) / 2);
+    return;
+  }
+  const vals = rows.map(r => (r.depDelay != null ? r.depDelay : r.arrDelay) || 0);
+  const maxAbs = Math.max(30, ...vals.map(v => Math.abs(v)));
+  const span = Math.max(30, Math.ceil(maxAbs / 30) * 30);
+  const Y = v => (y0 + y1) / 2 - (v / span) * ((y1 - y0) / 2 - 4);
+  const X = i => rows.length === 1 ? (x0 + x1) / 2 : x0 + (i / (rows.length - 1)) * (x1 - x0);
+
+  /* ±60 s 告警带（若量程够） */
+  if (span >= 60) {
+    for (const s of [-60, 60]) {
+      ctx.strokeStyle = 'rgba(255,107,90,.28)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, Y(s)); ctx.lineTo(x1, Y(s)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  /* 零线与刻度 */
+  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, Y(0)); ctx.lineTo(x1, Y(0)); ctx.stroke();
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px ui-monospace,monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', x0 - 6, Y(0) + 4);
+  ctx.fillText('+' + span, x0 - 6, Y(span) + 4);
+  ctx.fillText('-' + span, x0 - 6, Y(-span) + 4);
+  ctx.textAlign = 'left';
+
+  /* 晚点为正（琥珀），早点为负（蓝） */
+  ctx.beginPath();
+  vals.forEach((v, i) => { i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); });
+  ctx.strokeStyle = 'rgba(140,198,63,.85)'; ctx.lineWidth = 2.2; ctx.stroke();
+  vals.forEach((v, i) => {
+    const bad = Math.abs(v) > 60;
+    ctx.fillStyle = bad ? '#ff6b5a' : v > 5 ? '#ffb020' : v < -5 ? '#6fd3ff' : '#3ddc97';
+    ctx.beginPath(); ctx.arc(X(i), Y(v), 3.2, 0, Math.PI * 2); ctx.fill();
+    if (rows.length <= 14) {
+      ctx.fillStyle = '#93a9b6'; ctx.font = '500 10px ui-monospace,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText((v > 0 ? '+' : '') + Math.round(v), X(i), Y(v) - 7);
+      ctx.textAlign = 'left';
+    }
+  });
+  /* 站名刻度：只标首末与中间，避免拥挤 */
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px "Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  const step = Math.max(1, Math.ceil(rows.length / 8));
+  rows.forEach((r, i) => {
+    if (i % step && i !== rows.length - 1) return;
+    ctx.fillText(r.zh, X(i), y1 + 16);
+  });
+  ctx.textAlign = 'left';
 }

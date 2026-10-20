@@ -8,8 +8,11 @@ const path = require('path');
 const {
   TT_DEFAULTS,
   ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
-  ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay
+  ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
+  ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition, ttShiftService
 } = require(path.join(__dirname, '..', '..', 'parts', '57_timetable.js'));
+
+const KMH = 1 / 3.6;
 
 let pass = 0, fail = 0;
 const failed = [];
@@ -137,6 +140,68 @@ ok('ttStopOf 未停靠站返回 null', ttStopOf(mid, 99) === null);
 
 ok('晚点 30 s', ttDelay(1000, 1030) === 30);
 ok('早点 15 s', ttDelay(1000, 985) === -15);
+
+/* ========== P1-3：按图运行的纯函数 ========== */
+
+/* 用「加速-巡航-制动」模型反算总时间，验证 ttSolveCruise 解出的速度确实按点 */
+function profileTime(D, v, a, b) {
+  const da = v * v / (2 * a), db = v * v / (2 * b);
+  if (da + db >= D) {
+    const vp = Math.sqrt(2 * D * a * b / (a + b));
+    return vp / a + vp / b;
+  }
+  return v / a + v / b + (D - da - db) / v;
+}
+
+ok('ttMinRun 1200m/80 = 72.8 s', near(ttMinRun(1200, 80, 1.45, 1.0), 72.8, 0.5),
+  ttMinRun(1200, 80, 1.45, 1.0));
+ok('ttMinRun 与 ttEstimateRun 同口径',
+  near(ttMinRun(1200, 80, 1.45, 1.0), ttEstimateRun(1200, 80), 1e-6));
+
+{
+  /* 计划 85 s 跑 1200 m：解出的巡航速度应让 profile 时间回到 85 s */
+  const v85 = ttSolveCruise(1200, 85, 80, 1.45, 1.0);
+  ok('ttSolveCruise 解出低于 vmax 的巡航速度', v85 > 0 && v85 < 80 * KMH, v85 * 3.6);
+  ok('ttSolveCruise 反算时间 = 计划 85 s', near(profileTime(1200, v85, 1.45, 1.0), 85, 0.2),
+    profileTime(1200, v85, 1.45, 1.0));
+
+  /* 时间不够（60 s 跑 1200 m）时全速 */
+  ok('ttSolveCruise 时间不够返回 vmax', near(ttSolveCruise(1200, 60, 80, 1.45, 1.0), 80 * KMH, 1e-9));
+  ok('ttSolveCruise 零距离安全', ttSolveCruise(0, 10, 80, 1.45, 1.0) === 80 * KMH);
+  ok('ttSolveCruise 零时间安全', ttSolveCruise(100, 0, 80, 1.45, 1.0) === 80 * KMH);
+
+  /* 已经跑起来、但时间很富余：应减速到更低的巡航速度，而不是一直保持当前速度 */
+  const vEarly = ttSolveCruiseFrom(1200, 200, 15, 80, 1.45, 1.0);
+  ok('ttSolveCruiseFrom 早点时减速', vEarly > 0 && vEarly < 15, vEarly);
+  ok('ttSolveCruiseFrom 减速后总时间 = 计划 200 s',
+    near(15 + (1200 - 15 * 15 / 2) / vEarly, 200, 0.5),
+    15 + (1200 - 15 * 15 / 2) / vEarly);
+}
+
+{
+  /* 5 站、站间距 1200、每段 90 s：t=0 发车，第 2 站到达 90 s */
+  const s5 = mkStations(5, 1200);
+  const sv = ttComputeService(s5, { startSec: 0, dwell: 40, runTimes: [90, 90, 90, 90] });
+  ok('停站记录带里程', sv.stops.every(sp => sp.s === sp.idx * 1200), sv.stops.map(sp => sp.s).join(','));
+
+  ok('ttServicePosition 停站期间 = 站台里程', ttServicePosition(sv, -20) === 0);
+  const midRun = ttServicePosition(sv, 45);           // 第 1 段（0-90 s）走了一半
+  ok('ttServicePosition 区间中点 = 600 m', near(midRun, 600, 1), midRun);
+  ok('ttTimeAtPosition 与 ttServicePosition 互逆',
+    near(ttTimeAtPosition(sv, 600), 45, 1), ttTimeAtPosition(sv, 600));
+
+  const shifted = ttShiftService(sv, -600, 'T99');
+  ok('ttShiftService 平移车次号', shifted.no === 'T99');
+  ok('ttShiftService 首站发车 -600 s', shifted.startSec === -600);
+  ok('ttShiftService 逐站时刻整体平移',
+    shifted.stops.every((sp, i) => near(sp.arr, sv.stops[i].arr - 600, 1e-9) &&
+      near(sp.dep, sv.stops[i].dep - 600, 1e-9)),
+    shifted.stops.map(sp => sp.arr).join(','));
+  ok('ttShiftService 不改停站结构与运行时分',
+    shifted.stops.length === sv.stops.length &&
+    shifted.stops[2].run === sv.stops[2].run &&
+    shifted.stops[2].s === sv.stops[2].s);
+}
 
 /* ========== 性能 ========== */
 

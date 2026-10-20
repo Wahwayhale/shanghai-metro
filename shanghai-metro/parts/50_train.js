@@ -184,17 +184,30 @@ class CabDisplay {
     // 时刻
     x.strokeStyle = '#1c2f42'; x.lineWidth = 2;
     x.beginPath(); x.moveTo(96, 136); x.lineTo(540, 136); x.stroke();
+    /* 正晚点表述：真实 HMI 不会只给一个带符号的数字，
+       而是直接说「早点 / 晚点 / 正点」。这里按 ±5 s 分界。 */
+    const dv = Math.round(st.delay);
+    let puncTxt;
+    if (Math.abs(dv) <= 5) puncTxt = '正点';
+    else if (dv < 0) puncTxt = '早点 ' + (-dv) + ' s';
+    else puncTxt = '晚点 ' + dv + ' s';
+    /* 停站时补一个「距计划发车还有多久」：正点与否之外，
+       司机真正要判断的是「还能不能按点发车」。 */
+    if (st.depLeft != null && st.depLeft > -120) {
+      puncTxt += ' · 余 ' + Math.round(Math.max(0, st.depLeft)) + 's';
+    }
     const rows = [
       ['计划到达', fmtClock(st.schArr)],
       ['计划发车', fmtClock(st.schDep)],
       ['当前时间', fmtClock(st.clock)],
-      ['偏差', (st.delay > 0 ? '+' : '') + Math.round(st.delay) + ' s']
+      ['正晚点', puncTxt]
     ];
     rows.forEach((r, i) => {
       const yy = 164 + i * 34;
       x.fillStyle = '#7f95a8'; x.font = '500 17px "Microsoft YaHei",sans-serif';
       x.fillText(r[0], 98, yy);
-      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 30 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
+      /* ±60 s 以上转红告警（与 HUD / ATS 同口径），±15 s 以上琥珀 */
+      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 60 ? '#ff6b5a' : Math.abs(st.delay) > 15 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
       x.font = '600 21px ui-monospace,monospace';
       x.fillText(r[1], 250, yy);
     });

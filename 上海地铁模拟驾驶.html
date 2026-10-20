@@ -137,6 +137,11 @@
   .hud-clock span{display:block;font-size:9.5px;letter-spacing:.16em;color:#8b9daa;margin-top:2px}
   .hud-clock span.late{color:var(--amber)}
   .hud-clock span.early{color:#6fd3ff}
+  .hud-clock i{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    color:#3ddc97;margin-top:3px;font-variant-numeric:tabular-nums}
+  .hud-clock i.late{color:var(--amber)}
+  .hud-clock i.early{color:#6fd3ff}
+  .hud-clock i.bad{color:#ff6b5a}
 
   .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
   .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
@@ -271,10 +276,16 @@
   .ats-ix-btn.on b{color:#c9f07a}
   .ats-ix-btn.on span{color:#8fae6a}
   .ats-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px}
-  .ats-row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+  .ats-row{display:grid;grid-template-columns:auto 1fr 40px auto;gap:8px;align-items:center;
     padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.035);
     border:1px solid rgba(255,255,255,.05);font-size:10.5px}
   .ats-row.me{background:rgba(255,255,255,.075);border-color:var(--line)}
+  .ats-dev{font-size:10px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;color:#3ddc97;white-space:nowrap}
+  .ats-dev.late{color:#ffb020}
+  .ats-dev.bad{color:#ff6b5a}
+  .ats-dev.early{color:#6fd3ff}
+  .ats-dev.na{color:#5f7280;font-weight:500}
   .ats-no{font-weight:800;font-size:12px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
   .ats-no i{display:block;font-style:normal;font-size:8.5px;font-weight:500;color:#7492a1;letter-spacing:.06em}
   .ats-mid{min-width:0}
@@ -495,7 +506,7 @@
   <div id="hud">
     <div class="hud-top">
       <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em></div>
-      <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span></div>
+      <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span><i id="hudPunc">正点</i></div>
     </div>
 
     <div class="hud-left panel">
@@ -640,6 +651,7 @@
       </div>
       <div class="exam-result" id="resExam" style="display:none"></div>
       <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
       <div class="stop-table" id="resTable"></div>
       <div class="modal-actions">
         <button class="btn acc" id="resAgain">再次值乘</button>
@@ -8701,17 +8713,30 @@ class CabDisplay {
     // 时刻
     x.strokeStyle = '#1c2f42'; x.lineWidth = 2;
     x.beginPath(); x.moveTo(96, 136); x.lineTo(540, 136); x.stroke();
+    /* 正晚点表述：真实 HMI 不会只给一个带符号的数字，
+       而是直接说「早点 / 晚点 / 正点」。这里按 ±5 s 分界。 */
+    const dv = Math.round(st.delay);
+    let puncTxt;
+    if (Math.abs(dv) <= 5) puncTxt = '正点';
+    else if (dv < 0) puncTxt = '早点 ' + (-dv) + ' s';
+    else puncTxt = '晚点 ' + dv + ' s';
+    /* 停站时补一个「距计划发车还有多久」：正点与否之外，
+       司机真正要判断的是「还能不能按点发车」。 */
+    if (st.depLeft != null && st.depLeft > -120) {
+      puncTxt += ' · 余 ' + Math.round(Math.max(0, st.depLeft)) + 's';
+    }
     const rows = [
       ['计划到达', fmtClock(st.schArr)],
       ['计划发车', fmtClock(st.schDep)],
       ['当前时间', fmtClock(st.clock)],
-      ['偏差', (st.delay > 0 ? '+' : '') + Math.round(st.delay) + ' s']
+      ['正晚点', puncTxt]
     ];
     rows.forEach((r, i) => {
       const yy = 164 + i * 34;
       x.fillStyle = '#7f95a8'; x.font = '500 17px "Microsoft YaHei",sans-serif';
       x.fillText(r[0], 98, yy);
-      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 30 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
+      /* ±60 s 以上转红告警（与 HUD / ATS 同口径），±15 s 以上琥珀 */
+      x.fillStyle = i === 3 ? (Math.abs(st.delay) > 60 ? '#ff6b5a' : Math.abs(st.delay) > 15 ? '#ffb020' : '#6ef0b0') : '#dfeefb';
       x.font = '600 21px ui-monospace,monospace';
       x.fillText(r[1], 250, yy);
     });
@@ -9578,9 +9603,16 @@ class AiTrain {
     this.phase = 0;
     this.s0 = this.s; this.v0 = this.v; this.idx0 = this.idx;
     this.dir0 = this.dir; this.lat0 = this.lateral;
-    /* 决策用的常量包（与全局常量一致，便于单测覆盖） */
-    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH };
+    /* 决策用的常量包（与全局常量一致，便于单测覆盖）。
+       clock 每帧由 update() 从 G.clock 同步：绑定车次后 aiUpdate 用它算正晚点。 */
+    this._C = { AI_BRK, AI_ACC, AI_VMAX, KMH, clock: null };
     this._events = [];
+    /* P1-3：运行图班次（由 bindAiSchedules 在布置场景时挂上） */
+    this.service = opts.service || null;
+    this.delay = 0;          // 正晚点（秒，正为晚点）
+    this.planArr = null;     // 下一站计划到达（秒）
+    this.lastArrDelay = null;// 最近一次到达偏差
+    this.arrLog = [];        // 到站偏差日志（回归脚本读它）
   }
 
   reset() {
@@ -9588,6 +9620,7 @@ class AiTrain {
     this.dir = this.dir0; this.lateral = this.lat0;
     this.state = 'run'; this.dwellT = 0; this.dwellNeed = 0;
     this.holdT = 0; this.skip = false; this.doorT = 0;
+    this.delay = 0; this.lastArrDelay = null; this.arrLog = [];
     this.train.lateral = this.lateral;
     this.train.dir = this.dir;
     this.train.setDoorT(0);
@@ -9623,7 +9656,9 @@ class AiTrain {
   update(dt) {
     if (this.dead) return;
     /* 决策逻辑在 54_aibody.js（纯函数，可脱离浏览器测试）；
-       这里只负责把结果同步到 Three.js 车辆上。 */
+       这里只负责把结果同步到 Three.js 车辆上。
+       时钟走 _C 传进去，是为了让 aiUpdate 保持零全局依赖、可在 node 里单测。 */
+    this._C.clock = G.clock;
     const r = aiUpdate(this, dt, this.leader(), this._C);
     this._events = r.events;
     if (this.train) {
@@ -9711,6 +9746,38 @@ function spawnAiTrains(path, line, root) {
   return aiTrains;
 }
 
+/* ------------------------------------------------------------------
+   运行图绑定（P1-3）
+   ------------------------------------------------------------------
+   AI 的初始位置由场景布置决定（本务前方 1 km / 2.5 km），不能为了
+   对齐运行图把车挪走。做法：取本务车次的运行时分与停站时间，
+   整体平移到「AI 在 clockSec 时刻正好位于当前里程」—— 相当于给这
+   列车生成一张属于它自己的班次表，之后按图行车。
+   对向通过车不停站，没有可追踪的停站时刻，保持自由运行。
+   ------------------------------------------------------------------ */
+function bindAiSchedules(list, path, clockSec) {
+  if (typeof ttShiftService !== 'function' || !path || !path.playerService) return 0;
+  let bound = 0;
+  for (const ai of list) {
+    if (!ai || ai.dead || ai.dir < 0 || !ai.stops) continue;
+    const tAt = ttTimeAtPosition(path.playerService, ai.s);
+    const svc = ttShiftService(path.playerService, clockSec - tAt, ai.carNo);
+    if (!svc) continue;
+    /* 下一站必须在这个车次里停靠；跳站交路则顺延到下一个停靠站 */
+    let target = ai.idx;
+    while (target > 0 && target < path.stations.length && !ttStopOf(svc, target)) target++;
+    if (target >= path.stations.length) continue;
+    ai.service = svc;
+    ai.idx = target;
+    ai.delay = 0;
+    ai.lastArrDelay = null;
+    const sp = ttStopOf(svc, target);
+    ai.planArr = sp ? sp.arr : null;
+    bound++;
+  }
+  return bound;
+}
+
 /* ------------------------------------------------------------------ 本务的前车 */
 function playerLeader() {
   let best = null, bd = Infinity;
@@ -9744,17 +9811,29 @@ function playerTrainLen() {
    和一个假 P（只要有 length / stations[].stopS / atpLimit）就能跑，
    见 tests/unit/ai.test.js。
 
-   ---- 与原 52_ai.js 的一致性 ----
-   下面的逻辑是**逐行搬运**，不是重写。唯一的改动是把
-   this.train.setDoorT(...) / this.train.update(...) 从尾部去掉
-   （那是渲染，留在 AiTrain 里做）。
+   ---- P1-3 按图运行 ----
+   在原始状态机之上增加了「绑定车次」分支（self.service 非空时生效）：
+   - 每帧用剩余距离 / 计划到达剩余时间 / 当前速度反解巡航速度
+   - 停站时长按计划发车时刻（早到等待、晚点最短办客）
+   - 正晚点读数按「计划位置 vs 实际位置」折算成秒
+   未绑定车次（对向通过车、折返后）仍走原来的自由运行逻辑。
+
+   ---- 渲染 ----
+   this.train.setDoorT(...) / this.train.update(...) 留在 AiTrain 里做。
    ================================================================ */
 
 const AI_DEFAULTS = {
   AI_BRK: 0.95,      // AI 常用制动 m/s²
   AI_ACC: 1.0,       // AI 牵引 m/s²
   AI_VMAX: 22.2,     // 80 km/h（m/s）
-  KMH: 1 / 3.6
+  KMH: 1 / 3.6,
+  /* 绑定车次后改用「运行图口径」的加减速（与 57_timetable 的 TT_ACC/TT_BRK 一致）。
+     不绑定车次的 AI（对向通过车）仍用上面的温和值，避免视觉突变。 */
+  AI_ACC_PLAN: 1.45,
+  AI_BRK_PLAN: 1.0,
+  AI_STOP_PLAN: 1.0,
+  AI_MIN_DWELL: 18,  // 停站最短办客时间（秒）
+  AI_MIN_GAP: 55     // 最小追踪间隔硬约束（米，车尾到车头）
 };
 
 function aiClamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
@@ -9773,11 +9852,23 @@ function aiUpdate(self, dt, ld, C) {
   const P = self.path;
   const n = P.stations.length;
   const events = [];
+  /* 本帧时刻：由 AiTrain.update 从 G.clock 同步进来。
+     绑定车次后，所有「按图」判断都基于它；拿不到就退回旧的自由运行。 */
+  const now = K.clock != null ? K.clock : null;
+  const sched = (self.service && typeof ttStopOf === 'function') ? self.service : null;
+  const accCap = sched ? (K.AI_ACC_PLAN || K.AI_ACC) : K.AI_ACC;
+  const brkCap = sched ? (K.AI_BRK_PLAN || K.AI_BRK) : K.AI_BRK;
+  const stopDecel = sched ? (K.AI_STOP_PLAN || 0.82) : 0.82;
 
   /* ---- 停站 / 折返 ---- */
   if (self.state === 'dwell') {
     self.dwellT += dt;
     if (self.holdT > 0) self.holdT = Math.max(0, self.holdT - dt);
+    /* 正晚点读数：停站时「现在 - 计划到达」就是到达偏差 */
+    if (sched && now != null) {
+      const sp = ttStopOf(sched, self.idx);
+      if (sp) self.delay = Math.round(now - sp.arr);
+    }
     if (self.dwellT >= self.dwellNeed && self.holdT <= 0) {
       self.idx += self.dir;
       self.state = 'run';
@@ -9804,34 +9895,88 @@ function aiUpdate(self, dt, ld, C) {
       self.state = 'turnback';
       self.dwellT = 0;
       self.v = 0;
+      /* 折返后方向相反，原车次的停站时刻不再适用。运行图只覆盖本方向，
+         折返车按自由运行处理（P2 再做折返车次接续）。 */
+      self.service = null;
       events.push('turnback:begin');
     }
   }
 
   let vT = self.vmaxMs;
+  let stopTarget = null;      // 本帧停车曲线给出的速度上限（绑定车次时用于精确制动）
 
   if (self.state === 'run') {
     const tgt = P.stations[aiClamp(self.idx, 0, n - 1)];
     const d = self.gapToStop(self.idx);
+    /* 本段终点在运行图里的计划到发（未绑定车次则为 null）。
+       跳停交路上会有「车次不停靠」的车站：这时不施加停车曲线，直接通过。 */
+    const sp = sched ? ttStopOf(sched, self.idx) : null;
+    const stopHere = !sched || !!sp;
+    /* 下一处「计划停靠」：跳站区间里也按它来控制速度，避免冲得太早 */
+    let schedStop = sp;
+    if (sched && !schedStop) {
+      for (const q of sched.stops) {
+        if (q.s - self.s > 0) { schedStop = q; break; }
+      }
+    }
 
     /* 区间限速 */
     const vLim = Math.min(self.vmax, P.atpLimit(self.s, self.v)) * K.KMH;
     vT = Math.min(vT, vLim);
 
-    /* 停车曲线：远段按制动曲线，近段线性收敛到停车标（跳停时不施加） */
-    if (self.stops && !self.skip) {
+    /* 停车曲线：远段按制动曲线，近段线性收敛到停车标（跳停时不施加）。
+       绑定车次的 AI 用运行图口径的制动率，保证到站时刻和计划对得上。 */
+    if (self.stops && !self.skip && stopHere) {
       let vStop = 0;
       if (d > 0) {
-        vStop = Math.sqrt(2 * 0.82 * Math.max(0, d - 0.35));
-        if (d < 6) vStop = Math.min(vStop, aiClamp(d * 0.45, 0, 1.6));
+        vStop = Math.sqrt(2 * stopDecel * Math.max(0, d - 0.35));
+        if (!sched && d < 6) vStop = Math.min(vStop, aiClamp(d * 0.45, 0, 1.6));
       }
+      stopTarget = vStop;
       vT = Math.min(vT, vStop);
     }
 
-    /* 跟车 */
+    /* 按图运行（P1-3）：用「剩余距离 / 计划到达剩余时间」反解巡航速度。
+       时间富余就压低巡航速度，时间不够就跑满线路限速；
+       不用「追赶到点时刻」的 P 控制，避免速度抖动。 */
+    if (schedStop && now != null && d > 0) {
+      const aheadD = self.dir > 0
+        ? schedStop.s - self.s
+        : self.s - schedStop.s;
+      const tLeft = schedStop.arr - now;
+      if (tLeft > 0 && aheadD > 0) {
+        /* 带入当前速度：否则列车一动起来，解出的巡航速度会一路上涨 */
+        const vC = typeof ttSolveCruiseFrom === 'function'
+          ? ttSolveCruiseFrom(aheadD, tLeft, self.v, self.vmax, accCap, stopDecel)
+          : ttSolveCruise(aheadD, tLeft, self.vmax, accCap, stopDecel);
+        /* 下限 10.8 km/h：避免「早点太多」时整段爬行，早点交给停站等待消化 */
+        vT = Math.min(vT, Math.max(vC, aheadD > 30 ? 3 : 0));
+      }
+      /* 正晚点读数：拿「此刻计划应在的里程」和实际里程比，
+         再按当前速度折成秒。比「最早可能的到达时刻」更贴近司机的直觉：
+         正常按图运行时读数稳定在 0，被前车压住时读数才逐渐变大。 */
+      if (typeof ttServicePosition === 'function') {
+        const schedPos = ttServicePosition(sched, now);
+        const behind = self.dir > 0 ? schedPos - self.s : self.s - schedPos;
+        self.delay = Math.round(behind / Math.max(6, self.v));
+      } else {
+        self.delay = Math.max(0, Math.round(now + ttMinRun(aheadD, self.vmax, accCap, stopDecel) - schedStop.arr));
+      }
+      self.planArr = schedStop.arr;
+    }
+
+    /* 跳停交路上的通过站：不办客，越过站台即放行到下一站 */
+    if (sched && !stopHere && d <= 0.5 && d > -40) {
+      self.idx += self.dir;
+      events.push('station:pass');
+    }
+
+    /* 跟车（P1-4）：软约束按制动曲线压速，硬约束保证最小追踪间隔。
+       前车晚点时后车的计划被占用，这里压下来的速度就是「被动晚点」的来源。 */
     if (ld && ld.gap < 420) {
-      vT = Math.min(vT, Math.sqrt(2 * K.AI_BRK * Math.max(0, ld.gap - 30)));
+      vT = Math.min(vT, Math.sqrt(2 * brkCap * Math.max(0, ld.gap - 30)));
       if (ld.gap < 60) vT = Math.min(vT, ld.v * 0.9);
+      if (ld.gap < K.AI_MIN_GAP) vT = 0;
     }
 
     /* 跳停：通过站台后放行 */
@@ -9842,14 +9987,14 @@ function aiUpdate(self, dt, ld, C) {
     }
 
     /* 已越过停车标太多，直接放行到下一站 */
-    if (self.stops && d < -6 && !self.skip) {
+    if (self.stops && stopHere && d < -6 && !self.skip) {
       self.idx += self.dir;
       events.push('station:missed');
       if (self.idx < 0 || self.idx >= n) { self.state = 'turnback'; self.dwellT = 0; self.v = 0; events.push('turnback:begin'); }
     }
 
     /* 停稳判定：站台范围内停住即办客 */
-    if (self.stops && Math.abs(d) <= 6 && self.v < 0.3) {
+    if (self.stops && stopHere && Math.abs(d) <= 6 && self.v < 0.3) {
       self.v = 0;
       self.s = tgt.stopS;
       if (self.skip) {
@@ -9859,7 +10004,19 @@ function aiUpdate(self, dt, ld, C) {
       } else {
         self.state = 'dwell';
         self.dwellT = 0;
-        self.dwellNeed = 26 + (self.seed % 5) * 3;
+        /* 停站时长按运行图：早点到就等到计划发车，晚点就只停最短办客时间。
+           这是「晚点不再被停站时间放大」的关键。 */
+        let need = 26 + (self.seed % 5) * 3;
+        if (sp && now != null) {
+          need = Math.max(K.AI_MIN_DWELL, Math.min(300, sp.dep - now));
+          self.lastArrDelay = Math.round(now - sp.arr);
+          if (self.arrLog) {
+            self.arrLog.push({ idx: self.idx, planned: sp.arr, actual: now, delay: self.lastArrDelay });
+            if (self.arrLog.length > 400) self.arrLog.shift();
+          }
+          self.delay = self.lastArrDelay;
+        }
+        self.dwellNeed = need;
         self.doorT = 0;
         events.push('station:dwell');
       }
@@ -9878,8 +10035,18 @@ function aiUpdate(self, dt, ld, C) {
   /* ---- 速度积分 ---- */
   const dv = vT - self.v;
   let a = 0;
-  if (vT < 0.06 && self.v > 0.02) a = -1.0;          // 停车目标：直接制动到底
-  else if (Math.abs(dv) > 0.08) a = dv > 0 ? Math.min(K.AI_ACC, 0.25 + dv * 0.4) : -Math.min(1.1, 0.22 + (-dv) * 0.55);
+  if (vT < 0.06 && self.v > 0.02) a = -brkCap;       // 停车目标：直接制动到底
+  else if (sched && stopTarget != null && self.v > stopTarget + 0.05) {
+    /* 绑定车次时严格跟随停车曲线：比例控制在曲线匀速下降时会留下
+       1 m/s 左右的稳态偏差，到站前 20 m 就足以冲过停车标（越站）。 */
+    a = -stopDecel;
+  } else if (Math.abs(dv) > 0.08) {
+    /* 绑定车次的 AI 牵引爬升更快：运行图时分按 1.45 m/s² 满牵引编排，
+       若沿用温和的 0.25+0.4·dv 会把每段都拖慢几秒，逐站累积成晚点。 */
+    a = dv > 0
+      ? Math.min(accCap, sched ? 0.5 + dv * 1.2 : 0.25 + dv * 0.4)
+      : -Math.min(1.1, 0.22 + (-dv) * 0.55);
+  }
   self.v = aiClamp(self.v + a * dt, 0, self.vmaxMs);
   if (self.state === 'dwell' || self.state === 'turnback') self.v = 0;
   self.s += self.v * self.dir * dt;
@@ -10188,7 +10355,8 @@ function ttComputeService(stations, opts) {
 
   const stops = [];
   const first = served[0];
-  stops.push({ idx: first, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
+  /* s 记下停站里程：绑定车次 / ATS 换算位置时要用，且不依赖调用方再查站表 */
+  stops.push({ idx: first, s: stations[first].stopS, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
 
   for (let k = 1; k < served.length; k++) {
     const a = stations[served[k - 1]], b = stations[served[k]];
@@ -10211,7 +10379,7 @@ function ttComputeService(stations, opts) {
 
     const prev = stops[stops.length - 1];
     const arr = prev.dep + run;
-    stops.push({ idx: bi, arr, dep: arr + dwell, dwell, run, official });
+    stops.push({ idx: bi, s: b.stopS, arr, dep: arr + dwell, dwell, run, official });
   }
 
   return {
@@ -10288,11 +10456,135 @@ function ttDelay(plannedSec, actualSec) {
   return Math.round(actualSec - plannedSec);
 }
 
+/* ---------------------------------------------------------------------
+   以下是 P1-3「AI 按图运行」用的纯函数
+   --------------------------------------------------------------------- */
+
+/* 以 vmax 跑完 dist 所需的最短时间（秒）。
+   与 ttEstimateRun 同一套物理：先加速后制动，能巡航就巡航。 */
+function ttMinRun(dist, vmaxKmh, acc, brk) {
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = (vmaxKmh || TT_VMAX) * TT_KMH;
+  const da = v * v / (2 * a), db = v * v / (2 * b);
+  if (da + db < dist) return v / a + v / b + (dist - da - db) / v;
+  const vp = Math.sqrt(2 * dist * a * b / (a + b));
+  return vp / a + vp / b;
+}
+
+/* 给定剩余距离、剩余时间、当前速度，求「恰好按点到达」的巡航速度（m/s）。
+   -----------------------------------------------------------------
+   为什么必须带当前速度：如果按「从静止重新起步」求解，列车一动起来
+   剩余时间缩得比剩余距离快，解出的速度会一路上涨，最后跑成最短时间
+   （早点 6~7 s）。带 v0 后，解出的速度在整段里基本恒定。
+
+   速度剖面：从 v0 加速到 vc → 巡航 → 以 b 制动到停车标。
+   时间随 vc 单调递减，用二分求根；时间不够（即使 vc 取上限也赶不上）时
+   返回 vmax，让列车跑满线路限速。 */
+function ttSolveCruiseFrom(dist, sec, v0, vmaxKmh, acc, brk) {
+  const vmax = (vmaxKmh || TT_VMAX) * TT_KMH;
+  if (!(dist > 0) || !(sec > 0)) return vmax;
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = Math.min(vmax, Math.max(0, v0 || 0));
+
+  /* 加速+制动正好用完全程时的巡航速度（再高就没有巡航段） */
+  const cap = Math.sqrt((dist + v * v / (2 * a)) / (0.5 / a + 0.5 / b));
+  const vCap = Math.min(vmax, cap);
+  const timeAt = nu => {
+    const u = Math.max(0.01, nu);
+    const da = Math.max(0, (u * u - v * v)) / (2 * a);
+    const db = u * u / (2 * b);
+    if (da + db >= dist) return (u - v) / a + u / b;
+    return (u - v) / a + u / b + (dist - da - db) / u;
+  };
+
+  if (timeAt(vCap) >= sec) return vmax;   // 时间不够：跑满限速
+
+  /* 已经很早：需要先减速到更低的巡航速度（不然会越来越早）。
+     剖面：以 b 从 v 减速到 vc → 巡航 → 再以 b 制动到停车标。
+     总时间 = v/b + (D − v²/2b)/vc，解出 vc。 */
+  if (timeAt(v) <= sec) {
+    const denom = sec - v / b;
+    if (denom <= 1e-6) return 0;
+    const vc = (dist - v * v / (2 * b)) / denom;
+    return Math.max(0, Math.min(v, vc));
+  }
+
+  let lo = v, hi = vCap;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (timeAt(mid) > sec) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/* 不带当前速度的简化版（v0 = 0），保留给纯计算与单测 */
+function ttSolveCruise(dist, sec, vmaxKmh, acc, brk) {
+  return ttSolveCruiseFrom(dist, sec, 0, vmaxKmh, acc, brk);
+}
+
+/* 车次在某一时刻所处的里程（米）。停站期间取站台里程。
+   用于把 AI 车「对到」它自己的时刻表上：给定开局时刻与当前位置，
+   反推出这个车次应该何时从首站发车。 */
+function ttServicePosition(service, sec) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (sec <= stops[0].arr) return stops[0].s;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (sec <= p.dep) return p.s;
+    if (sec < q.arr) {
+      const run = q.arr - p.dep;
+      const f = run > 0 ? (sec - p.dep) / run : 1;
+      return p.s + (q.s - p.s) * f;
+    }
+  }
+  return stops[stops.length - 1].s;
+}
+
+/* 车次在某一里程处的计划通过时刻（秒）。
+   s 落在停站区间时返回该站的到达时刻（保守：按「已到站」算）。 */
+function ttTimeAtPosition(service, s) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (s <= stops[0].s) return stops[0].arr;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (s < q.s) {
+      const f = q.s > p.s ? (s - p.s) / (q.s - p.s) : 1;
+      return p.dep + (q.arr - p.dep) * f;
+    }
+    if (s <= q.s) return q.arr;
+  }
+  return stops[stops.length - 1].dep;
+}
+
+/* 克隆一个车次并整体平移 offset 秒。
+   P1-3 用它给 AI 车生成「以自己当前位置为准」的班次：
+   AI 的初始位置是场景布置决定的，不能为了对时刻表把车挪走，
+   所以取本务车次的运行时分与停站时间，平移到 AI 当前所在处。 */
+function ttShiftService(service, offsetSec, no) {
+  if (!service) return null;
+  const off = Number(offsetSec) || 0;
+  const stops = service.stops.map(sp => ({
+    idx: sp.idx, s: sp.s, run: sp.run, dwell: sp.dwell, official: sp.official,
+    arr: sp.arr + off, dep: sp.dep + off
+  }));
+  return {
+    no: no || service.no,
+    dir: service.dir,
+    startSec: service.startSec + off,
+    endSec: service.endSec + off,
+    stops,
+    served: service.served ? service.served.slice() : []
+  };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TT_DEFAULTS,
     ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
-    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay
+    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
+    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition, ttShiftService
   };
 }
 
@@ -10494,6 +10786,7 @@ function atsRows(o) {
     v: (G.v || 0) * 3.6,
     state: G.eb ? 'eb' : G.doorsOpen ? 'dwell' : 'run',
     hold: 0,
+    delay: G.puncDelay != null ? G.puncDelay : null,
     ops: null            // 本务无调度按钮
   });
 
@@ -10511,6 +10804,8 @@ function atsRows(o) {
       v: (ai.v || 0) * 3.6,
       state: ai.state,
       hold: ai.holdT || 0,
+      /* 对向通过车没有停站时刻，偏差显示「—」 */
+      delay: ai.service ? (ai.delay || 0) : null,
       ops: ['hold', 'go', 'skip']   // UI 层据此生成按钮
     });
   }
@@ -10544,6 +10839,19 @@ function atsCommand(cmd) {
   return null;
 }
 
+/**
+ * 正晚点 → { text, cls }（P1-5 ATS 偏差列）。
+ * ±5 s 内视为正点；超过 ±60 s 转红告警，与司机室 HMI 同口径。
+ * @param {number|null} delay 秒，正为晚点
+ */
+function atsDelay(delay) {
+  if (delay == null || !isFinite(delay)) return { text: '—', cls: 'na' };
+  const d = Math.round(delay);
+  const text = Math.abs(d) <= 5 ? '正点' : (d > 0 ? '+' + d + 's' : d + 's');
+  const cls = Math.abs(d) > 60 ? 'bad' : Math.abs(d) > 15 ? 'late' : d < -5 ? 'early' : '';
+  return { text, cls };
+}
+
 /** 顶部副标题文案 */
 function atsSubtitle(o) {
   const line = o.line;
@@ -10551,7 +10859,7 @@ function atsSubtitle(o) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { atsTag, atsRows, atsCommand, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
+  module.exports = { atsTag, atsRows, atsCommand, atsDelay, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
 }
 
 
@@ -11167,6 +11475,9 @@ function updateGame(dt) {
   updateHUD();
   if (train && train.cabDisplay) {
     const st = path.stations[G.targetIdx];
+    /* 从运行图取本务计划时刻（planStopOf 内部已含旧字段回退） */
+    const plan = planStopOf(G.targetIdx);
+    const planArr = plan.arr, planDep = plan.dep;
     const sig = nextSignalAhead();
     train.cabDisplay.update(dt, {
       signal: sig ? sig.state : 2,
@@ -11186,13 +11497,16 @@ function updateGame(dt) {
       lineBadge: line.badge,
       lineName: line.name,
       nextZh: st.zh, nextEn: st.en,
-      schArr: st.schArr, schDep: st.schDep,
+      /* 时刻来源（P1-2）：优先用运行图里「本务那趟车」的计划到发。
+         运行图与旧的 st.schArr/schDep 逐站一致（交叉校验 0 秒偏差），
+         所以视觉上无变化；但换成运行图后，将来一局里跑多趟车、
+         或者车上绑定不同车次时，HMI 不需要再改。 */
+      schArr: planArr, schDep: planDep,
       clock: G.clock,
-      delay: (() => {
-        const dd = Math.max(0, st.stopS - G.s);
-        const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
-        return eta - st.schArr;
-      })(),
+      /* 正晚点由 currentDelay() 统一计算（updateHUD 已写进 G.puncDelay） */
+      delay: G.puncDelay != null ? G.puncDelay : currentDelay(),
+      /* 发车余时：停稳在站时，距离计划发车还有多少秒（负值表示已晚点） */
+      depLeft: G.doorT > 0.1 || G.stopState === 'stop' ? (planDep - G.clock) : null,
       progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
       fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
     });
@@ -11802,6 +12116,12 @@ async function buildService(routeIdx, reverse) {
   buildWeather(scene);
   applyWeather(G.weather, scene);
   spawnAiTrains(path, line, root);
+  /* 给同向 AI 车绑运行图（P1-3）。锚点与 resetService 的开车时钟一致，
+     这样进入驾驶时 AI 正好在自己的计划位置上。 */
+  G.aiSched = {
+    bound: bindAiSchedules(aiTrains, path, (path.startSec != null ? path.startSec : 0) - 30),
+    total: aiTrains.length
+  };
 
   await loadStep('完成', 1.0);
   makeComposer(scene);
@@ -11814,6 +12134,41 @@ async function buildService(routeIdx, reverse) {
    动力学 / 停站判定 / ATO / 车门 / 故障演练
    （由 70_game.js 拆分而来，逻辑未改动）
    ================================================================ */
+/* ---------------------------------------------------------------- 时刻 */
+/* 本务在某站的计划到发：优先取运行图里「这趟车」的计划，
+   取不到就回退到车站对象上的旧字段（兼容没生成运行图的加载路径）。
+   HUD / 司机室 HMI / 结算记录都走这一个入口，避免三处口径不一致。 */
+function planStopOf(idx) {
+  if (typeof path !== 'undefined' && path && path.playerService && typeof ttStopOf === 'function') {
+    const sp = ttStopOf(path.playerService, idx);
+    if (sp) return sp;
+  }
+  const st = (typeof path !== 'undefined' && path && path.stations[idx]) || {};
+  return { arr: st.schArr, dep: st.schDep };
+}
+
+/* 当前正晚点（秒，正为晚点）。
+   停稳/停站时用「现在 - 计划到达」；运行中用「预计到达 - 计划到达」。 */
+function currentDelay() {
+  if (typeof path === 'undefined' || !path || !path.stations[G.targetIdx]) return 0;
+  const st = path.stations[G.targetIdx];
+  const plan = planStopOf(G.targetIdx);
+  if (G.stopState === 'stop' || G.stopState === 'dwell' || G.doorsOpen) {
+    return Math.round(G.clock - plan.arr);
+  }
+  /* 运行中：和 AI 一样用「此刻计划应在的里程」和实际里程比。
+     原来用 estimateRunTime(剩余距离, 当前速度)，列车刚起步时速度很低，
+     会把 4 km 的区间估成 300 s，HUD 瞬间跳到「晚点 303 s」。 */
+  if (path.playerService && typeof ttServicePosition === 'function') {
+    const schedPos = ttServicePosition(path.playerService, G.clock);
+    const behind = schedPos - G.s;
+    return Math.round(behind / Math.max(6, G.v));
+  }
+  const dd = Math.max(0, st.stopS - G.s);
+  const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
+  return Math.round(eta - plan.arr);
+}
+
 /* ---------------------------------------------------------------- 物理 */
 function stationDist() {
   const st = path.stations[G.targetIdx];
@@ -12055,11 +12410,19 @@ function atoStep(dt) {
         }
       }
       break;
-    case 'dwell':
+    case 'dwell': {
       G.atoTimer += dt;
+      /* 停站时长按运行图计划发车时刻：早到多等，晚点只停最短办客时间。
+         提前 5 s 关门（关门动画约 3 s + 出发确认 1.5 s）。 */
+      const plan = planStopOf(G.targetIdx);
+      const closeAt = plan && plan.dep != null ? plan.dep - 5 : null;
+      const wantClose = closeAt != null
+        ? (G.atoTimer > 8 && G.clock >= closeAt)
+        : G.atoTimer > (routeDef.dwell || 30);
       if (!G.doorsOpen && G.doorT < 0.02) { G.atoState = 'waitdepart'; G.atoTimer = 0; }
-      else if (G.atoTimer > (routeDef.dwell || 30)) { closeDoors(); G.atoTimer = 0; }
+      else if (wantClose) { closeDoors(); G.atoTimer = 0; }
       break;
+    }
     case 'waitdepart':
       G.atoTimer += dt;
       if (G.atoTimer > 1.5) { G.atoState = 'depart'; G.atoTimer = 0; }
@@ -12081,7 +12444,20 @@ function atoCommand() {
   const d = st.stopS - G.s;
   if (d <= 0.3) return v > 0.08 ? -0.7 : 0;
 
-  const vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+  let vLim = Math.min(path.vmax - 1, path.atpLimit(G.s, v) - 2.0) * KMH;
+
+  /* ATO 也按图运行（P1-2 的延伸）：用剩余距离与计划到达剩余时间反解巡航速度。
+     否则 ATO 会以线路限速一路追上前车，被压住后逐站累积晚点。
+     手动驾驶不受影响——司机本来就可以选择跑到限速。 */
+  const plan = planStopOf(G.targetIdx);
+  if (plan && plan.arr != null && typeof ttSolveCruiseFrom === 'function') {
+    const tLeft = plan.arr - G.clock;
+    if (tLeft > 0 && d > 1) {
+      const vC = ttSolveCruiseFrom(d, tLeft, v, path.vmax, 1.3, 0.95);
+      vLim = Math.min(vLim, Math.max(vC, d > 30 ? 3 : 0));
+    }
+  }
+
   const req = (v * v) / (2 * Math.max(0.35, d - 1.1));
 
   // 低速精确对位
@@ -12096,7 +12472,9 @@ function atoCommand() {
   if (brakeCmd > 0.02) return -brakeCmd;
 
   const vT = Math.min(vLim, Math.sqrt(2 * 0.95 * Math.max(0, d - 2.0)));
-  if (v < vT - 0.12) return clamp(0.22 + (vT - v) * 0.5, 0, 0.85);
+  /* 牵引爬升按运行图口径（约 1.3 m/s²）：原来 0.85 m/s² 的温和曲线
+     会让每段都比计划慢几秒，逐站累积成十几秒晚点。 */
+  if (v < vT - 0.12) return clamp(0.5 + (vT - v) * 1.1, 0, 1.3);
   return 0;
 }
 function onStopped(st, dist) {
@@ -12116,9 +12494,10 @@ function onStopped(st, dist) {
     toast(`停车偏差 ${(G.stopErr >= 0 ? '+' : '')}${G.stopErr.toFixed(2)} m  ·  +${Math.round(base)}`, 'warn', 4600);
   }
   if (G.targetIdx > 0) {
+    const plan = planStopOf(G.targetIdx);
     G.results.push({
       idx: G.targetIdx, zh: st.zh, err: G.stopErr, stopScore: base,
-      arrClock: G.clock, schArr: st.schArr, depDelay: 0, punc: 0
+      arrClock: G.clock, schArr: plan.arr, arrDelay: Math.round(G.clock - plan.arr), depDelay: 0, punc: 0
     });
   }
   AUDIO.announce(`${st.zh}站，到了。`);
@@ -12129,7 +12508,7 @@ function onDeparture(st) {
   if (G.exam && st.index > 0 && !G.doorAt[st.index]) examEvent('door', false);
   G.stopState = 'run';
   const rec = G.results.find(r => r.idx === G.targetIdx);
-  const delay = G.clock - st.schDep;
+  const delay = G.clock - planStopOf(G.targetIdx).dep;
   if (rec) {
     rec.depClock = G.clock; rec.depDelay = delay;
     rec.punc = clamp(100 - 1.5 * Math.abs(delay), 0, 100);
@@ -12154,7 +12533,7 @@ function missedStation(st) {
   if (G.exam) { examEvent('door', false); examEvent('stop', 99); }
   G.penalties += 30;
   const prevIdx = G.targetIdx;
-  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: st.schArr, punc: 0 });
+  G.results.push({ idx: prevIdx, zh: st.zh, err: 99, stopScore: 0, arrClock: G.clock, schArr: planStopOf(prevIdx).arr, arrDelay: 99, punc: 0 });
   G.stopState = 'run';
   const prev = stationObjFor(prevIdx);
   if (prev) { prev.psdL.setOpen(0); }
@@ -12186,14 +12565,15 @@ function openDoors() {
   AUDIO.announce('车门已开启，请先下后上，注意站台间隙。');
   const rec = G.results.find(r => r.idx === G.targetIdx);
   if (rec) {
-    rec.arrDelay = G.clock - st.schArr;
+    rec.arrDelay = Math.round(G.clock - planStopOf(G.targetIdx).arr);
   }
   if (isLastServed(G.targetIdx)) {
     G.finishTimer = 6;
-    const rec = G.results.find(r => r.idx === G.targetIdx);
-    if (rec) {
-      rec.punc = clamp(100 - 1.5 * Math.abs(G.clock - st.schArr), 0, 100);
-      rec.depDelay = G.clock - st.schArr;
+    const plan = planStopOf(G.targetIdx);
+    const rec2 = G.results.find(r => r.idx === G.targetIdx);
+    if (rec2) {
+      rec2.punc = clamp(100 - 1.5 * Math.abs(G.clock - plan.arr), 0, 100);
+      rec2.depDelay = G.clock - plan.arr;
     }
     toast('终到站 · 本次值乘即将结束', 'good', 5000);
   }
@@ -12603,6 +12983,7 @@ function finishService() {
     }
   }
   drawSpeedChart();
+  drawDelayChart();
   if (typeof routeDef !== 'undefined' && routeDef) saveCareer(routeDef.id + (G.reverse ? ':rev' : ''), score, grade);
   const rvBtn = $('resReverse');
   if (rvBtn) rvBtn.style.display = (G.reverse || (routeDef && (routeDef.loop || routeDef.stopPlan))) ? 'none' : '';
@@ -12647,6 +13028,74 @@ function drawSpeedChart() {
   ctx.fillStyle = 'rgba(140,198,63,.10)'; ctx.fill();
   ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
   ctx.fillText('全程速度曲线', x0 + 4, y0 + 14);
+}
+
+/* ---------------------------------------------------------------- 晚点曲线（P1-5）
+   逐站发车正晚点。数据直接取结算表同源的 G.results[].depDelay，
+   保证「曲线与逐站数据一致」；±60 s 画告警线，与 HMI/ATS 同口径。 */
+function drawDelayChart() {
+  const cv = $('resDelay');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0, 0, W, H);
+  const rows = (G.results || []).filter(r =>
+    r.idx > 0 && (r.depDelay != null || r.arrDelay != null));
+  const x0 = 46, x1 = W - 14, y0 = 18, y1 = H - 24;
+  ctx.fillStyle = '#7f939f'; ctx.font = '500 12px "Microsoft YaHei",sans-serif';
+  ctx.fillText('逐站发车正晚点  s', x0, 13);
+  if (!rows.length) {
+    ctx.fillStyle = '#5f7280'; ctx.fillText('无正晚点数据', x0 + 10, (y0 + y1) / 2);
+    return;
+  }
+  const vals = rows.map(r => (r.depDelay != null ? r.depDelay : r.arrDelay) || 0);
+  const maxAbs = Math.max(30, ...vals.map(v => Math.abs(v)));
+  const span = Math.max(30, Math.ceil(maxAbs / 30) * 30);
+  const Y = v => (y0 + y1) / 2 - (v / span) * ((y1 - y0) / 2 - 4);
+  const X = i => rows.length === 1 ? (x0 + x1) / 2 : x0 + (i / (rows.length - 1)) * (x1 - x0);
+
+  /* ±60 s 告警带（若量程够） */
+  if (span >= 60) {
+    for (const s of [-60, 60]) {
+      ctx.strokeStyle = 'rgba(255,107,90,.28)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, Y(s)); ctx.lineTo(x1, Y(s)); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  /* 零线与刻度 */
+  ctx.strokeStyle = 'rgba(255,255,255,.16)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x0, Y(0)); ctx.lineTo(x1, Y(0)); ctx.stroke();
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px ui-monospace,monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText('0', x0 - 6, Y(0) + 4);
+  ctx.fillText('+' + span, x0 - 6, Y(span) + 4);
+  ctx.fillText('-' + span, x0 - 6, Y(-span) + 4);
+  ctx.textAlign = 'left';
+
+  /* 晚点为正（琥珀），早点为负（蓝） */
+  ctx.beginPath();
+  vals.forEach((v, i) => { i ? ctx.lineTo(X(i), Y(v)) : ctx.moveTo(X(i), Y(v)); });
+  ctx.strokeStyle = 'rgba(140,198,63,.85)'; ctx.lineWidth = 2.2; ctx.stroke();
+  vals.forEach((v, i) => {
+    const bad = Math.abs(v) > 60;
+    ctx.fillStyle = bad ? '#ff6b5a' : v > 5 ? '#ffb020' : v < -5 ? '#6fd3ff' : '#3ddc97';
+    ctx.beginPath(); ctx.arc(X(i), Y(v), 3.2, 0, Math.PI * 2); ctx.fill();
+    if (rows.length <= 14) {
+      ctx.fillStyle = '#93a9b6'; ctx.font = '500 10px ui-monospace,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText((v > 0 ? '+' : '') + Math.round(v), X(i), Y(v) - 7);
+      ctx.textAlign = 'left';
+    }
+  });
+  /* 站名刻度：只标首末与中间，避免拥挤 */
+  ctx.fillStyle = '#6b8290'; ctx.font = '500 11px "Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  const step = Math.max(1, Math.ceil(rows.length / 8));
+  rows.forEach((r, i) => {
+    if (i % step && i !== rows.length - 1) return;
+    ctx.fillText(r.zh, X(i), y1 + 16);
+  });
+  ctx.textAlign = 'left';
 }
 
 
@@ -12812,6 +13261,15 @@ function updateAiPsd() {
 function updateHUD(force = false) {
   if (!path || !train) return;
   const st = path.stations[G.targetIdx];
+  /* 正晚点（P1-2）：司机室 HMI 之外，主 HUD 也给一个读数。
+     口径与 HMI 一致（currentDelay），±5 s 内按正点处理。 */
+  const dv = currentDelay();
+  G.puncDelay = dv;
+  const pEl = $('hudPunc');
+  if (pEl) {
+    pEl.textContent = Math.abs(dv) <= 5 ? '正点' : (dv > 0 ? `晚点 ${dv} s` : `早点 ${-dv} s`);
+    pEl.className = Math.abs(dv) > 60 ? 'bad' : Math.abs(dv) > 15 ? 'late' : dv < -5 ? 'early' : '';
+  }
   const dist = Math.max(0, st.stopS - G.s);
   $('hudNextZh').textContent = st.zh;
   $('hudNextEn').textContent = st.en;
@@ -13292,6 +13750,7 @@ const ATS = {
 
     box.innerHTML = rows.map(r => {
       const { tag, cls } = atsTag(r);
+      const dev = atsDelay(r.delay);
       /* 本务行没有 ops；AI 行按 ops 里的命令名生成按钮 */
       const opsHtml = r.ops === null
         ? '<span style="font-size:9px;color:#5f7280">值乘中</span>'
@@ -13303,6 +13762,7 @@ const ATS = {
       return `<div class="ats-row${r.me ? ' me' : ''}">
         <div class="ats-no">${r.no}<i>${r.sub}</i></div>
         <div class="ats-mid"><b>${r.from} → ${r.to}</b><span>${Math.round(r.v)} km/h · <span class="ats-tag ${cls}">${tag}</span></span></div>
+        <div class="ats-dev ${dev.cls}">${dev.text}</div>
         <div class="ats-ops">${opsHtml}</div>
       </div>`;
     }).join('');

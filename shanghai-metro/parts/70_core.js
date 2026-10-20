@@ -373,6 +373,9 @@ function updateGame(dt) {
   updateHUD();
   if (train && train.cabDisplay) {
     const st = path.stations[G.targetIdx];
+    /* 从运行图取本务计划时刻（planStopOf 内部已含旧字段回退） */
+    const plan = planStopOf(G.targetIdx);
+    const planArr = plan.arr, planDep = plan.dep;
     const sig = nextSignalAhead();
     train.cabDisplay.update(dt, {
       signal: sig ? sig.state : 2,
@@ -392,13 +395,16 @@ function updateGame(dt) {
       lineBadge: line.badge,
       lineName: line.name,
       nextZh: st.zh, nextEn: st.en,
-      schArr: st.schArr, schDep: st.schDep,
+      /* 时刻来源（P1-2）：优先用运行图里「本务那趟车」的计划到发。
+         运行图与旧的 st.schArr/schDep 逐站一致（交叉校验 0 秒偏差），
+         所以视觉上无变化；但换成运行图后，将来一局里跑多趟车、
+         或者车上绑定不同车次时，HMI 不需要再改。 */
+      schArr: planArr, schDep: planDep,
       clock: G.clock,
-      delay: (() => {
-        const dd = Math.max(0, st.stopS - G.s);
-        const eta = G.clock + (G.v > 1 ? estimateRunTime(dd, Math.max(25, G.v * 3.6)) : 0);
-        return eta - st.schArr;
-      })(),
+      /* 正晚点由 currentDelay() 统一计算（updateHUD 已写进 G.puncDelay） */
+      delay: G.puncDelay != null ? G.puncDelay : currentDelay(),
+      /* 发车余时：停稳在站时，距离计划发车还有多少秒（负值表示已晚点） */
+      depLeft: G.doorT > 0.1 || G.stopState === 'stop' ? (planDep - G.clock) : null,
       progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
       fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
     });

@@ -144,6 +144,7 @@ const ATS = {
 
     box.innerHTML = rows.map(r => {
       const { tag, cls } = atsTag(r);
+      const dev = atsDelay(r.delay);
       /* 本务行没有 ops；AI 行按 ops 里的命令名生成按钮 */
       const opsHtml = r.ops === null
         ? '<span style="font-size:9px;color:#5f7280">值乘中</span>'
@@ -155,6 +156,7 @@ const ATS = {
       return `<div class="ats-row${r.me ? ' me' : ''}">
         <div class="ats-no">${r.no}<i>${r.sub}</i></div>
         <div class="ats-mid"><b>${r.from} → ${r.to}</b><span>${Math.round(r.v)} km/h · <span class="ats-tag ${cls}">${tag}</span></span></div>
+        <div class="ats-dev ${dev.cls}">${dev.text}</div>
         <div class="ats-ops">${opsHtml}</div>
       </div>`;
     }).join('');

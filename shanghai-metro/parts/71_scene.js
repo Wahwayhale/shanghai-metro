@@ -334,6 +334,12 @@ async function buildService(routeIdx, reverse) {
   buildWeather(scene);
   applyWeather(G.weather, scene);
   spawnAiTrains(path, line, root);
+  /* 给同向 AI 车绑运行图（P1-3）。锚点与 resetService 的开车时钟一致，
+     这样进入驾驶时 AI 正好在自己的计划位置上。 */
+  G.aiSched = {
+    bound: bindAiSchedules(aiTrains, path, (path.startSec != null ? path.startSec : 0) - 30),
+    total: aiTrains.length
+  };
 
   await loadStep('完成', 1.0);
   makeComposer(scene);

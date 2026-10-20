@@ -54,6 +54,7 @@ function atsRows(o) {
     v: (G.v || 0) * 3.6,
     state: G.eb ? 'eb' : G.doorsOpen ? 'dwell' : 'run',
     hold: 0,
+    delay: G.puncDelay != null ? G.puncDelay : null,
     ops: null            // 本务无调度按钮
   });
 
@@ -71,6 +72,8 @@ function atsRows(o) {
       v: (ai.v || 0) * 3.6,
       state: ai.state,
       hold: ai.holdT || 0,
+      /* 对向通过车没有停站时刻，偏差显示「—」 */
+      delay: ai.service ? (ai.delay || 0) : null,
       ops: ['hold', 'go', 'skip']   // UI 层据此生成按钮
     });
   }
@@ -104,6 +107,19 @@ function atsCommand(cmd) {
   return null;
 }
 
+/**
+ * 正晚点 → { text, cls }（P1-5 ATS 偏差列）。
+ * ±5 s 内视为正点；超过 ±60 s 转红告警，与司机室 HMI 同口径。
+ * @param {number|null} delay 秒，正为晚点
+ */
+function atsDelay(delay) {
+  if (delay == null || !isFinite(delay)) return { text: '—', cls: 'na' };
+  const d = Math.round(delay);
+  const text = Math.abs(d) <= 5 ? '正点' : (d > 0 ? '+' + d + 's' : d + 's');
+  const cls = Math.abs(d) > 60 ? 'bad' : Math.abs(d) > 15 ? 'late' : d < -5 ? 'early' : '';
+  return { text, cls };
+}
+
 /** 顶部副标题文案 */
 function atsSubtitle(o) {
   const line = o.line;
@@ -111,5 +127,5 @@ function atsSubtitle(o) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { atsTag, atsRows, atsCommand, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
+  module.exports = { atsTag, atsRows, atsCommand, atsDelay, atsSubtitle, atsClamp, ATS_CMDS: ['hold', 'go', 'skip'] };
 }

@@ -159,6 +159,15 @@ function updateAiPsd() {
 function updateHUD(force = false) {
   if (!path || !train) return;
   const st = path.stations[G.targetIdx];
+  /* 正晚点（P1-2）：司机室 HMI 之外，主 HUD 也给一个读数。
+     口径与 HMI 一致（currentDelay），±5 s 内按正点处理。 */
+  const dv = currentDelay();
+  G.puncDelay = dv;
+  const pEl = $('hudPunc');
+  if (pEl) {
+    pEl.textContent = Math.abs(dv) <= 5 ? '正点' : (dv > 0 ? `晚点 ${dv} s` : `早点 ${-dv} s`);
+    pEl.className = Math.abs(dv) > 60 ? 'bad' : Math.abs(dv) > 15 ? 'late' : dv < -5 ? 'early' : '';
+  }
   const dist = Math.max(0, st.stopS - G.s);
   $('hudNextZh').textContent = st.zh;
   $('hudNextEn').textContent = st.en;

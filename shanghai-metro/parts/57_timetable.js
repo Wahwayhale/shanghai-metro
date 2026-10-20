@@ -111,7 +111,8 @@ function ttComputeService(stations, opts) {
 
   const stops = [];
   const first = served[0];
-  stops.push({ idx: first, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
+  /* s 记下停站里程：绑定车次 / ATS 换算位置时要用，且不依赖调用方再查站表 */
+  stops.push({ idx: first, s: stations[first].stopS, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
 
   for (let k = 1; k < served.length; k++) {
     const a = stations[served[k - 1]], b = stations[served[k]];
@@ -134,7 +135,7 @@ function ttComputeService(stations, opts) {
 
     const prev = stops[stops.length - 1];
     const arr = prev.dep + run;
-    stops.push({ idx: bi, arr, dep: arr + dwell, dwell, run, official });
+    stops.push({ idx: bi, s: b.stopS, arr, dep: arr + dwell, dwell, run, official });
   }
 
   return {
@@ -211,10 +212,134 @@ function ttDelay(plannedSec, actualSec) {
   return Math.round(actualSec - plannedSec);
 }
 
+/* ---------------------------------------------------------------------
+   以下是 P1-3「AI 按图运行」用的纯函数
+   --------------------------------------------------------------------- */
+
+/* 以 vmax 跑完 dist 所需的最短时间（秒）。
+   与 ttEstimateRun 同一套物理：先加速后制动，能巡航就巡航。 */
+function ttMinRun(dist, vmaxKmh, acc, brk) {
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = (vmaxKmh || TT_VMAX) * TT_KMH;
+  const da = v * v / (2 * a), db = v * v / (2 * b);
+  if (da + db < dist) return v / a + v / b + (dist - da - db) / v;
+  const vp = Math.sqrt(2 * dist * a * b / (a + b));
+  return vp / a + vp / b;
+}
+
+/* 给定剩余距离、剩余时间、当前速度，求「恰好按点到达」的巡航速度（m/s）。
+   -----------------------------------------------------------------
+   为什么必须带当前速度：如果按「从静止重新起步」求解，列车一动起来
+   剩余时间缩得比剩余距离快，解出的速度会一路上涨，最后跑成最短时间
+   （早点 6~7 s）。带 v0 后，解出的速度在整段里基本恒定。
+
+   速度剖面：从 v0 加速到 vc → 巡航 → 以 b 制动到停车标。
+   时间随 vc 单调递减，用二分求根；时间不够（即使 vc 取上限也赶不上）时
+   返回 vmax，让列车跑满线路限速。 */
+function ttSolveCruiseFrom(dist, sec, v0, vmaxKmh, acc, brk) {
+  const vmax = (vmaxKmh || TT_VMAX) * TT_KMH;
+  if (!(dist > 0) || !(sec > 0)) return vmax;
+  const a = acc || TT_ACC, b = brk || TT_BRK;
+  const v = Math.min(vmax, Math.max(0, v0 || 0));
+
+  /* 加速+制动正好用完全程时的巡航速度（再高就没有巡航段） */
+  const cap = Math.sqrt((dist + v * v / (2 * a)) / (0.5 / a + 0.5 / b));
+  const vCap = Math.min(vmax, cap);
+  const timeAt = nu => {
+    const u = Math.max(0.01, nu);
+    const da = Math.max(0, (u * u - v * v)) / (2 * a);
+    const db = u * u / (2 * b);
+    if (da + db >= dist) return (u - v) / a + u / b;
+    return (u - v) / a + u / b + (dist - da - db) / u;
+  };
+
+  if (timeAt(vCap) >= sec) return vmax;   // 时间不够：跑满限速
+
+  /* 已经很早：需要先减速到更低的巡航速度（不然会越来越早）。
+     剖面：以 b 从 v 减速到 vc → 巡航 → 再以 b 制动到停车标。
+     总时间 = v/b + (D − v²/2b)/vc，解出 vc。 */
+  if (timeAt(v) <= sec) {
+    const denom = sec - v / b;
+    if (denom <= 1e-6) return 0;
+    const vc = (dist - v * v / (2 * b)) / denom;
+    return Math.max(0, Math.min(v, vc));
+  }
+
+  let lo = v, hi = vCap;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (timeAt(mid) > sec) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+/* 不带当前速度的简化版（v0 = 0），保留给纯计算与单测 */
+function ttSolveCruise(dist, sec, vmaxKmh, acc, brk) {
+  return ttSolveCruiseFrom(dist, sec, 0, vmaxKmh, acc, brk);
+}
+
+/* 车次在某一时刻所处的里程（米）。停站期间取站台里程。
+   用于把 AI 车「对到」它自己的时刻表上：给定开局时刻与当前位置，
+   反推出这个车次应该何时从首站发车。 */
+function ttServicePosition(service, sec) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (sec <= stops[0].arr) return stops[0].s;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (sec <= p.dep) return p.s;
+    if (sec < q.arr) {
+      const run = q.arr - p.dep;
+      const f = run > 0 ? (sec - p.dep) / run : 1;
+      return p.s + (q.s - p.s) * f;
+    }
+  }
+  return stops[stops.length - 1].s;
+}
+
+/* 车次在某一里程处的计划通过时刻（秒）。
+   s 落在停站区间时返回该站的到达时刻（保守：按「已到站」算）。 */
+function ttTimeAtPosition(service, s) {
+  if (!service || !service.stops || !service.stops.length) return 0;
+  const stops = service.stops;
+  if (s <= stops[0].s) return stops[0].arr;
+  for (let i = 1; i < stops.length; i++) {
+    const p = stops[i - 1], q = stops[i];
+    if (s < q.s) {
+      const f = q.s > p.s ? (s - p.s) / (q.s - p.s) : 1;
+      return p.dep + (q.arr - p.dep) * f;
+    }
+    if (s <= q.s) return q.arr;
+  }
+  return stops[stops.length - 1].dep;
+}
+
+/* 克隆一个车次并整体平移 offset 秒。
+   P1-3 用它给 AI 车生成「以自己当前位置为准」的班次：
+   AI 的初始位置是场景布置决定的，不能为了对时刻表把车挪走，
+   所以取本务车次的运行时分与停站时间，平移到 AI 当前所在处。 */
+function ttShiftService(service, offsetSec, no) {
+  if (!service) return null;
+  const off = Number(offsetSec) || 0;
+  const stops = service.stops.map(sp => ({
+    idx: sp.idx, s: sp.s, run: sp.run, dwell: sp.dwell, official: sp.official,
+    arr: sp.arr + off, dep: sp.dep + off
+  }));
+  return {
+    no: no || service.no,
+    dir: service.dir,
+    startSec: service.startSec + off,
+    endSec: service.endSec + off,
+    stops,
+    served: service.served ? service.served.slice() : []
+  };
+}
+
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TT_DEFAULTS,
     ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
-    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay
+    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay,
+    ttMinRun, ttSolveCruise, ttSolveCruiseFrom, ttServicePosition, ttTimeAtPosition, ttShiftService
   };
 }
