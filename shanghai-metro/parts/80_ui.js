@@ -172,6 +172,14 @@ function applySettings() {
   G.shakeOn = s.shakeOn;
   theme = THEMES[G.tod];
 
+  /* 关键：读档后必须按新档位重算像素预算。
+     不重算的后果 —— initRenderer 里先用 'medium'（2.1 MP）建好渲染器，
+     之后 applySettings 把 G.quality 改成用户存的 'high'，但 renderer
+     的 pixelRatio 一直是 medium 的值。表现是：设置里选「精细」，
+     实际仍按 1930×1086 渲染再拉伸到 2K/4K 屏，所有 3D 文字都发虚。
+     这正是「字体不清晰」的第二个主因。 */
+  if (typeof applyRenderScale === 'function') applyRenderScale();
+
   /* 回填按钮选中态：分组按钮用 data-v 与设置值比对 */
   const mark = (groupId, val) => {
     const box = $(groupId);

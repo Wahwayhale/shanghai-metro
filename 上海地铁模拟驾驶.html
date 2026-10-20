@@ -4688,34 +4688,41 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
 function texStationSign(station, line, dirTo) {
   const key = 'sign_' + line.id + '_' + station.zh;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  /* 1536×384 对一块吊挂站名牌是过度采样：它在场景里约 4.4 m 宽，
-     按 1080p 屏幕与 45° 视角折算 768×192 已足够清晰。
-     每站省 4 倍像素 = 27 站累计省下大量 canvas 光栅化时间（P1-1）。 */
-  const W = 768, H = 192;
-  const S = W / 1536;                    // 统一缩放系数，保持排版比例
+  /* 曾经为省 canvas 光栅化时间降到 768×192（P1-1）。但玩家反馈站名牌
+     文字发虚 —— 吊挂牌在场景里约 4.4 m 宽，近距离占了屏幕很大一块，
+     768 宽对应到 2K 屏上每个字只有几个像素。
+     现在 GPU 有余量，提到 1152×288（1.5 倍），排版系数按同一基准缩放。 */
+  /* 排版基准一直是 1536×384，但 P1 阶段把画布降到 768×192 时
+     只改了 W/H，没有缩放坐标系 —— 结果 x=1520 处的「上海地铁」字样
+     直接画在画布外，静默丢失。这里改用 ctx.scale 整体缩放，
+     让绝对坐标始终按 1536×384 基准书写，与画布实际尺寸解耦。 */
+  const BASE_W = 1536, BASE_H = 384;
+  const W = 1152, H = 288;
+  const S = W / BASE_W;                  // 0.75
   const [c, x] = cv2d(W, H);
-  x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, W, H);
-  x.fillStyle = '#e9ebe9'; x.fillRect(0, H - 13, W, 13);
+  x.scale(S, S);
+  x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, BASE_W, BASE_H);
+  x.fillStyle = '#e9ebe9'; x.fillRect(0, BASE_H - 13, BASE_W, 13);
   // 线路色块（共线段用双色）
-  x.fillStyle = line.color; x.fillRect(0, 0, 105, H);
+  x.fillStyle = line.color; x.fillRect(0, 0, 105, BASE_H);
   if (line.color2) { x.fillStyle = line.color2; x.fillRect(52, 0, 53, H); }
-  x.fillStyle = '#fff'; x.font = `800 ${Math.round(132 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#fff'; x.font = `800 ${132}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'center'; x.fillText(line.badge, 52, 104);
-  x.font = `600 ${Math.round(34 * S)}px "Microsoft YaHei",sans-serif`;
+  x.font = `600 ${34}px "Microsoft YaHei",sans-serif`;
   x.fillText(line.name, 52, 141);
   // 站名
   x.textAlign = 'left';
   x.fillStyle = '#15181a';
-  x.font = `800 ${Math.round(132 * S)}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.font = `800 ${132}px "PingFang SC","Microsoft YaHei",sans-serif`;
   x.fillText(station.zh, 130, 95);
   x.fillStyle = '#586468';
-  x.font = `500 ${Math.round(40 * S)}px "Segoe UI",Helvetica,sans-serif`;
+  x.font = `500 ${40}px "Segoe UI",Helvetica,sans-serif`;
   x.fillText(station.en.toUpperCase(), 132, 129);
   // 方向
-  x.fillStyle = '#2b3236'; x.font = `600 ${Math.round(40 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#2b3236'; x.font = `600 ${40}px "Microsoft YaHei",sans-serif`;
   x.textAlign = 'right';
   x.fillText(`往 ${dirTo}`, W - 35, 75);
-  x.fillStyle = '#7a868b'; x.font = `500 ${Math.round(32 * S)}px "Microsoft YaHei",sans-serif`;
+  x.fillStyle = '#7a868b'; x.font = `500 ${32}px "Microsoft YaHei",sans-serif`;
   x.fillText('TO ' + dirTo, W - 35, 105);
   x.strokeStyle = '#c9cfd1'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
   const t = toTex(c, 1, 1);
@@ -4792,15 +4799,17 @@ function texAd(i) {
 function texDestination(line, station, arrow = true) {
   const key = 'dest_' + station.zh + line.id;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  const W = 512, H = 128;
+  /* 车头目的地屏：从 512×128 提到 768×192。这块是玩家在追车视角、
+     站台视角都会看到的文字，原尺寸在 2K 屏上偏糊。 */
+  const W = 768, H = 192;
   const [c, x] = cv2d(W, H);
   x.fillStyle = '#080a08'; x.fillRect(0, 0, W, H);
-  x.fillStyle = line.color; x.fillRect(0, 0, 8, H);
-  x.fillStyle = '#ffb733'; x.font = '700 44px "Microsoft YaHei",sans-serif';
-  x.textAlign = 'center'; x.fillText(station.zh, W / 2 + 8, 62);
-  x.fillStyle = '#ff8a1f'; x.font = '600 24px "Segoe UI",sans-serif';
-  x.fillText(station.en.toUpperCase(), W / 2 + 8, 96);
-  if (arrow) { x.fillStyle = '#ffb733'; x.font = '700 34px sans-serif'; x.fillText('→', W - 26, 72); }
+  x.fillStyle = line.color; x.fillRect(0, 0, 12, H);
+  x.fillStyle = '#ffb733'; x.font = '700 66px "Microsoft YaHei",sans-serif';
+  x.textAlign = 'center'; x.fillText(station.zh, W / 2 + 8, 93);
+  x.fillStyle = '#ff8a1f'; x.font = '600 36px "Segoe UI",sans-serif';
+  x.fillText(station.en.toUpperCase(), W / 2 + 8, 144);
+  if (arrow) { x.fillStyle = '#ffb733'; x.font = '700 51px sans-serif'; x.fillText('→', W - 39, 108); }
   const t = toTex(c, 1, 1);
   TEX_CACHE.set(key, t);
   return t;
@@ -10367,12 +10376,19 @@ const PIXEL_BUDGET = {
 /** 按目标像素预算算 pixelRatio。
  *  three.js 里 setPixelRatio(pr) 的效果是「绘制缓冲 = CSS 尺寸 × pr」，
  *  所以要达到目标像素数，pr = sqrt(预算 / CSS 像素数)。
- *  不做超采样（上限 1.0 之外没有收益），下限 0.5 防止过度模糊。 */
+ *
+ *  上限必须取 devicePixelRatio，不能用 1.0：
+ *  Windows 显示缩放 150% 时，window.innerWidth 是 **CSS 像素**
+ *  （2560 物理宽 → 1707 CSS 宽），pr=1.0 意味着绘制缓冲只有 1707×960，
+ *  被拉伸到 2560×1440 显示 —— 所有 3D 里的文字（站名牌、PIS、
+ *  目的地屏）都会明显发虚。这正是「字体不清晰」的主因。
+ *  取 dpr 就正好落在原生物理分辨率上。 */
 function pixelRatioForBudget(budget) {
   const cssPx = window.innerWidth * window.innerHeight;
   if (cssPx <= 0) return 1;
+  const dpr = window.devicePixelRatio || 1;
   const raw = Math.sqrt(budget / cssPx);
-  return clamp(raw, 0.5, 1.0);
+  return clamp(raw, 0.5, Math.max(1, dpr));
 }
 
 function applyRenderScale() {
@@ -12789,6 +12805,14 @@ function applySettings() {
   G.voice = s.voice;
   G.shakeOn = s.shakeOn;
   theme = THEMES[G.tod];
+
+  /* 关键：读档后必须按新档位重算像素预算。
+     不重算的后果 —— initRenderer 里先用 'medium'（2.1 MP）建好渲染器，
+     之后 applySettings 把 G.quality 改成用户存的 'high'，但 renderer
+     的 pixelRatio 一直是 medium 的值。表现是：设置里选「精细」，
+     实际仍按 1930×1086 渲染再拉伸到 2K/4K 屏，所有 3D 文字都发虚。
+     这正是「字体不清晰」的第二个主因。 */
+  if (typeof applyRenderScale === 'function') applyRenderScale();
 
   /* 回填按钮选中态：分组按钮用 data-v 与设置值比对 */
   const mark = (groupId, val) => {

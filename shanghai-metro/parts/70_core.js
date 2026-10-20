@@ -61,12 +61,19 @@ const PIXEL_BUDGET = {
 /** 按目标像素预算算 pixelRatio。
  *  three.js 里 setPixelRatio(pr) 的效果是「绘制缓冲 = CSS 尺寸 × pr」，
  *  所以要达到目标像素数，pr = sqrt(预算 / CSS 像素数)。
- *  不做超采样（上限 1.0 之外没有收益），下限 0.5 防止过度模糊。 */
+ *
+ *  上限必须取 devicePixelRatio，不能用 1.0：
+ *  Windows 显示缩放 150% 时，window.innerWidth 是 **CSS 像素**
+ *  （2560 物理宽 → 1707 CSS 宽），pr=1.0 意味着绘制缓冲只有 1707×960，
+ *  被拉伸到 2560×1440 显示 —— 所有 3D 里的文字（站名牌、PIS、
+ *  目的地屏）都会明显发虚。这正是「字体不清晰」的主因。
+ *  取 dpr 就正好落在原生物理分辨率上。 */
 function pixelRatioForBudget(budget) {
   const cssPx = window.innerWidth * window.innerHeight;
   if (cssPx <= 0) return 1;
+  const dpr = window.devicePixelRatio || 1;
   const raw = Math.sqrt(budget / cssPx);
-  return clamp(raw, 0.5, 1.0);
+  return clamp(raw, 0.5, Math.max(1, dpr));
 }
 
 function applyRenderScale() {
