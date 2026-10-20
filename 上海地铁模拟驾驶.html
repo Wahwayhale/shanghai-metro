@@ -5536,9 +5536,13 @@ function buildViaduct(route, group) {
 
 /* ---------------- 地面 / 河流 ---------------- */
 function buildGround(route, group) {
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000, 1, 1), MAT.ground);
+  /* 地面平面必须盖住整条线路：线路可延伸到 ±20 km，
+     原来固定 14 km 且以原点居中，远端建筑会「悬在虚空里」。
+     改为按线路中点居中、边长 60 km。 */
+  const midPt = route.frameAt(route.length * 0.5).pos;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000, 1, 1), MAT.ground);
   plane.rotation.x = -PI / 2;
-  plane.position.y = -0.05;
+  plane.position.set(midPt.x, -0.05, midPt.z);
   plane.receiveShadow = true;
   group.add(plane);
 
@@ -5610,71 +5614,87 @@ function distToRiver(x, z, pts) {
 
 /* ---------------- 城市 ---------------- */
 function buildCity(route, group, riverPts) {
-  const cbd = [{ x: 0, z: 0, r: 0, p: 0 }];
-  const lujiazui = route.projectLL(31.2365, 121.5055);
-  const peopleSq = route.projectLL(31.2329, 121.4696);
-  const xujiahui = route.projectLL(31.1936, 121.4363);
-  const hongkou = route.projectLL(31.2689, 121.4793);
-  const centers = [
-    { x: lujiazui.x, z: lujiazui.z, r: 900, h: 250 },
-    { x: peopleSq.x, z: peopleSq.z, r: 1600, h: 95 },
-    { x: xujiahui.x, z: xujiahui.z, r: 1200, h: 80 },
-    { x: hongkou.x, z: hongkou.z, r: 1200, h: 60 }
-  ];
-  const heightAt = (x, z) => {
-    let h = 14 + RNG() * 16;
-    for (const c of centers) {
-      const d = Math.hypot(x - c.x, z - c.z);
-      if (d < c.r) h = Math.max(h, c.h * Math.pow(1 - d / c.r, 1.8) + 12);
-    }
-    return h;
-  };
-  const buckets = [[], [], []];
+  /* ---- P5：分区驱动的城市 ----
+     原来是把沿线走廊按高度分 3 桶、每桶一个 InstancedMesh 铺方盒子。
+     现在改为：按位置查所属城市分区 → 取该区允许的建筑原型 → 分组实例化。
+     分区数据在 45_city_data.js，原型几何在 47_city_proto.js。
+     draw call 预算：8 种原型 × 1 个材质 = 8，远低于原来的 3 桶 + 树。 */
+  const districts = resolveCityDistricts(route);
   const rng = mulberry32(77123);
-  for (let s = 240; s < route.length - 200; s += 44) {
-    const f = route.frameAt(s);
+  const items = [];
+  const districtHits = new Set();
+
+  /* 关键：建筑必须落在**格网**上，而不是随机撒点。
+     随机撒点会让大体量街区互相重叠，看起来是一张黑毯子 —— 没有一点
+     街道缝隙，就是典型的「像 SimCity 不像上海」。
+     这里按分区街区尺度推算格距，间距取街区的 1.45 倍，保证楼间留出马路；
+     再用填充率 district.density 决定填不填。
+     注意：必须用**累加步长**推进，不能用「采样序号取模」——
+     后者会因为步长与采样间隔不是整数倍而漏掉绝大部分行。 */
+  let sPos = 260;
+  let guard = 0;
+  while (sPos < route.length - 220 && guard < 4000) {
+    guard++;
+    const f = route.frameAt(sPos);
+    const probe = f.pos.clone().addScaledVector(f.right, 90);
+    const dist0 = cityDistrictAt(probe.x, probe.z, districts);
+    const bs = dist0.block || [80, 160];
+    /* 格距上限 150 m：再大就会变成「每 200 m 才一栋楼」的空旷感。
+       真实上海街区虽有 200 m 级的，但街区内部是多栋小楼，不是一栋巨构。 */
+    const latStep = Math.min(150, (bs[0] + bs[1]) * 0.5 * 1.45);
+
     for (const side of [-1, 1]) {
-      const n = 2 + Math.floor(rng() * 2);
-      for (let k = 0; k < n; k++) {
-        const lat = side * (40 + rng() * 300);
-        const along = (rng() - 0.5) * 40;
+      for (let k = 0; k < 7; k++) {
+        const lat = side * (72 + k * latStep);
+        const along = (rng() - 0.5) * latStep * 0.4;
         const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.tan, along);
-        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 26) continue;
-        let nearStation = false;
+        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 30) continue;
+
+        let blocked = false;
         for (const st of route.stations) {
-          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 34) { nearStation = true; break; }
+          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 36) { blocked = true; break; }
           if (st.y < -2) {
             const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
-            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 45) { nearStation = true; break; }
+            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
           }
         }
-        if (nearStation) continue;
-        const h = heightAt(p.x, p.z) * (0.55 + rng() * 0.9);
-        const w = 22 + rng() * 30, dp = 22 + rng() * 32;
-        const cls = h < 30 ? 0 : h < 85 ? 1 : 2;
-        buckets[cls].push({ x: p.x, y: 0, z: p.z, w, h, d: dp, rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.18, c: rng() });
+        if (blocked) continue;
+
+        const dist = cityDistrictAt(p.x, p.z, districts);
+        districtHits.add(dist.id);
+        if (rng() > (dist.density || 0.7)) continue;
+
+        const rH = rng(), rJ = rng(), rP = rng(), rW = rng(), rD = rng(), rT = rng(), rC = rng();
+        const dbs = dist.block || [80, 160];
+        /* 楼宽只能取街区的一个零头：街区 80–220 m，单栋楼通常 18–70 m。
+           之前直接把 block 当楼宽，结果全是「100 m 宽 20 m 高」的薄饼。 */
+        const w = 16 + rW * Math.min(54, dbs[1] * 0.34);
+        const d = 14 + rD * Math.min(46, dbs[1] * 0.28);
+        /* 注意：CITY_FALLBACK 没有 x/z 字段。直接减会得到 NaN，
+           高度变 NaN -> 缩放矩阵失效 -> 建筑整批不可见（且不报错）。
+           这里兜底成「以自身为原点」，衰减取最大值。 */
+        const cx = dist.x == null ? p.x : dist.x;
+        const cz = dist.z == null ? p.z : dist.z;
+        const h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        items.push({
+          proto: cityPickProto(dist.kind, rP),
+          x: p.x, y: 0, z: p.z,
+          w, h, d,
+          rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.25,
+          tint: 0.80 + rT * 0.34,
+          warmth: rC
+        });
       }
     }
+    sPos += latStep * 0.7;
   }
-  for (let c = 0; c < 3; c++) {
-    const arr = buckets[c];
-    if (!arr.length) continue;
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    const mat = MAT.bld[c * 3 + Math.floor(RNG() * 3)] || MAT.bld[0];
-    const im = new THREE.InstancedMesh(geo, mat, arr.length);
-    const d = new THREE.Object3D();
-    arr.forEach((b, i) => {
-      d.position.set(b.x, b.h / 2, b.z);
-      d.rotation.set(0, b.rot, 0);
-      d.scale.set(b.w, b.h, b.d);
-      d.updateMatrix();
-      im.setMatrixAt(i, d.matrix);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.castShadow = false; im.receiveShadow = false;
-    im.frustumCulled = false;
-    group.add(im);
-  }
+
+  /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
+     用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
+  const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
+  const protoCount = buildCityProtos(group, items, cityMat);
+  G.cityStats = { buildings: items.length, prototypes: protoCount, districts: districtHits.size };
+
 
   // 树木
   const treeN = 320;
@@ -6897,6 +6917,103 @@ class StationCrowd {
 }
 
 
+/* ===== 45_city_data.js ===== */
+/* =====================================================================
+   城市分区数据（P5-0 / v2.0）
+   ---------------------------------------------------------------------
+   为什么需要分区：如果全城用同一套「随机高度方盒子」，结果一定像
+   SimCity 而不像上海。真实城市的肌理是分层的 —— 陆家嘴是超高层塔楼、
+   老城厢是低矮密集里弄、衡复一带是梧桐树下的低层洋房。
+
+   本文件只放**数据与纯函数**，不碰 THREE、不生成几何。
+   ===================================================================== */
+
+/* 分区：中心用经纬度（与 LANDMARKS / RIVER_PATH 同一套坐标系），
+   半径单位米。hMin/hMax 是该区建筑高度区间，block 是街区边长区间。 */
+const CITY_DISTRICTS = [
+  { id: 'lujiazui',   name: '陆家嘴',     lat: 31.2365, lon: 121.5055, r: 1500, kind: 'tower',    hMin: 90,  hMax: 320, block: [90, 170],  density: 0.85 },
+  { id: 'bund',       name: '外滩',       lat: 31.2400, lon: 121.4900, r: 850,  kind: 'heritage', hMin: 20,  hMax: 48,  block: [60, 100],  density: 0.80 },
+  { id: 'peoplesq',   name: '人民广场',   lat: 31.2329, lon: 121.4696, r: 1700, kind: 'office',   hMin: 40,  hMax: 120, block: [80, 150],  density: 0.80 },
+  { id: 'french',     name: '衡复风貌',   lat: 31.2050, lon: 121.4450, r: 1600, kind: 'villa',    hMin: 10,  hMax: 26,  block: [55, 105],  density: 0.70 },
+  { id: 'laocheng',   name: '老城厢',     lat: 31.2200, lon: 121.4900, r: 1200, kind: 'lane',     hMin: 8,   hMax: 22,  block: [40, 80],   density: 0.92 },
+  { id: 'xujiahui',   name: '徐家汇',     lat: 31.1936, lon: 121.4363, r: 1300, kind: 'office',   hMin: 45,  hMax: 140, block: [80, 140],  density: 0.85 },
+  { id: 'hongkou',    name: '虹口',       lat: 31.2689, lon: 121.4793, r: 1400, kind: 'mixed',    hMin: 20,  hMax: 95,  block: [70, 130],  density: 0.75 },
+  { id: 'zhongshan',  name: '中山公园',   lat: 31.2200, lon: 121.4200, r: 1200, kind: 'office',   hMin: 30,  hMax: 90,  block: [80, 140],  density: 0.80 },
+  { id: 'wujiaochang',name: '五角场',     lat: 31.3000, lon: 121.5150, r: 1300, kind: 'mixed',    hMin: 25,  hMax: 100, block: [80, 150],  density: 0.80 },
+  { id: 'pudong_s',   name: '浦东腹地',   lat: 31.1800, lon: 121.5600, r: 2200, kind: 'mixed',    hMin: 20,  hMax: 80,  block: [100, 190], density: 0.60 },
+  { id: 'minhang',    name: '闵行',       lat: 31.1100, lon: 121.3800, r: 2600, kind: 'mixed',    hMin: 14,  hMax: 70,  block: [110, 200], density: 0.55 },
+  { id: 'baoshan',    name: '宝山',       lat: 31.3600, lon: 121.4800, r: 2400, kind: 'mixed',    hMin: 14,  hMax: 65,  block: [110, 200], density: 0.55 }
+];
+
+/* 分区类型 → 可用建筑原型及权重。
+   原型名对应 47_city_proto.js 里的 CITY_PROTO。 */
+const CITY_KIND_PROTO = {
+  tower:    [['towerSetback', 0.35], ['tower', 0.40], ['podium', 0.25]],
+  office:   [['tower', 0.45], ['slab', 0.30], ['podium', 0.25]],
+  mixed:    [['slab', 0.40], ['tower', 0.25], ['lane', 0.20], ['podium', 0.15]],
+  villa:    [['villa', 0.70], ['slab', 0.30]],
+  lane:     [['lane', 0.80], ['villa', 0.20]],
+  heritage: [['heritage', 0.80], ['podium', 0.20]],
+  factory:  [['factory', 0.80], ['silo', 0.20]]
+};
+
+/* 裸地：不属于任何分区时使用（郊区/工业带） */
+const CITY_FALLBACK = { id: 'rural', name: '外围', kind: 'factory', hMin: 8, hMax: 30, block: [120, 220], density: 0.35 };
+
+/* 把经纬度中心投影成世界坐标（需要传 route.projectLL）。
+   返回带 x/z 的分区数组，按半径从大到小排序，便于「小区域优先命中」。 */
+function resolveCityDistricts(route) {
+  const out = [];
+  for (const d of CITY_DISTRICTS) {
+    const p = route.projectLL(d.lat, d.lon);
+    out.push(Object.assign({}, d, { x: p.x, z: p.z }));
+  }
+  out.sort((a, b) => a.r - b.r);
+  return out;
+}
+
+/* 给定世界坐标，返回所属分区；都不命中则返回 fallback。
+   districts 必须已排序（resolveCityDistricts 已处理）。 */
+function cityDistrictAt(x, z, districts) {
+  if (!districts || !districts.length) return CITY_FALLBACK;
+  for (const d of districts) {
+    const dx = x - d.x, dz = z - d.z;
+    if (dx * dx + dz * dz <= d.r * d.r) return d;
+  }
+  return CITY_FALLBACK;
+}
+
+/* 按权重从分区允许的原型里挑一个；rnd 传 0..1 的随机数，便于确定性重放 */
+function cityPickProto(kind, rnd) {
+  const list = CITY_KIND_PROTO[kind] || CITY_KIND_PROTO.mixed;
+  let acc = 0;
+  for (const [name, w] of list) {
+    acc += w;
+    if (rnd < acc) return name;
+  }
+  return list[list.length - 1][0];
+}
+
+/* 高度：分区基础高度 × 距中心衰减 × 随机抖动。
+   rndH 0..1 控制高度落点，rndJ 0..1 控制抖动。 */
+function cityBuildingHeight(district, dx, dz, rndH, rndJ) {
+  const d = Math.hypot(dx, dz);
+  const falloff = Math.max(0.25, 1 - Math.pow(d / (district.r || 1), 1.6));
+  const base = district.hMin + (district.hMax - district.hMin) * rndH;
+  const h = base * falloff * (0.75 + rndJ * 0.55);
+  /* 防线：任何输入异常都不要让高度变成 NaN（NaN 会静默摧毁整个实例的变换矩阵） */
+  if (!isFinite(h)) return Math.max(8, district.hMin || 10);
+  return Math.max(district.hMin * 0.4, h);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CITY_DISTRICTS, CITY_KIND_PROTO, CITY_FALLBACK,
+    resolveCityDistricts, cityDistrictAt, cityPickProto, cityBuildingHeight
+  };
+}
+
+
 /* ===== 46_weather.js ===== */
 /* =====================================================================
    天气：晴 / 雨 / 雾
@@ -7011,6 +7128,204 @@ function updateWeather(dt) {
 /* 雨天/雾天对制动的影响 */
 function weatherGrip() {
   return (WEATHER[weatherNow] || WEATHER.clear).grip;
+}
+
+
+/* ===== 47_city_proto.js ===== */
+/* =====================================================================
+   建筑原型库（P5-1 / v2.0）
+   ---------------------------------------------------------------------
+   每个原型是一份**合并好的几何**（几种基础体拼成），运行时按原型分组用
+   InstancedMesh 绘制。8 种原型 = 8 个 draw call，这是城市能加入而不拖垮
+   帧率的前提（当前总 draw call 975，瓶颈在 CPU）。
+
+   坐标系约定：原型立在原点，底面 y=0，朝向 +z。
+   几何按**参考尺寸**建（ref），实例用 (w/ref.w, h/ref.h, d/ref.d) 缩放。
+   非等比缩放会让细节轻微变形，但在城市尺度下看不出来，换来的是
+   一套几何能吃下任意长宽高组合。
+   ===================================================================== */
+
+/* 合并工具：把若干已 translate 的几何合成一个 */
+function protoMerge(parts) {
+  if (typeof BufferGeometryUtils === 'undefined' || !BufferGeometryUtils.mergeGeometries) {
+    /* 兜底：合并不可用时返回第一个（不会崩，只是少了细节） */
+    return parts[0];
+  }
+  const merged = BufferGeometryUtils.mergeGeometries(parts, false);
+  return merged || parts[0];
+}
+
+/* 一个盒子，中心落在 (x, y, z) */
+function protoBox(w, h, d, x, y, z) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  g.translate(x || 0, y || 0, z || 0);
+  return g;
+}
+
+/* ---------------- 8 种原型 ---------------- */
+
+const CITY_PROTO_DEF = {
+  /* 板楼：住宅主力。主体 + 女儿墙 + 屋顶电梯机房 */
+  slab: () => ({
+    ref: { w: 32, h: 58, d: 13 },
+    geo: protoMerge([
+      protoBox(32, 56, 13, 0, 28, 0),
+      protoBox(32.8, 1.4, 13.8, 0, 56.7, 0),      // 女儿墙
+      protoBox(6, 3.2, 6, -8, 58.2, 0)            // 电梯机房
+    ])
+  }),
+
+  /* 矩形塔楼：商务区主力 */
+  tower: () => ({
+    ref: { w: 28, h: 108, d: 28 },
+    geo: protoMerge([
+      protoBox(28, 104, 28, 0, 52, 0),
+      protoBox(29, 1.6, 29, 0, 105, 0),
+      protoBox(9, 4.5, 9, 0, 108, 0)              // 屋顶机房
+    ])
+  }),
+
+  /* 退台塔楼：核心商务区地标式体量，三段收分 + 顶冠 */
+  towerSetback: () => ({
+    ref: { w: 36, h: 178, d: 36 },
+    geo: protoMerge([
+      protoBox(36, 96, 36, 0, 48, 0),
+      protoBox(30, 52, 30, 0, 122, 0),
+      protoBox(23, 32, 23, 0, 164, 0),
+      protoBox(25, 2.2, 25, 0, 97.5, 0),          // 第一段收分线脚
+      protoBox(19, 1.8, 19, 0, 148.5, 0),         // 第二段线脚
+      protoBox(11, 9, 11, 0, 182, 0)              // 顶冠
+    ])
+  }),
+
+  /* 裙房 + 塔楼：商场上盖综合体 */
+  podium: () => ({
+    ref: { w: 52, h: 96, d: 44 },
+    geo: protoMerge([
+      protoBox(52, 20, 44, 0, 10, 0),             // 裙房
+      protoBox(53, 1.2, 45, 0, 20.6, 0),
+      protoBox(26, 72, 24, 0, 56, 0),             // 塔楼
+      protoBox(27, 1.4, 25, 0, 92.5, 0),
+      protoBox(8, 3.5, 8, 0, 95, 0)
+    ])
+  }),
+
+  /* 低层洋房：衡复风貌区。主体 + 简单坡顶 + 烟囱 */
+  villa: () => ({
+    ref: { w: 16, h: 15, d: 13 },
+    geo: protoMerge([
+      protoBox(16, 11, 13, 0, 5.5, 0),
+      protoBox(14, 3.4, 11, 0, 12.7, 0),          // 坡顶近似（收窄一段）
+      protoBox(11, 1.6, 9, 0, 14.8, 0),
+      protoBox(1.2, 2.4, 1.2, 4, 12, 2)           // 烟囱
+    ])
+  }),
+
+  /* 老式里弄：三开间连排，山墙分隔 */
+  lane: () => ({
+    ref: { w: 27, h: 13, d: 11 },
+    geo: protoMerge([
+      protoBox(8.4, 12, 11, -9.2, 6, 0),
+      protoBox(8.4, 12, 11, 0, 6, 0),
+      protoBox(8.4, 12, 11, 9.2, 6, 0),
+      protoBox(27.6, 1.2, 11.6, 0, 12.6, 0),      // 统一檐口
+      protoBox(27.6, 0.8, 11.2, 0, 0.4, 0)        // 台基
+    ])
+  }),
+
+  /* 大跨厂房：锯齿屋顶 + 高侧窗带 */
+  factory: () => ({
+    ref: { w: 62, h: 18, d: 32 },
+    geo: protoMerge([
+      protoBox(62, 14, 32, 0, 7, 0),
+      protoBox(20, 3.2, 33, -20, 15.6, 0),        // 锯齿顶（三段坡）
+      protoBox(20, 3.2, 33, 0, 15.6, 0),
+      protoBox(20, 3.2, 33, 20, 15.6, 0),
+      protoBox(63, 1.0, 33, 0, 14.2, 0)
+    ])
+  }),
+
+  /* 外滩历史建筑：厚重的石砌体量 + 檐口 + 中部塔冠 */
+  heritage: () => ({
+    ref: { w: 34, h: 42, d: 26 },
+    geo: protoMerge([
+      protoBox(34, 32, 26, 0, 16, 0),
+      protoBox(35.2, 2.4, 27.2, 0, 33.2, 0),      // 檐口
+      protoBox(24, 6, 20, 0, 37.5, 0),            // 退台
+      protoBox(18, 4, 16, 0, 41, 0),
+      protoBox(2.4, 3.6, 24, 0, 0, 13.2)          // 门廊柱列（前脸）
+    ])
+  }),
+
+  /* 筒仓 / 冷却塔：工业带点缀 */
+  silo: () => ({
+    ref: { w: 14, h: 34, d: 14 },
+    geo: protoMerge([
+      (() => { const g = new THREE.CylinderGeometry(6.4, 7.2, 32, 14); g.translate(0, 16, 0); return g; })(),
+      (() => { const g = new THREE.CylinderGeometry(7.4, 7.4, 2, 14); g.translate(0, 33, 0); return g; })()
+    ])
+  })
+};
+
+const CITY_PROTO_CACHE = new Map();
+
+/* 取原型（懒构造 + 缓存）。返回 { name, ref, geo } */
+function cityProto(name) {
+  const key = CITY_PROTO_DEF[name] ? name : 'slab';
+  if (CITY_PROTO_CACHE.has(key)) return CITY_PROTO_CACHE.get(key);
+  const built = CITY_PROTO_DEF[key]();
+  const out = { name: key, ref: built.ref, geo: built.geo };
+  CITY_PROTO_CACHE.set(key, out);
+  return out;
+}
+
+/* ---------------------------------------------------------------------
+   buildCityProtos：把一组建筑实例按原型分组，各建一个 InstancedMesh
+   ---------------------------------------------------------------------
+   items: [{ proto, x, y, z, w, h, d, rot, tint }]
+     tint 是 0..1 的明度抖动，用 instanceColor 实现，
+     这样同一种原型不需要为「颜色不同」再开 draw call。
+   返回实际创建的 InstancedMesh 数量（用于 draw call 统计）。
+   --------------------------------------------------------------------- */
+function buildCityProtos(group, items, material) {
+  if (!items || !items.length) return 0;
+  const byProto = new Map();
+  for (const it of items) {
+    const k = CITY_PROTO_DEF[it.proto] ? it.proto : 'slab';
+    if (!byProto.has(k)) byProto.set(k, []);
+    byProto.get(k).push(it);
+  }
+
+  const d = new THREE.Object3D();
+  const col = new THREE.Color();
+  let created = 0;
+
+  for (const [name, arr] of byProto) {
+    const proto = cityProto(name);
+    const im = new THREE.InstancedMesh(proto.geo, material, arr.length);
+    im.frustumCulled = false;
+    arr.forEach((it, i) => {
+      d.position.set(it.x, it.y || 0, it.z);
+      d.rotation.set(0, it.rot || 0, 0);
+      d.scale.set(
+        Math.max(0.05, it.w / proto.ref.w),
+        Math.max(0.05, it.h / proto.ref.h),
+        Math.max(0.05, it.d / proto.ref.d)
+      );
+      d.updateMatrix();
+      im.setMatrixAt(i, d.matrix);
+      const t = it.tint == null ? 1 : it.tint;
+      col.setRGB(t, t, t * (0.97 + (it.warmth || 0) * 0.06));
+      im.setColorAt(i, col);
+    });
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    im.castShadow = false;
+    im.receiveShadow = false;
+    group.add(im);
+    created++;
+  }
+  return created;
 }
 
 
@@ -8996,6 +9311,229 @@ class BodyChain {
     }
     return { tension: +maxT.toFixed(1), compression: +maxC.toFixed(1) };
   }
+}
+
+
+/* ===== 57_timetable.js ===== */
+/* =====================================================================
+   运行图数据层（P0-3 / v2.0）
+   ---------------------------------------------------------------------
+   目标：把「一条线路一个时段内的所有车次」变成纯函数可算的数据结构，
+   供 AI 车按图运行、玩家比对正晚点、ATS 做调度。
+
+   为什么单独抽出来（而不是继续在 20_route.js 里改）：
+   现在的 `Route.buildSchedule()` 把时刻直接写到 **车站对象** 上
+   （`st.schArr` / `st.schDep`），等于「同一时刻只能存在一张时刻表」。
+   要做运行图，必须能同时持有几十个车次，所以时刻要挂在 **车次** 上。
+
+   本文件不依赖 THREE、不读全局变量，可以 node 直接 require 单测。
+   全部函数无副作用：不修改传入的 stations，不读写模块级状态。
+   ===================================================================== */
+
+/* 与 10_data.js 的动力学常量保持一致。
+   之所以不直接引用，是因为 10_data.js 依赖 THREE 与 DOM，node 里 require 不了。
+   数值必须同步：ACC_MAX 1.45 m/s²、BRK_SRV 1.0 m/s²（见 10_data.js:317-320）。 */
+const TT_KMH = 1 / 3.6;
+const TT_ACC = 1.45;
+const TT_BRK = 1.0;
+const TT_VMAX = 80;
+
+const TT_DEFAULTS = {
+  dwell: 40,                      // 标准停站秒数
+  headwayNormal: 300,             // 平峰发车间隔（秒）
+  headwayPeak: 150,               // 高峰发车间隔（秒）
+  peakRanges: [[7 * 3600, 9 * 3600], [17 * 3600, 19 * 3600]],
+  dayFrom: 5 * 3600 + 30 * 60,    // 05:30
+  dayTo: 23 * 3600,               // 23:00
+  maxServices: 4000               // 防御：参数异常时不要生成十万个车次
+};
+
+/* 与 10_data.js:347 的 estimateRunTime 等价的本地实现。
+   传入 dist(米)、vmax(km/h)，返回秒。 */
+function ttEstimateRun(dist, vmaxKmh) {
+  const v = (vmaxKmh || TT_VMAX) * TT_KMH;
+  const da = v * v / (2 * TT_ACC), db = v * v / (2 * TT_BRK);
+  if (da + db < dist) return v / TT_ACC + v / TT_BRK + (dist - da - db) / v;
+  const vp = Math.sqrt(2 * dist * TT_ACC * TT_BRK / (TT_ACC + TT_BRK));
+  return vp / TT_ACC + vp / TT_BRK;
+}
+
+/* 'HH:MM' / 'HH:MM:SS' → 秒 */
+function ttParseClock(str) {
+  if (typeof str === 'number') return str;
+  const parts = String(str || '0:0').split(':').map(Number);
+  return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+}
+
+/* 秒 → 'HH:MM:SS'（跨天按 24h 取模，便于显示末班 23:59 之后的车） */
+function ttFormatClock(sec) {
+  const s = ((Math.round(sec) % 86400) + 86400) % 86400;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+  const p2 = n => String(n).padStart(2, '0');
+  return `${p2(h)}:${p2(m)}:${p2(ss)}`;
+}
+
+/* 某个时刻是否落在高峰时段 */
+function ttIsPeak(sec, ranges) {
+  const rs = ranges || TT_DEFAULTS.peakRanges;
+  for (const [a, b] of rs) if (sec >= a && sec < b) return true;
+  return false;
+}
+
+/* 发车间隔：按当前时刻判断峰谷 */
+function ttHeadwayAt(sec, opts) {
+  const o = opts || {};
+  const hw = {
+    headwayNormal: o.headwayNormal || TT_DEFAULTS.headwayNormal,
+    headwayPeak: o.headwayPeak || TT_DEFAULTS.headwayPeak,
+    peakRanges: o.peakRanges || TT_DEFAULTS.peakRanges
+  };
+  return ttIsPeak(sec, hw.peakRanges) ? hw.headwayPeak : hw.headwayNormal;
+}
+
+/* ---------------------------------------------------------------------
+   computeService：算一个车次的逐站到发时刻
+   ---------------------------------------------------------------------
+   入参：
+     stations  [{ stopS, served }]   只读，不会被修改
+     opts {
+       runTimes  [[秒],...] | null   station[i] → station[i+1] 的官方运行时分
+       dwell     停站秒
+       vmax      线路最高速度 km/h
+       startSec  首站发车时刻（秒）
+       no        车次号（可选，仅透传）
+       dir       方向（可选，仅透传）
+     }
+   返回：
+     {
+       no, dir, startSec, endSec,
+       stops: [{ idx, arr, dep, dwell, run }]   run = 从上一站到本站的运行时分
+       served: [idx...]                         实际停靠的站序
+     }
+   --------------------------------------------------------------------- */
+function ttComputeService(stations, opts) {
+  const o = opts || {};
+  const dwell = o.dwell == null ? TT_DEFAULTS.dwell : o.dwell;
+  const vmax = o.vmax || TT_VMAX;
+  const runTimes = o.runTimes || null;
+  const startSec = o.startSec || 0;
+
+  const served = [];
+  for (let i = 0; i < stations.length; i++) {
+    if (stations[i].served !== false) served.push(i);
+  }
+  if (!served.length) {
+    return { no: o.no || '', dir: o.dir || 1, startSec, endSec: startSec, stops: [], served: [] };
+  }
+
+  const stops = [];
+  const first = served[0];
+  stops.push({ idx: first, arr: startSec - dwell, dep: startSec, dwell, run: 0 });
+
+  for (let k = 1; k < served.length; k++) {
+    const a = stations[served[k - 1]], b = stations[served[k]];
+    const ai = served[k - 1], bi = served[k];
+
+    /* 官方站间时分：把中间被跳过的站的分段累加（跳停时也要走完这段路） */
+    let run = 0, official = false;
+    if (runTimes) {
+      let sum = 0, ok = true;
+      for (let j = ai + 1; j <= bi; j++) {
+        const v = runTimes[j - 1];
+        if (v == null) { ok = false; break; }
+        sum += v;
+      }
+      if (ok && sum > 0) { run = sum; official = true; }
+    }
+    if (!official) {
+      run = ttEstimateRun(Math.max(60, b.stopS - a.stopS), vmax) + 6;
+    }
+
+    const prev = stops[stops.length - 1];
+    const arr = prev.dep + run;
+    stops.push({ idx: bi, arr, dep: arr + dwell, dwell, run, official });
+  }
+
+  return {
+    no: o.no || '',
+    dir: o.dir || 1,
+    startSec,
+    endSec: stops[stops.length - 1].dep,
+    stops,
+    served
+  };
+}
+
+/* ---------------------------------------------------------------------
+   buildTimetable：按发车间隔生成一个时段内的全部车次
+   ---------------------------------------------------------------------
+   opts {
+     fromSec, toSec       生成区间（默认 05:30–23:00）
+     headwayNormal/Peak   发车间隔
+     peakRanges           高峰时段
+     dwell, vmax, runTimes
+     dir                  方向
+     noPrefix             车次号前缀（如 '101'）
+   }
+   返回 { fromSec, toSec, dir, services: [...] }
+   --------------------------------------------------------------------- */
+function ttBuildTimetable(stations, opts) {
+  const o = opts || {};
+  const fromSec = o.fromSec == null ? TT_DEFAULTS.dayFrom : o.fromSec;
+  const toSec = o.toSec == null ? TT_DEFAULTS.dayTo : o.toSec;
+  const dir = o.dir || 1;
+  const noPrefix = o.noPrefix || '1';
+  const services = [];
+
+  let t = fromSec;
+  let guard = 0;
+  while (t < toSec && guard < TT_DEFAULTS.maxServices) {
+    guard++;
+    const svc = ttComputeService(stations, {
+      runTimes: o.runTimes, dwell: o.dwell, vmax: o.vmax,
+      startSec: t, dir,
+      no: `${noPrefix}${String(services.length + 1).padStart(3, '0')}`
+    });
+    services.push(svc);
+    const hw = ttHeadwayAt(t, o);
+    t += Math.max(60, hw);
+  }
+  if (guard >= TT_DEFAULTS.maxServices) {
+    /* 参数异常（例如 headway 传了 0）时不要静默生成四万个车次 */
+    services.length = TT_DEFAULTS.maxServices;
+  }
+  return { fromSec, toSec, dir, services };
+}
+
+/* 给定时刻，找出该时刻正在区间内运行的车次（用于 ATS 显示「当前载客车次」） */
+function ttServiceAt(timetable, sec) {
+  const list = timetable && timetable.services;
+  if (!list || !list.length) return null;
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    if (sec >= s.startSec && sec <= s.endSec) return s;
+  }
+  return null;
+}
+
+/* 车次在某一站的计划到发（按站序索引查） */
+function ttStopOf(service, stationIdx) {
+  if (!service || !service.stops) return null;
+  for (const st of service.stops) if (st.idx === stationIdx) return st;
+  return null;
+}
+
+/* 正晚点：正数为晚点（秒），负数为早点 */
+function ttDelay(plannedSec, actualSec) {
+  return Math.round(actualSec - plannedSec);
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    TT_DEFAULTS,
+    ttEstimateRun, ttParseClock, ttFormatClock, ttIsPeak, ttHeadwayAt,
+    ttComputeService, ttBuildTimetable, ttServiceAt, ttStopOf, ttDelay
+  };
 }
 
 

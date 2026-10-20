@@ -515,9 +515,13 @@ function buildViaduct(route, group) {
 
 /* ---------------- 地面 / 河流 ---------------- */
 function buildGround(route, group) {
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(14000, 14000, 1, 1), MAT.ground);
+  /* 地面平面必须盖住整条线路：线路可延伸到 ±20 km，
+     原来固定 14 km 且以原点居中，远端建筑会「悬在虚空里」。
+     改为按线路中点居中、边长 60 km。 */
+  const midPt = route.frameAt(route.length * 0.5).pos;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000, 1, 1), MAT.ground);
   plane.rotation.x = -PI / 2;
-  plane.position.y = -0.05;
+  plane.position.set(midPt.x, -0.05, midPt.z);
   plane.receiveShadow = true;
   group.add(plane);
 
@@ -589,71 +593,87 @@ function distToRiver(x, z, pts) {
 
 /* ---------------- 城市 ---------------- */
 function buildCity(route, group, riverPts) {
-  const cbd = [{ x: 0, z: 0, r: 0, p: 0 }];
-  const lujiazui = route.projectLL(31.2365, 121.5055);
-  const peopleSq = route.projectLL(31.2329, 121.4696);
-  const xujiahui = route.projectLL(31.1936, 121.4363);
-  const hongkou = route.projectLL(31.2689, 121.4793);
-  const centers = [
-    { x: lujiazui.x, z: lujiazui.z, r: 900, h: 250 },
-    { x: peopleSq.x, z: peopleSq.z, r: 1600, h: 95 },
-    { x: xujiahui.x, z: xujiahui.z, r: 1200, h: 80 },
-    { x: hongkou.x, z: hongkou.z, r: 1200, h: 60 }
-  ];
-  const heightAt = (x, z) => {
-    let h = 14 + RNG() * 16;
-    for (const c of centers) {
-      const d = Math.hypot(x - c.x, z - c.z);
-      if (d < c.r) h = Math.max(h, c.h * Math.pow(1 - d / c.r, 1.8) + 12);
-    }
-    return h;
-  };
-  const buckets = [[], [], []];
+  /* ---- P5：分区驱动的城市 ----
+     原来是把沿线走廊按高度分 3 桶、每桶一个 InstancedMesh 铺方盒子。
+     现在改为：按位置查所属城市分区 → 取该区允许的建筑原型 → 分组实例化。
+     分区数据在 45_city_data.js，原型几何在 47_city_proto.js。
+     draw call 预算：8 种原型 × 1 个材质 = 8，远低于原来的 3 桶 + 树。 */
+  const districts = resolveCityDistricts(route);
   const rng = mulberry32(77123);
-  for (let s = 240; s < route.length - 200; s += 44) {
-    const f = route.frameAt(s);
+  const items = [];
+  const districtHits = new Set();
+
+  /* 关键：建筑必须落在**格网**上，而不是随机撒点。
+     随机撒点会让大体量街区互相重叠，看起来是一张黑毯子 —— 没有一点
+     街道缝隙，就是典型的「像 SimCity 不像上海」。
+     这里按分区街区尺度推算格距，间距取街区的 1.45 倍，保证楼间留出马路；
+     再用填充率 district.density 决定填不填。
+     注意：必须用**累加步长**推进，不能用「采样序号取模」——
+     后者会因为步长与采样间隔不是整数倍而漏掉绝大部分行。 */
+  let sPos = 260;
+  let guard = 0;
+  while (sPos < route.length - 220 && guard < 4000) {
+    guard++;
+    const f = route.frameAt(sPos);
+    const probe = f.pos.clone().addScaledVector(f.right, 90);
+    const dist0 = cityDistrictAt(probe.x, probe.z, districts);
+    const bs = dist0.block || [80, 160];
+    /* 格距上限 150 m：再大就会变成「每 200 m 才一栋楼」的空旷感。
+       真实上海街区虽有 200 m 级的，但街区内部是多栋小楼，不是一栋巨构。 */
+    const latStep = Math.min(150, (bs[0] + bs[1]) * 0.5 * 1.45);
+
     for (const side of [-1, 1]) {
-      const n = 2 + Math.floor(rng() * 2);
-      for (let k = 0; k < n; k++) {
-        const lat = side * (40 + rng() * 300);
-        const along = (rng() - 0.5) * 40;
+      for (let k = 0; k < 7; k++) {
+        const lat = side * (72 + k * latStep);
+        const along = (rng() - 0.5) * latStep * 0.4;
         const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.tan, along);
-        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 26) continue;
-        let nearStation = false;
+        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 30) continue;
+
+        let blocked = false;
         for (const st of route.stations) {
-          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 34) { nearStation = true; break; }
+          if (Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z) < 36) { blocked = true; break; }
           if (st.y < -2) {
             const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
-            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 45) { nearStation = true; break; }
+            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
           }
         }
-        if (nearStation) continue;
-        const h = heightAt(p.x, p.z) * (0.55 + rng() * 0.9);
-        const w = 22 + rng() * 30, dp = 22 + rng() * 32;
-        const cls = h < 30 ? 0 : h < 85 ? 1 : 2;
-        buckets[cls].push({ x: p.x, y: 0, z: p.z, w, h, d: dp, rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.18, c: rng() });
+        if (blocked) continue;
+
+        const dist = cityDistrictAt(p.x, p.z, districts);
+        districtHits.add(dist.id);
+        if (rng() > (dist.density || 0.7)) continue;
+
+        const rH = rng(), rJ = rng(), rP = rng(), rW = rng(), rD = rng(), rT = rng(), rC = rng();
+        const dbs = dist.block || [80, 160];
+        /* 楼宽只能取街区的一个零头：街区 80–220 m，单栋楼通常 18–70 m。
+           之前直接把 block 当楼宽，结果全是「100 m 宽 20 m 高」的薄饼。 */
+        const w = 16 + rW * Math.min(54, dbs[1] * 0.34);
+        const d = 14 + rD * Math.min(46, dbs[1] * 0.28);
+        /* 注意：CITY_FALLBACK 没有 x/z 字段。直接减会得到 NaN，
+           高度变 NaN -> 缩放矩阵失效 -> 建筑整批不可见（且不报错）。
+           这里兜底成「以自身为原点」，衰减取最大值。 */
+        const cx = dist.x == null ? p.x : dist.x;
+        const cz = dist.z == null ? p.z : dist.z;
+        const h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        items.push({
+          proto: cityPickProto(dist.kind, rP),
+          x: p.x, y: 0, z: p.z,
+          w, h, d,
+          rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.25,
+          tint: 0.80 + rT * 0.34,
+          warmth: rC
+        });
       }
     }
+    sPos += latStep * 0.7;
   }
-  for (let c = 0; c < 3; c++) {
-    const arr = buckets[c];
-    if (!arr.length) continue;
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    const mat = MAT.bld[c * 3 + Math.floor(RNG() * 3)] || MAT.bld[0];
-    const im = new THREE.InstancedMesh(geo, mat, arr.length);
-    const d = new THREE.Object3D();
-    arr.forEach((b, i) => {
-      d.position.set(b.x, b.h / 2, b.z);
-      d.rotation.set(0, b.rot, 0);
-      d.scale.set(b.w, b.h, b.d);
-      d.updateMatrix();
-      im.setMatrixAt(i, d.matrix);
-    });
-    im.instanceMatrix.needsUpdate = true;
-    im.castShadow = false; im.receiveShadow = false;
-    im.frustumCulled = false;
-    group.add(im);
-  }
+
+  /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
+     用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
+  const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
+  const protoCount = buildCityProtos(group, items, cityMat);
+  G.cityStats = { buildings: items.length, prototypes: protoCount, districts: districtHits.size };
+
 
   // 树木
   const treeN = 320;
