@@ -11650,6 +11650,56 @@ async function buildService(routeIdx, reverse) {
   await loadStep('正在解算线路中心线…', 0.04);
   path = new RoutePath(routeDef, line);
 
+  /* ---------------- 运行图（P1-1） ----------------
+     RoutePath 里已有单趟时刻表（buildSchedule 把 schArr/schDep 写在车站对象上），
+     但它本质只能表示「一趟车」。这里用 57_timetable.js 的纯函数生成真正的
+     运行图：一个时段内的全部车次，为后续 AI 按图运行、正晚点统计做准备。
+
+     本步不改任何现有行为，只做两件事：
+       1) 生成运行图并挂到 path.timetable
+       2) 把「本务对应的那一趟车」与现有 schArr/schDep 逐站比对，
+          偏差记到 G.ttStats —— 用旧的实现校验新的实现 */
+  if (typeof ttBuildTimetable === 'function') {
+    const ttStations = path.stations.map(st => ({ stopS: st.stopS, served: st.served !== false }));
+    const off = (typeof OFFICIAL_RUN !== 'undefined' && OFFICIAL_RUN[routeDef.id])
+      || (typeof OFFICIAL_RUN_NETWORK !== 'undefined' && OFFICIAL_RUN_NETWORK[routeDef.id])
+      || null;
+    const startSec = path.startSec != null ? path.startSec : 6 * 3600;
+    path.timetable = ttBuildTimetable(ttStations, {
+      fromSec: startSec - 1800,
+      toSec: startSec + 3 * 3600,
+      dwell: routeDef.dwell,
+      vmax: line.vmax,
+      runTimes: off
+    });
+    /* 找首站发车时刻与本务一致的那趟车 */
+    let best = null, bd = 1e9;
+    for (const svc of path.timetable.services) {
+      const d = Math.abs(svc.startSec - startSec);
+      if (d < bd) { bd = d; best = svc; }
+    }
+    path.playerService = best;
+
+    /* 交叉校验：新运行图 vs 旧的 schArr/schDep */
+    let maxArr = 0, maxDep = 0, cmp = 0;
+    if (best) {
+      for (const sp of best.stops) {
+        const st = path.stations[sp.idx];
+        if (!st || st.schArr == null) continue;
+        maxArr = Math.max(maxArr, Math.abs(sp.arr - st.schArr));
+        maxDep = Math.max(maxDep, Math.abs(sp.dep - st.schDep));
+        cmp++;
+      }
+    }
+    G.ttStats = {
+      services: path.timetable.services.length,
+      playerNo: best ? best.no : null,
+      compared: cmp,
+      maxArrDiff: Math.round(maxArr),
+      maxDepDiff: Math.round(maxDep)
+    };
+  }
+
   await loadStep('正在初始化材质…', 0.1);
   initMaterials(renderer, theme);
   matInited = true;
@@ -13772,6 +13822,9 @@ window.__sim = {
   get renderPx() { return G.renderPx || 0; },
   get renderPR() { return G.renderPR || 1; },
   applyRenderScale, rebuildPostChain, tuneDRS, applyDiag, cycleDiag,
+  get ttStats() { return G.ttStats || null; },
+  get timetable() { return path && path.timetable ? path.timetable : null; },
+  get playerService() { return path && path.playerService ? path.playerService : null; },
   get renderScale() { return G.renderScale == null ? 1 : G.renderScale; },
   get autoDRS() { return G.autoDRS !== false; },
   pollGamepad(dt) { if (window.__pollGamepad) window.__pollGamepad(dt); },
