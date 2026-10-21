@@ -81898,6 +81898,8 @@ window.__sim = {
   /* 静态限速剖面（m, km/h）：350 → 300 → 250 → 200 → 160 → 停车 */
   const BASE_LIMITS = [
     { x: 0, v: 350 },
+    { x: 30000, v: 160 },
+    { x: 32000, v: 350 },
     { x: 250000, v: 300 },
     { x: 285000, v: 250 },
     { x: 290000, v: 200 },
@@ -82089,7 +82091,7 @@ window.__sim = {
   }
 
     for (const l of BASE_LIMITS) {
-      if (l.v <= 0) continue;
+      if (l.v <= 0 || l.v >= 350) continue;
       const sign = speedSign(l.v);
       sign.position.set(-l.x, 0, 5.9);
       corridor.add(sign);
