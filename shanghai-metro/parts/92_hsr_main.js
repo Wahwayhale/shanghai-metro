@@ -248,13 +248,18 @@
     add(new THREE.BoxGeometry(1.15, 0.58, 2.6), mid, 4.42, 2.02, 0);
     add(new THREE.BoxGeometry(1.3, 0.09, 2.72), trim, 4.35, 2.34, 0);
     add(new THREE.BoxGeometry(0.6, 0.3, 2.8), dark, 4.9, 1.8, 0);
+    // dashboard face panel + cowl so screens are mounted, not floating
+    add(new THREE.BoxGeometry(0.12, 0.62, 2.10), mid, 3.99, 2.36, 0);
+    const cowl = new THREE.CylinderGeometry(0.08, 0.08, 2.10, 16, 1, false, 0, Math.PI);
+    const cowlMesh = new THREE.Mesh(cowl, trim);
+    cowlMesh.rotation.x = Math.PI / 2; cowlMesh.position.set(3.90, 2.65, 0); g.add(cowlMesh);
     // DMI screens
     const dmi1 = screen('DMI-1', '0', 'ATP 350');
     const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
     const dmi3 = screen('G25', '待发', '车门关闭');
-    makeDmi(4.02, 2.58, -0.52, 0.52, 0.36, dmi1, -0.1);
-    makeDmi(4.02, 2.58, 0.52, 0.52, 0.36, dmi2, -0.1);
-    makeDmi(4.03, 2.43, 0.0, 0.28, 0.20, dmi3, -0.08);
+    makeDmi(4.02, 2.45, -0.52, 0.52, 0.36, dmi1, -0.1);
+    makeDmi(4.02, 2.45, 0.52, 0.52, 0.36, dmi2, -0.1);
+    makeDmi(4.03, 2.32, 0.0, 0.28, 0.20, dmi3, -0.08);
     g.userData.dmis = [dmi1, dmi2, dmi3];
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
