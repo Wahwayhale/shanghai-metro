@@ -169,7 +169,7 @@ if (READABLE) {
 /* DLC 资产：京沪高铁头车 GLB 以 base64 内联，保持单文件离线。
    没有资产时仍能构建（预览按钮会提示资产缺失）。 */
 const hsrGlbFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-lod-v005.glb');
-const hsrMiddleFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-middle-lod-v001.glb');
+const hsrMiddleFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-middle-lod-v003.glb');
 const hsrHeadMergedFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-merged-v001.glb');
 let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\nconst HSR_HEAD_MERGED_GLB_B64 = "";\n';
 if (fs.existsSync(hsrGlbFile)) {
