@@ -650,16 +650,16 @@
   <div id="hsrPreview" class="modal-mask hidden">
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
-      <div class="sub">头车 25.7 m · 17 辆编组 · 1318 km 京沪 · 295 km 切片</div>
+      <div class="sub">头车 25.7 m · 17 辆编组 · 1318 km 全长 / 1302 km 正线</div>
       <div class="hsr-seg">
         <label for="hsrSeg">区段</label>
         <select id="hsrSeg">
-          <option value="0">京沪全程 G25 · 1318 km</option>
-          <option value="1">南京南—上海虹桥 · 295 km（6 站）</option>
-          <option value="2">南京南—镇江南 · 65 km</option>
-          <option value="3">镇江南—常州北 · 67 km</option>
-          <option value="4">常州北—苏州北 · 85 km</option>
-          <option value="5">苏州北—上海虹桥 · 78 km</option>
+          <option value="0">京沪全程 G25 · 1302 km 正线</option>
+          <option value="1">南京南—上海虹桥 · 284 km 正线（6 站）</option>
+          <option value="2">南京南—镇江南 · 69 km</option>
+          <option value="3">镇江南—常州北 · 57 km</option>
+          <option value="4">常州北—苏州北 · 83 km</option>
+          <option value="5">苏州北—上海虹桥 · 75 km</option>
         </select>
       </div>
       <div class="hsr-stage">
@@ -81891,7 +81891,7 @@ window.__sim = {
   let drive = false, driveX = 0, baseX = 0, lastT = 0;
   let v = 0, throttle = 0, brake = 0, touchThrottle = 0, touchBrake = 0;
   const keysDown = Object.create(null);
-  const RUN = 1318000;              // 1318 km：京沪高铁
+  const RUN = 1302000;              // 1302 km 正线（1318 km 全长/计价）
   const SPEED = 350 / 3.6;          // 97.222 m/s
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
@@ -81900,41 +81900,41 @@ window.__sim = {
   const DOOR_CLOSE = 90;
   let dwellStart = 0, doorsOpen = false, departReady = false;
 
-  /* 京沪高铁 23 座正线车站（m，近似里程） */
+  /* 京沪高铁 23 座正线车站（m，官方正线里程，北京南起计） */
   const STATIONS = [
     { name: '北京南', x: 0 },
     { name: '廊坊', x: 59000 },
     { name: '天津南', x: 131000 },
     { name: '沧州西', x: 219000 },
     { name: '德州东', x: 327000 },
-    { name: '济南西', x: 406000 },
-    { name: '泰安', x: 465000 },
-    { name: '曲阜东', x: 535000 },
-    { name: '滕州东', x: 590000 },
+    { name: '济南西', x: 419000 },
+    { name: '泰安', x: 462000 },
+    { name: '曲阜东', x: 533000 },
+    { name: '滕州东', x: 589000 },
     { name: '枣庄', x: 625000 },
-    { name: '徐州东', x: 690000 },
-    { name: '宿州东', x: 770000 },
-    { name: '蚌埠南', x: 845000 },
-    { name: '定远', x: 900000 },
-    { name: '滁州', x: 960000 },
-    { name: '南京南', x: 1023000 },
-    { name: '镇江南', x: 1088000 },
-    { name: '丹阳北', x: 1115000 },
-    { name: '常州北', x: 1155000 },
-    { name: '无锡东', x: 1200000 },
-    { name: '苏州北', x: 1240000 },
-    { name: '昆山南', x: 1303000 },
-    { name: '上海虹桥', x: 1318000 }
+    { name: '徐州东', x: 688000 },
+    { name: '宿州东', x: 767000 },
+    { name: '蚌埠南', x: 844000 },
+    { name: '定远', x: 897000 },
+    { name: '滁州', x: 959000 },
+    { name: '南京南', x: 1018000 },
+    { name: '镇江南', x: 1087000 },
+    { name: '丹阳北', x: 1112000 },
+    { name: '常州北', x: 1144000 },
+    { name: '无锡东', x: 1201000 },
+    { name: '苏州北', x: 1227000 },
+    { name: '昆山南', x: 1259000 },
+    { name: '上海虹桥', x: 1302000 }
   ];
 
-  /* 可驾驶区段：京沪全程 G25 / 295 km 分段 / 南京南—上海虹桥 */
+  /* 可驾驶区段：京沪全程 G25 / 284 km 正线分段 / 南京南—上海虹桥 */
   const SEGMENTS = [
-    { label: '京沪全程 G25', start: 0, end: 1318000, sched: 15480, name: '上海虹桥', express: true },
-    { label: '南京南—上海虹桥（295 km）', start: 1023000, end: 1318000, sched: 3300, name: '上海虹桥', full295: true },
-    { label: '南京南—镇江南', start: 1023000, end: 1088000, sched: 780, name: '镇江南' },
-    { label: '镇江南—常州北', start: 1088000, end: 1155000, sched: 660, name: '常州北' },
-    { label: '常州北—苏州北', start: 1155000, end: 1240000, sched: 960, name: '苏州北' },
-    { label: '苏州北—上海虹桥', start: 1240000, end: 1318000, sched: 1140, name: '上海虹桥' }
+    { label: '京沪全程 G25', start: 0, end: 1302000, sched: 15480, name: '上海虹桥', express: true },
+    { label: '南京南—上海虹桥（284 km 正线）', start: 1018000, end: 1302000, sched: 3300, name: '上海虹桥', full295: true },
+    { label: '南京南—镇江南', start: 1018000, end: 1087000, sched: 780, name: '镇江南' },
+    { label: '镇江南—常州北', start: 1087000, end: 1144000, sched: 660, name: '常州北' },
+    { label: '常州北—苏州北', start: 1144000, end: 1227000, sched: 960, name: '苏州北' },
+    { label: '苏州北—上海虹桥', start: 1227000, end: 1302000, sched: 1140, name: '上海虹桥' }
   ];
   let seg = SEGMENTS[0];
   let stopX = seg.end - 100;
@@ -81947,10 +81947,10 @@ window.__sim = {
     { x: 0, v: 350 },
     { x: 30000, v: 160 },
     { x: 32000, v: 350 },
-    { x: 1200000, v: 300 },
-    { x: 1280000, v: 250 },
-    { x: 1300000, v: 200 },
-    { x: 1310000, v: 160 }
+    { x: 1201000, v: 300 },
+    { x: 1270000, v: 250 },
+    { x: 1290000, v: 200 },
+    { x: 1298000, v: 160 }
   ];
   const LOOK = 12000;               // 12 km ATP 前瞻
   let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
@@ -81981,12 +81981,13 @@ window.__sim = {
   function buildStopPlan() {
     if (seg.express) {
       stopPlan = [
-        { name: '南京南', x: 1023000 - 100 },
-        { name: '上海虹桥', x: 1318000 - 100 }
+        { name: '南京南', x: 1018000 - 100 },
+        { name: '上海虹桥', x: 1302000 - 100 }
       ];
     } else if (seg.full295) {
       const i0 = STATIONS.findIndex(s => s.name === '南京南');
-      stopPlan = STATIONS.slice(i0 + 1).map(s => ({ name: s.name, x: s.x - 100 }));
+      const skip = new Set(['丹阳北']);
+      stopPlan = STATIONS.slice(i0 + 1).filter(s => !skip.has(s.name)).map(s => ({ name: s.name, x: s.x - 100 }));
     } else {
       stopPlan = [{ name: seg.name, x: seg.end - 100 }];
     }
