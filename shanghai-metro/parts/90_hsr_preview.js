@@ -35,6 +35,8 @@
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, trainRoot = null, headBaseX = 0;
+  let doorNodes = [], doorT = 0, doorTarget = 0;
+  let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
   let dragging = false, lastX = 0, lastY = 0;
@@ -312,6 +314,32 @@
     }
   }
 
+  function ensureAudio() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { /* 无音频也不影响驾驶 */ }
+  }
+
+  function bell(count) {
+    try {
+      ensureAudio();
+      if (!audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      for (let i = 0; i < count; i++) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = i % 2 ? 660 : 880;
+        gain.gain.setValueAtTime(0.0001, t0 + i * 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.06, t0 + i * 0.16 + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.16 + 0.14);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(t0 + i * 0.16); osc.stop(t0 + i * 0.16 + 0.15);
+      }
+    } catch (e) { /* ignore */ }
+  }
+
   function buildTrain() {
     if (!headModel || !middleModel) return null;
     const root = new THREE.Group();
@@ -320,6 +348,13 @@
     head.visible = true;
     head.position.set(HEAD / 2, 0, 0);
     root.add(head);
+    doorNodes = []; doorT = 0; doorTarget = 0;
+    head.traverse((o) => {
+      if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
+          && !o.name.includes('frame') && !o.name.includes('window')) {
+        doorNodes.push({ node: o, y0: o.position.y, side: o.position.y >= 0 ? 1 : -1 });
+      }
+    });
     let x = HEAD + GAP;
     for (let i = 0; i < 15; i++) {
       const car = middleModel.clone(true);
@@ -369,6 +404,7 @@
     if (segSel) segSel.value = String(idx + 1);
     startWall = performance.now();
     stopped = false; doorsOpen = false; departReady = false;
+    doorTarget = 0; doorT = 0; bell(2);
     stopErr = null; puncSec = null;
     v = 0; throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
@@ -412,7 +448,7 @@
     if (doorEl) doorEl.textContent = '车门关闭';
     if (dwellEl) dwellEl.textContent = '停站 --';
     if (departBtn) departBtn.classList.add('hidden');
-    doorsOpen = false; departReady = false;
+    doorsOpen = false; departReady = false; doorTarget = 0; doorT = 0;
     atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
 
@@ -503,6 +539,7 @@
         const ds = (performance.now() - dwellStart) / 1000;
         if (doorsOpen && ds >= DOOR_CLOSE) {
           doorsOpen = false;
+          doorTarget = 0; bell(2);
           if (doorEl) doorEl.textContent = '车门关闭';
           setHint('车门关闭 · 停站完成，按 W 或「发车」进入下一段');
         }
@@ -514,6 +551,11 @@
         }
         if (!departReady && dwellEl) dwellEl.textContent = '停站 ' + fmtTime(Math.max(0, DWELL - ds));
       }
+
+      const dstep = Math.min(1, dt / 0.8);
+      if (doorT < doorTarget) doorT = Math.min(doorTarget, doorT + dstep);
+      else if (doorT > doorTarget) doorT = Math.max(doorTarget, doorT - dstep);
+      for (const d of doorNodes) d.node.position.y = d.y0 + d.side * 0.55 * doorT;
 
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
@@ -531,6 +573,7 @@
         stopErr = x - stopX;
         dwellStart = performance.now();
         doorsOpen = true; departReady = false;
+        doorTarget = 1; bell(1);
         if (doorEl) doorEl.textContent = '车门开启';
         if (dwellEl) dwellEl.textContent = '停站 2:00';
         if (departBtn) departBtn.classList.add('hidden');
@@ -626,7 +669,7 @@
     if (doorEl) doorEl.textContent = '车门关闭';
     if (dwellEl) dwellEl.textContent = '停站 --';
     if (departBtn) departBtn.classList.add('hidden');
-    doorsOpen = false; departReady = false;
+    doorsOpen = false; departReady = false; doorTarget = 0; doorT = 0;
     atpWarn = 0;
     if (throttleBtn) throttleBtn.classList.remove('on');
     if (brakeBtn) brakeBtn.classList.remove('on');
@@ -711,7 +754,7 @@
         punc: puncEl ? puncEl.textContent : '',
         station: staEl ? staEl.textContent : '',
         segment: seg.label, segStart, segEnd: stopX,
-        doorsOpen, departReady, dwell: dwellEl ? dwellEl.textContent : '',
+        doorsOpen, departReady, doorT, dwell: dwellEl ? dwellEl.textContent : '',
         cars: trainRoot ? trainRoot.children.length : 1
       };
     },
