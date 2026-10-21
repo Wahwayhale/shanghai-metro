@@ -36,7 +36,7 @@
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
   let pendingDrive = false;
-  let doorNodes = [], doorT = 0, doorTarget = 0;
+  let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0;
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
@@ -353,7 +353,7 @@
     head.visible = true;
     head.position.set(HEAD / 2, 0, 0);
     root.add(head);
-    doorNodes = []; doorT = 0; doorTarget = 0;
+    doorNodes = []; midDoorInsts = []; doorT = 0; doorTarget = 0;
     head.traverse((o) => {
       if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
           && !o.name.includes('frame') && !o.name.includes('window')) {
@@ -382,6 +382,14 @@
       inst.instanceMatrix.needsUpdate = true;
       inst.frustumCulled = false;
       root.add(inst);
+      if (mesh.name && mesh.name.startsWith('M-door_') && !mesh.name.includes('frame') && !mesh.name.includes('win')) {
+        midDoorInsts.push({
+          inst,
+          side: mesh.name.includes('_-1_') ? -1 : 1,
+          carXs: carXs.slice(),
+          world: mesh.matrixWorld.clone()
+        });
+      }
     }
     const tailSrc = headMergedModel || headModel;
     const tail = tailSrc.clone(true);
@@ -578,6 +586,18 @@
       if (doorT < doorTarget) doorT = Math.min(doorTarget, doorT + dstep);
       else if (doorT > doorTarget) doorT = Math.max(doorTarget, doorT - dstep);
       for (const d of doorNodes) d.node.position.y = d.y0 + d.side * 0.55 * doorT;
+      if (midDoorInsts.length) {
+        const cm2 = new THREE.Matrix4();
+        const im2 = new THREE.Matrix4();
+        for (const d of midDoorInsts) {
+          for (let i = 0; i < d.carXs.length; i++) {
+            cm2.makeTranslation(d.carXs[i], d.side * 0.55 * doorT, 0);
+            im2.multiplyMatrices(cm2, d.world);
+            d.inst.setMatrixAt(i, im2);
+          }
+          d.inst.instanceMatrix.needsUpdate = true;
+        }
+      }
 
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
