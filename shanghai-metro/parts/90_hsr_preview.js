@@ -18,14 +18,22 @@
   const hud = document.getElementById('hsrDriveHud');
   const distEl = document.getElementById('hsrDist');
   const speedEl = document.getElementById('hsrSpeed');
+  const modeEl = document.getElementById('hsrMode');
+  const throttleBtn = document.getElementById('hsrThrottle');
+  const brakeBtn = document.getElementById('hsrBrake');
+  const resetDriveBtn = document.getElementById('hsrResetDrive');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
   let dragging = false, lastX = 0, lastY = 0;
   let drive = false, driveX = 0, baseX = 0, lastT = 0;
-  const RUN = 5000;                 // 5.0 km
+  let v = 0, throttle = 0, brake = 0, touchThrottle = 0, touchBrake = 0;
+  const keysDown = Object.create(null);
+  const RUN = 8000;                 // 8.0 km：350→0 制动约 6.3 km，留 1.7 km 余量
   const SPEED = 350 / 3.6;          // 97.222 m/s
+  const ACC = 0.45;                 // 牵引加速度 m/s²
+  const BRK = 0.75;                 // 常用制动 m/s²
 
   function setHint(text) { if (hint) hint.textContent = text; }
 
@@ -175,6 +183,10 @@
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     drive = true;
     driveX = 0;
+    v = SPEED;
+    throttle = 0; brake = 0;
+    touchThrottle = 0; touchBrake = 0;
+    Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     lastT = performance.now();
     grid.visible = false;
     corridor.visible = true;
@@ -182,14 +194,17 @@
     hud.classList.remove('hidden');
     if (speedEl) speedEl.textContent = '350';
     if (distEl) distEl.textContent = '0.00 km';
+    if (modeEl) modeEl.textContent = '惰行';
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
     model.position.x = baseX;
     model.rotation.y = 0;
-    setHint('5.0 km 直线走廊 · 350 km/h（97.22 m/s）· 自动运行，约 51 s 跑完');
+    setHint('8.0 km 直线走廊 · 350 km/h（97.22 m/s）· W 牵引 / S 制动 / R 重置');
   }
 
   function exitDrive() {
     drive = false;
+    v = 0; throttle = 0; brake = 0; touchThrottle = 0; touchBrake = 0;
+    Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     corridor.visible = false;
     grid.visible = true;
     scene.fog = null;
@@ -210,16 +225,29 @@
 
     if (drive && model) {
       const t = now || performance.now();
-      const dt = Math.min(0.25, Math.max(0, (t - lastT) / 1000));
+      const dt = Math.min(0.5, Math.max(0, (t - lastT) / 1000));
       lastT = t;
-      driveX -= SPEED * dt;
-      if (driveX < -RUN) driveX = 0;
+
+      throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
+      brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
+
+      /* 简化动力学：牵引 0.45 m/s²、常用制动 0.75 m/s²、高速阻力 */
+      const drag = 0.000005 * v * v;
+      const a = ACC * throttle - BRK * brake - drag;
+      v = Math.max(0, Math.min(SPEED, v + a * dt));
+      driveX -= v * dt;
+      if (driveX < -RUN) {
+        driveX = 0;
+        v = SPEED;
+      }
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
 
       camera.position.set(driveX - 38, 8.0, 22);
       camera.lookAt(driveX + 4, 2.2, 0);
+      if (speedEl) speedEl.textContent = String(Math.round(v * 3.6));
       if (distEl) distEl.textContent = (Math.min(RUN, -driveX) / 1000).toFixed(2) + ' km';
+      if (modeEl) modeEl.textContent = brake ? '制动' : (throttle ? '牵引' : (v > 0.5 ? '惰行' : '停车'));
     } else {
       const cy = Math.cos(pitch) * dist;
       camera.position.set(Math.sin(yaw) * cy, 8 + Math.sin(pitch) * dist, Math.cos(yaw) * cy);
@@ -254,16 +282,63 @@
     if (drive) exitDrive(); else enterDrive();
   });
 
+  function resetDrive() {
+    driveX = 0;
+    v = SPEED;
+    throttle = 0; brake = 0;
+    touchThrottle = 0; touchBrake = 0;
+    Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
+    lastT = performance.now();
+    if (speedEl) speedEl.textContent = '350';
+    if (distEl) distEl.textContent = '0.00 km';
+    if (modeEl) modeEl.textContent = '惰行';
+    if (throttleBtn) throttleBtn.classList.remove('on');
+    if (brakeBtn) brakeBtn.classList.remove('on');
+  }
+
   resetBtn && resetBtn.addEventListener('click', () => {
     if (drive) {
-      driveX = 0;
-      lastT = performance.now();
-      if (distEl) distEl.textContent = '0.00 km';
+      resetDrive();
     } else {
       yaw = 0.72; pitch = 0.18;
       if (model) { model.rotation.y = 0; fitModel(model); }
     }
   });
+  resetDriveBtn && resetDriveBtn.addEventListener('click', resetDrive);
+
+  window.addEventListener('keydown', (e) => {
+    if (!running || !drive) return;
+    const k = String(e.key || '').toLowerCase();
+    if (k === 'w' || k === 'arrowup' || k === 's' || k === 'arrowdown' || k === 'r') {
+      e.preventDefault();
+      if (k === 'r') { resetDrive(); return; }
+      keysDown[k] = true;
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    const k = String(e.key || '').toLowerCase();
+    if (k in keysDown) keysDown[k] = false;
+  });
+  window.addEventListener('blur', () => {
+    Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
+    touchThrottle = 0; touchBrake = 0;
+  });
+
+  function bindHold(btnEl, key) {
+    if (!btnEl) return;
+    const set = (on) => {
+      if (!drive) return;
+      if (key === 'throttle') touchThrottle = on ? 1 : 0;
+      else touchBrake = on ? 1 : 0;
+      btnEl.classList.toggle('on', on);
+    };
+    btnEl.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true); });
+    btnEl.addEventListener('pointerup', () => set(false));
+    btnEl.addEventListener('pointerleave', () => set(false));
+    btnEl.addEventListener('pointercancel', () => set(false));
+  }
+  bindHold(throttleBtn, 'throttle');
+  bindHold(brakeBtn, 'brake');
 
   canvas.addEventListener('pointerdown', (e) => {
     if (drive) return;

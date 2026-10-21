@@ -507,6 +507,14 @@
   #hsrDriveHud span{font-size:11px;color:#8fa6b6;margin-left:3px}
   #hsrDriveHud i{display:block;margin-top:5px;font-style:normal;color:#8fe06a}
   #hsrDriveHud em{display:block;margin-top:2px;font-style:normal;font-size:9.5px;color:#7d929f;letter-spacing:.02em}
+  #hsrDriveHud u{display:inline-block;margin-top:5px;padding:2px 7px;border-radius:4px;text-decoration:none;
+    font:600 9.5px/1.4 ui-monospace,monospace;color:#ffd479;background:rgba(255,180,60,.12);
+    border:1px solid rgba(255,180,60,.22);letter-spacing:.04em}
+  .hsr-pad{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .hsr-pad .btn-ghost{flex:1;min-width:100px;padding:9px 10px;font-size:11px}
+  .hsr-pad kbd{font:600 9px/1 ui-monospace,monospace;color:#7f939f;border:1px solid rgba(255,255,255,.16);
+    border-radius:4px;padding:2px 4px;margin-left:4px;background:rgba(0,0,0,.18)}
+  .hsr-pad .on{background:rgba(140,198,63,.18);border-color:rgba(140,198,63,.55);color:#d8f5b0}
   #hsrHint{font-size:11px;color:#8294a1;margin-top:8px;letter-spacing:.02em}
   .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#b9c9d4;
     font:inherit;font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
@@ -596,12 +604,18 @@
       <div class="hsr-stage">
         <canvas id="hsrCanvas"></canvas>
         <div id="hsrDriveHud" class="hidden">
-          <b id="hsrSpeed">350</b><span>km/h</span>
+          <b id="hsrSpeed">0</b><span>km/h</span>
           <i id="hsrDist">0.00 km</i>
-          <em>5.0 km 走廊 · 350 km/h 技术验证</em>
+          <u id="hsrMode">惰行</u>
+          <em>8.0 km 走廊 · ATP 350 · 350→0 制动约 6.3 km</em>
         </div>
       </div>
-      <div id="hsrHint">拖拽旋转 · 滚轮缩放 · 这是 DLC-0/1 资产验证，不是正式线路</div>
+      <div class="hsr-pad">
+        <button id="hsrThrottle" class="btn-ghost">牵引 <kbd>W</kbd></button>
+        <button id="hsrBrake" class="btn-ghost">制动 <kbd>S</kbd></button>
+        <button id="hsrResetDrive" class="btn-ghost">重置 <kbd>R</kbd></button>
+      </div>
+      <div id="hsrHint">拖拽旋转 · 滚轮缩放 · W/↑ 牵引 · S/↓ 制动 · 这是 DLC-0/1 资产验证，不是正式线路</div>
       <div class="modal-actions">
         <button id="hsrDrive" class="btn-ghost">350 km/h 走廊验证</button>
         <button id="hsrReset" class="btn-ghost">重置视角</button>
