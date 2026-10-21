@@ -388,7 +388,9 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, begin: performance.now()
+    train, begin: performance.now(),
+    doorNodes: (train && train.userData && train.userData.doorNodes) || [],
+    doorT: 0
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
@@ -433,6 +435,11 @@ function updateHsrMain(dt) {
   } else {
     st.v = 0;
   }
+  const doorTarget = st.stopped ? 1 : 0;
+  const dstep = Math.min(1, dt / 0.8);
+  if (st.doorT < doorTarget) st.doorT = Math.min(doorTarget, st.doorT + dstep);
+  else if (st.doorT > doorTarget) st.doorT = Math.max(doorTarget, st.doorT - dstep);
+  for (const d of st.doorNodes) d.node.position.y = d.y0 + d.side * 0.55 * st.doorT;
   if (st.train) st.train.position.x = -st.x;
   camera.position.set(-st.x - 38, 8.0, 22);
   camera.lookAt(-st.x + 4, 2.2, 0);
@@ -445,6 +452,7 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.5 ? '车门开启' : '车门关闭') : '车门关闭';
 }
 function exitHsrMain() {
   if (G.mode !== 'hsr') return;
@@ -465,7 +473,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.__hsrMain = {
-  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx } : null; },
+  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx, doorT: G.hsr.doorT, doors: G.hsr.doorNodes.length } : null; },
   setX(x) { if (G.hsr) { G.hsr.x = x; G.hsr.v = 0; G.hsr.stopped = false; } },
   exit: exitHsrMain
 };

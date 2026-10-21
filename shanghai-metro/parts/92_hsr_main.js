@@ -95,6 +95,13 @@
     head.visible = true;
     head.position.set(HEAD / 2, 0, 0);
     root.add(head);
+    root.userData.doorNodes = [];
+    head.traverse((o) => {
+      if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
+          && !o.name.includes('frame') && !o.name.includes('window')) {
+        root.userData.doorNodes.push({ node: o, y0: o.position.y, side: o.position.y >= 0 ? 1 : -1 });
+      }
+    });
 
     const middle = midG.scene;
     middle.updateMatrixWorld(true);
