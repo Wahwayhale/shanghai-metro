@@ -40,6 +40,8 @@
   let pendingDrive = false;
   let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0, labelCount = 0;
   let tsr = null, tsrSign = null;
+  let stopPlan = [], stopIdx = 0, stopPlanSeg = null;
+  const LEG_SCHED = [720, 600, 540, 540, 450, 450];
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
@@ -109,6 +111,23 @@
     out.push({ x: stopX, v: 0 });
     out.sort((a, b) => a.x - b.x);
     return out;
+  }
+
+  function buildStopPlan() {
+    if (seg.label.includes('全程')) {
+      stopPlan = STATIONS.slice(1).map(s => ({ name: s.name, x: s.x - 100 }));
+      stopIdx = 0;
+      stopX = stopPlan[0].x;
+      segName = stopPlan[0].name;
+      sched = LEG_SCHED[0];
+    } else {
+      stopPlan = [{ name: seg.name, x: seg.end - 100 }];
+      stopIdx = 0;
+      stopX = stopPlan[0].x;
+      segName = seg.name;
+      sched = seg.sched;
+    }
+    stopPlanSeg = seg;
   }
 
   function makeTsr() {
@@ -551,6 +570,7 @@
     segStart = seg.start;
     segName = seg.name;
     sched = seg.sched;
+    stopPlan = []; stopIdx = 0; stopPlanSeg = null;
     tsr = null;
     if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
     if (segSel) segSel.value = String(i);
@@ -561,24 +581,23 @@
     if (!departReady) return;
     departReady = false;
     if (departBtn) departBtn.classList.add('hidden');
-    const idx = SEGMENTS.indexOf(seg);
-    const next = SEGMENTS[idx + 1];
     const x = Math.min(RUN, Math.max(0, -driveX));
-    if (!next || next.start < seg.start) {
+    if (stopIdx >= stopPlan.length - 1) {
       stopped = true;
       if (dwellEl) dwellEl.textContent = '终点站 · 本段结束';
       setHint('终点站 · 本段结束 · R 重置');
       return;
     }
-    /* 物理发车：不切段/不瞬移，从 0 加速到下一站 */
-    seg = next;
+    /* 物理发车：同一区段内去下一站，不瞬移 */
+    stopIdx++;
+    const np = stopPlan[stopIdx];
     segStart = x;
-    stopX = next.end - 100;
-    segName = next.name;
-    sched = next.sched;
+    stopX = np.x;
+    segName = np.name;
+    sched = seg.label.includes('全程') && LEG_SCHED[stopIdx] ? LEG_SCHED[stopIdx] : seg.sched;
     tsr = null;
     if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
-    if (segSel) segSel.value = String(idx + 1);
+    tsr = makeTsr(); showTsrSign();
     startWall = performance.now();
     stopped = false; doorsOpen = false; departReady = false;
     doorTarget = 0; doorT = 0; bell(2);
@@ -595,13 +614,14 @@
     if (nextEl) { const nl0 = nextLimitAt(x); nextEl.textContent = nextLabel(nl0, x); }
     if (modeEl) modeEl.textContent = '发车';
     atpWarn = 0;
-    setHint(`发车 · ${next.label} · 从 0 加速 · W 牵引`);
+    setHint(`发车 · 下一站 ${segName} · 从 0 加速 · W 牵引`);
   }
 
   function enterDrive() {
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     if (loadingEl) loadingEl.classList.add('hidden');
     if (!tsr) { tsr = makeTsr(); showTsrSign(); }
+    if (!stopPlan.length || stopPlanSeg !== seg) buildStopPlan();
     drive = true;
     driveX = -segStart;
     v = SPEED;
@@ -867,6 +887,9 @@
   departBtn && departBtn.addEventListener('click', departNext);
 
   function resetDrive() {
+    segStart = seg.start;
+    stopPlan = []; stopIdx = 0; stopPlanSeg = null;
+    buildStopPlan();
     driveX = -segStart;
     v = SPEED;
     throttle = 0; brake = 0;
