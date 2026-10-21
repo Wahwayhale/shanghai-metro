@@ -381,6 +381,7 @@ async function buildHsrService() {
   camera.updateProjectionMatrix();
   document.getElementById('menu').classList.add('hidden');
   const train = s.getObjectByName('HSR-MAIN-TRAIN');
+  const world = s.getObjectByName('HSR-MAIN-WORLD');
   G.hsr = {
     x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
     stopIdx: 0,
@@ -389,6 +390,7 @@ async function buildHsrService() {
       { name: '上海虹桥', x: 1301900 }
     ],
     train, begin: performance.now(),
+    signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
     doorT: 0, legs: [], result: false,
@@ -501,6 +503,18 @@ function updateHsrMain(dt) {
         d.inst.setMatrixAt(i, im);
       }
       d.inst.instanceMatrix.needsUpdate = true;
+    }
+  }
+  if (st.signals && st.signals.length) {
+    let nearest = null;
+    for (const sg of st.signals) { if (sg.x > st.x && (!nearest || sg.x < nearest.x)) nearest = sg; }
+    for (const sg of st.signals) {
+      const ahead = sg.x - st.x;
+      let color = 0x1f8a4c;
+      if (sg === nearest && ahead < 2000) color = 0xc8102e;
+      else if (sg === nearest && ahead < 10000) color = 0xd8a21f;
+      sg.lamp.material.color.setHex(color);
+      sg.lamp.material.emissive.setHex(color);
     }
   }
   if (st.train) st.train.position.x = -st.x;

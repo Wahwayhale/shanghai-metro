@@ -18261,6 +18261,7 @@ async function buildHsrService() {
   camera.updateProjectionMatrix();
   document.getElementById('menu').classList.add('hidden');
   const train = s.getObjectByName('HSR-MAIN-TRAIN');
+  const world = s.getObjectByName('HSR-MAIN-WORLD');
   G.hsr = {
     x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
     stopIdx: 0,
@@ -18269,6 +18270,7 @@ async function buildHsrService() {
       { name: '上海虹桥', x: 1301900 }
     ],
     train, begin: performance.now(),
+    signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
     doorT: 0, legs: [], result: false,
@@ -18381,6 +18383,18 @@ function updateHsrMain(dt) {
         d.inst.setMatrixAt(i, im);
       }
       d.inst.instanceMatrix.needsUpdate = true;
+    }
+  }
+  if (st.signals && st.signals.length) {
+    let nearest = null;
+    for (const sg of st.signals) { if (sg.x > st.x && (!nearest || sg.x < nearest.x)) nearest = sg; }
+    for (const sg of st.signals) {
+      const ahead = sg.x - st.x;
+      let color = 0x1f8a4c;
+      if (sg === nearest && ahead < 2000) color = 0xc8102e;
+      else if (sg === nearest && ahead < 10000) color = 0xd8a21f;
+      sg.lamp.material.color.setHex(color);
+      sg.lamp.material.emissive.setHex(color);
     }
   }
   if (st.train) st.train.position.x = -st.x;
@@ -22124,6 +22138,7 @@ window.__sim = {
     const sigPost = new THREE.MeshStandardMaterial({ color: 0x7d858c, metalness: 0.6, roughness: 0.45 });
     const sigHead = new THREE.MeshStandardMaterial({ color: 0x161b1f, roughness: 0.7 });
     const sigGreen = new THREE.MeshStandardMaterial({ color: 0x1f8a4c, emissive: 0x1f8a4c, emissiveIntensity: 1.5 });
+    g.userData.signals = [];
     for (const st of D.STATIONS) {
       const label = stationLabel(st.name);
       label.position.set(-st.x + 220, 6.5, -5.6);
@@ -22132,8 +22147,10 @@ window.__sim = {
       post.position.set(-st.x + 180, 2.1, 5.9); g.add(post);
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.32), sigHead);
       head.position.set(-st.x + 180, 4.5, 5.9); g.add(head);
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), sigGreen);
+      const lampMat = sigGreen.clone();
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), lampMat);
       lamp.position.set(-st.x + 180, 4.75, 5.72); g.add(lamp);
+      g.userData.signals.push({ x: -st.x + 180, lamp });
     }
 
     scene.add(g);

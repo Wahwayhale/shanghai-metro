@@ -68,6 +68,7 @@
     const sigPost = new THREE.MeshStandardMaterial({ color: 0x7d858c, metalness: 0.6, roughness: 0.45 });
     const sigHead = new THREE.MeshStandardMaterial({ color: 0x161b1f, roughness: 0.7 });
     const sigGreen = new THREE.MeshStandardMaterial({ color: 0x1f8a4c, emissive: 0x1f8a4c, emissiveIntensity: 1.5 });
+    g.userData.signals = [];
     for (const st of D.STATIONS) {
       const label = stationLabel(st.name);
       label.position.set(-st.x + 220, 6.5, -5.6);
@@ -76,8 +77,10 @@
       post.position.set(-st.x + 180, 2.1, 5.9); g.add(post);
       const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.32), sigHead);
       head.position.set(-st.x + 180, 4.5, 5.9); g.add(head);
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), sigGreen);
+      const lampMat = sigGreen.clone();
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), lampMat);
       lamp.position.set(-st.x + 180, 4.75, 5.72); g.add(lamp);
+      g.userData.signals.push({ x: -st.x + 180, lamp });
     }
 
     scene.add(g);
