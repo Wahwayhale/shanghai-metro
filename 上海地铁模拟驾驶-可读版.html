@@ -83357,6 +83357,27 @@ window.__sim = {
       }
     }
 
+    const wireMat = new THREE.LineBasicMaterial({ color: 0x4a555e });
+    for (const z of [-0.32, 0.32]) {
+      const pts = [new THREE.Vector3(600, 7.2, z), new THREE.Vector3(-RUN, 7.2, z)];
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), wireMat);
+      g.add(line);
+    }
+    const sigPost = new THREE.MeshStandardMaterial({ color: 0x7d858c, metalness: 0.6, roughness: 0.45 });
+    const sigHead = new THREE.MeshStandardMaterial({ color: 0x161b1f, roughness: 0.7 });
+    const sigGreen = new THREE.MeshStandardMaterial({ color: 0x1f8a4c, emissive: 0x1f8a4c, emissiveIntensity: 1.5 });
+    for (const st of D.STATIONS) {
+      const label = stationLabel(st.name);
+      label.position.set(-st.x + 220, 6.5, -5.6);
+      g.add(label);
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.2, 0.16), sigPost);
+      post.position.set(-st.x + 180, 2.1, 5.9); g.add(post);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.1, 0.32), sigHead);
+      head.position.set(-st.x + 180, 4.5, 5.9); g.add(head);
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8), sigGreen);
+      lamp.position.set(-st.x + 180, 4.75, 5.72); g.add(lamp);
+    }
+
     scene.add(g);
     return g;
   }
@@ -83431,6 +83452,25 @@ window.__sim = {
     geo.setIndex(idx);
     geo.computeVertexNormals();
     return geo;
+  }
+
+
+  function stationLabel(name) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(6,10,14,.88)'; g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#c8102e'; g.lineWidth = 6; g.strokeRect(3, 3, 506, 122);
+    g.font = '700 64px "Microsoft YaHei", "PingFang SC", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f2f7fa';
+    g.fillText(name, 256, 64);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthTest: false });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 7.5), m);
+    mesh.rotation.y = -Math.PI / 2;
+    mesh.renderOrder = 10;
+    mesh.frustumCulled = false;
+    return mesh;
   }
 
   async function buildTrain(scene) {
