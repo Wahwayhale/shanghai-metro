@@ -170,16 +170,23 @@ if (READABLE) {
    没有资产时仍能构建（预览按钮会提示资产缺失）。 */
 const hsrGlbFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-headcar-v018.glb');
 const hsrMiddleFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-middle-v001.glb');
-let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\n';
+const hsrHeadMergedFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-merged-v001.glb');
+let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\nconst HSR_HEAD_MERGED_GLB_B64 = "";\n';
 if (fs.existsSync(hsrGlbFile)) {
   const headB64 = JSON.stringify(fs.readFileSync(hsrGlbFile).toString('base64'));
   const midB64 = fs.existsSync(hsrMiddleFile)
     ? JSON.stringify(fs.readFileSync(hsrMiddleFile).toString('base64'))
     : '""';
-  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${headB64};\nconst HSR_MIDDLE_GLB_B64 = ${midB64};\n`;
+  const headMergedB64 = fs.existsSync(hsrHeadMergedFile)
+    ? JSON.stringify(fs.readFileSync(hsrHeadMergedFile).toString('base64'))
+    : '""';
+  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${headB64};\nconst HSR_MIDDLE_GLB_B64 = ${midB64};\nconst HSR_HEAD_MERGED_GLB_B64 = ${headMergedB64};\n`;
   console.log('[dlc] 高铁头车 GLB 内联', (fs.statSync(hsrGlbFile).size / 1024).toFixed(0) + ' KB');
   if (fs.existsSync(hsrMiddleFile)) {
     console.log('[dlc] 高铁中间车 GLB 内联', (fs.statSync(hsrMiddleFile).size / 1024).toFixed(0) + ' KB');
+  }
+  if (fs.existsSync(hsrHeadMergedFile)) {
+    console.log('[dlc] 高铁尾车 LOD GLB 内联', (fs.statSync(hsrHeadMergedFile).size / 1024).toFixed(0) + ' KB');
   }
 } else {
   console.warn('[dlc] 未找到高铁 GLB，预览按钮会提示缺失：' + hsrGlbFile);

@@ -34,7 +34,8 @@
   const departBtn = document.getElementById('hsrDepart');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
-  let headModel = null, middleModel = null, trainRoot = null, headBaseX = 0;
+  let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
+  let pendingDrive = false;
   let doorNodes = [], doorT = 0, doorTarget = 0;
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
@@ -301,10 +302,14 @@
         scene.add(headModel);
         ready = true;
         setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+        if (typeof HSR_HEAD_MERGED_GLB_B64 !== 'undefined' && HSR_HEAD_MERGED_GLB_B64) {
+          parseB64(HSR_HEAD_MERGED_GLB_B64, (hm) => { headMergedModel = prep(hm.scene); });
+        }
         if (typeof HSR_MIDDLE_GLB_B64 !== 'undefined' && HSR_MIDDLE_GLB_B64) {
           parseB64(HSR_MIDDLE_GLB_B64, (mid) => {
             middleModel = prep(mid.scene);
             setHint('CR400AF-BS 17 辆编组就绪 · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+            maybeAutoDrive();
           });
         }
       });
@@ -378,7 +383,8 @@
       inst.frustumCulled = false;
       root.add(inst);
     }
-    const tail = headModel.clone(true);
+    const tailSrc = headMergedModel || headModel;
+    const tail = tailSrc.clone(true);
     tail.visible = true;
     tail.position.set(x + HEAD / 2, 0, 0);
     tail.rotation.y = Math.PI;
@@ -636,6 +642,26 @@
     renderer.render(scene, camera);
   }
 
+  function maybeAutoDrive() {
+    if (pendingDrive && ready && middleModel) {
+      pendingDrive = false;
+      enterDrive();
+    }
+  }
+
+  function openDrive() {
+    pendingDrive = true;
+    open();
+    if (ready && middleModel) {
+      pendingDrive = false;
+      enterDrive();
+      return;
+    }
+    setTimeout(() => {
+      if (pendingDrive) { pendingDrive = false; enterDrive(); }
+    }, 1600);
+  }
+
   function open() {
     mask.classList.remove('hidden');
     init();
@@ -647,6 +673,7 @@
   }
 
   function close() {
+    pendingDrive = false;
     running = false;
     cancelAnimationFrame(raf);
     if (drive) exitDrive();
@@ -655,7 +682,7 @@
 
   btn.addEventListener('click', open);
   const dlcCard = document.getElementById('dlcCard');
-  if (dlcCard) dlcCard.addEventListener('click', open);
+  if (dlcCard) dlcCard.addEventListener('click', openDrive);
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 
