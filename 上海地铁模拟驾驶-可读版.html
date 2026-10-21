@@ -81854,6 +81854,7 @@ window.__sim = {
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
   let pendingDrive = false;
   let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0, labelCount = 0;
+  let tsr = null, tsrSign = null;
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
@@ -81908,10 +81909,38 @@ window.__sim = {
   const LOOK = 12000;               // 12 km ATP 前瞻
   let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
 
+  function baseLimitAt(x) {
+    let v = 350;
+    for (const l of BASE_LIMITS) if (x >= l.x) v = l.v;
+    return v;
+  }
+
   function activeLimits() {
     const out = BASE_LIMITS.filter(l => l.x < stopX);
+    if (tsr && tsr.start < stopX && tsr.end > segStart) {
+      out.push({ x: tsr.start, v: tsr.v });
+      out.push({ x: tsr.end, v: baseLimitAt(tsr.end) });
+    }
     out.push({ x: stopX, v: 0 });
+    out.sort((a, b) => a.x - b.x);
     return out;
+  }
+
+  function makeTsr() {
+    const a = segStart + 15000;
+    const b = stopX - 15000;
+    if (b <= a + 2000) return null;
+    const start = Math.round((a + Math.random() * (b - a)) / 100) * 100;
+    const v = [80, 120, 160][Math.floor(Math.random() * 3)];
+    return { start, end: start + 2000, v };
+  }
+
+  function showTsrSign() {
+    if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
+    if (!tsr) return;
+    tsrSign = speedSign(tsr.v);
+    tsrSign.position.set(-tsr.start, 0, 5.9);
+    corridor.add(tsrSign);
   }
 
   function limitAt(x) {
@@ -81963,6 +81992,28 @@ window.__sim = {
     baseX = obj.position.x;
     headBaseX = obj.position.x;
     dist = Math.max(size.x, size.z) * 1.55 + 4;
+  }
+
+  function speedSign(v) {
+    const g = new THREE.Group();
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f2f4f5'; ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = '#c8102e'; ctx.lineWidth = 18; ctx.strokeRect(9, 9, 238, 238);
+    ctx.fillStyle = '#111416';
+    ctx.font = '800 132px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(v), 128, 132);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const board = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.0), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+    board.position.set(0, 4.3, 0);
+    board.rotation.y = -Math.PI / 2;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.0, 0.18), new THREE.MeshStandardMaterial({ color: 0x9aa4ac, metalness: 0.8, roughness: 0.4 }));
+    post.position.set(0, 2.0, 0);
+    g.add(post, board);
+    return g;
   }
 
   function buildCorridor() {
@@ -82315,6 +82366,8 @@ window.__sim = {
     segStart = seg.start;
     segName = seg.name;
     sched = seg.sched;
+    tsr = null;
+    if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
     if (segSel) segSel.value = String(i);
     if (wasDrive) enterDrive();
   }
@@ -82338,6 +82391,8 @@ window.__sim = {
     stopX = next.end - 100;
     segName = next.name;
     sched = next.sched;
+    tsr = null;
+    if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
     if (segSel) segSel.value = String(idx + 1);
     startWall = performance.now();
     stopped = false; doorsOpen = false; departReady = false;
@@ -82361,6 +82416,7 @@ window.__sim = {
   function enterDrive() {
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     if (loadingEl) loadingEl.classList.add('hidden');
+    if (!tsr) { tsr = makeTsr(); showTsrSign(); }
     drive = true;
     driveX = -segStart;
     v = SPEED;
@@ -82730,12 +82786,13 @@ window.__sim = {
         stopped, stopErr, puncSec,
         punc: puncEl ? puncEl.textContent : '',
         station: staEl ? staEl.textContent : '',
-        segment: seg.label, segStart, segEnd: stopX,
+        segment: seg.label, segStart, segEnd: stopX, tsr,
         doorsOpen, departReady, doorT, dwell: dwellEl ? dwellEl.textContent : '',
         cars: trainRoot ? 17 : 1, labels: labelCount
       };
     },
     setSegment(i) { applySegment(i); },
+    setTsr(start, v, end) { tsr = { start, end: end == null ? start + 2000 : end, v }; showTsrSign(); },
     skipDwell() { if (stopped) dwellStart = performance.now() - 121000; },
     setPosition(m, kmh) {
       driveX = -Math.max(0, Math.min(RUN, m));
