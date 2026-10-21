@@ -236,3 +236,12 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 正式版 3.01 MB、可读版 3.67 MB；smoke 通过。
 - **B 仍未完成**：腰线是独立曲面贴花带，不是整车车身 UV 展开；
   鼻锥是圆鼻帽，不是 10–12 m 长鼻重雕。
+
+### DLC-1 第三十五轮（C 项前置：HSR_DATA 暴露）
+
+- 在 HSR 模块里暴露 `window.HSR_DATA`：RUN/SPEED/ACC/BRK、23 站、6 区段、
+  BASE_LIMITS、LEG_SCHED/EXPRESS_SCHED；供主游戏 `buildHsrService` 读取。
+- 只读快照，不改变现有 HSR canvas 行为；地铁 39 交路不受影响。
+- 验证：`RUN=1302000`、`STATIONS=23`、`SEGMENTS=6`、南京南 1018000、上海 1302000。
+- smoke 通过；正式版 3.01 MB、可读版 3.67 MB。
+- **C 仍未完成**：只是数据面打通，主场景/物理/HUD/会话尚未合并。

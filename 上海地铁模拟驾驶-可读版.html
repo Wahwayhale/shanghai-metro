@@ -82943,6 +82943,16 @@ window.__sim = {
   window.addEventListener('resize', () => { if (running) resize(); });
 
   /* 自动化测试用：只读状态 + 定位（不影响正常 UI） */
+  /* C 项第一步：把 HSR 线路数据暴露给主游戏，供 buildHsrService 使用 */
+  window.HSR_DATA = Object.freeze({
+    RUN, SPEED, ACC, BRK,
+    STATIONS: STATIONS.map(s => Object.assign({}, s)),
+    SEGMENTS: SEGMENTS.map(s => Object.assign({}, s)),
+    BASE_LIMITS: BASE_LIMITS.map(l => Object.assign({}, l)),
+    LEG_SCHED: LEG_SCHED.slice(),
+    EXPRESS_SCHED: EXPRESS_SCHED.slice()
+  });
+
   window.__hsr = {
     get state() {
       const x = Math.min(RUN, Math.max(0, -driveX));
