@@ -41,6 +41,8 @@
   const cabBtn = document.getElementById('hsrCabBtn');
   const cabHud = document.getElementById('hsrCabHud');
   const pantoEl = document.getElementById('hsrPanto');
+  const brakeEl = document.getElementById('hsrBrake');
+  const doorLockEl = document.getElementById('hsrDoorLock');
   const signalEl = document.getElementById('hsrSignal');
   const cabSignalEl = document.getElementById('cabSignal');
   const cabSpeedEl = document.getElementById('cabSpeed');
@@ -50,6 +52,7 @@
   const cabBrakeEl = document.getElementById('cabBrake');
   let cabMode = false;
   let pantoUp = true, vcbOn = true;
+  let brakeLevel = 0, ebBrake = false;
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
@@ -821,8 +824,9 @@
       lastT = t;
 
       throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
-      brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
-      if (!pantoUp || !vcbOn || doorsOpen) throttle = 0;
+      brake = Math.max(touchBrake ? 1 : 0, ebBrake ? 1.2 : brakeLevel / 4);
+      if (brakeLevel > 0 || ebBrake) throttle = 0;
+      if (!pantoUp || !vcbOn || doorsOpen || doorT > 0.05) throttle = 0;
 
       if (stopped && departReady && throttle) { departNext(); return; }
 
@@ -937,6 +941,8 @@
       if (cabTractionEl) cabTractionEl.style.width = Math.round(throttle * 100) + '%';
       if (cabBrakeEl) cabBrakeEl.style.width = Math.round(brake * 100) + '%';
       if (pantoEl) pantoEl.textContent = (pantoUp ? '受电弓 升' : '受电弓 降') + ' · VCB ' + (vcbOn ? '合' : '分');
+      if (brakeEl) brakeEl.textContent = ebBrake ? '紧急制动 EB' : '制动 ' + brakeLevel + '/4';
+      if (doorLockEl) doorLockEl.textContent = (doorsOpen || doorT > 0.05) ? '门联锁 开放' : '门联锁 锁闭';
       const nlSig = nextLimitAt(x);
       const sigTxt = (stopX - x < 2000) ? '红' : (nlSig.v < 350 ? '黄' : '绿');
       if (signalEl) signalEl.textContent = '信号 ' + sigTxt;
@@ -1098,6 +1104,9 @@
   window.addEventListener('keydown', (e) => {
     if (!running || !drive) return;
     const k = String(e.key || '').toLowerCase();
+    if (k === 's') { e.preventDefault(); brakeLevel = Math.min(4, brakeLevel + 1); ebBrake = false; setHint('制动 ' + brakeLevel + '/4'); return; }
+    if (k === 'b') { e.preventDefault(); brakeLevel = 4; ebBrake = true; setHint('紧急制动 EB'); return; }
+    if (k === 'w') { brakeLevel = 0; ebBrake = false; }
     if (k === 'p') { pantoUp = !pantoUp; if (!pantoUp) vcbOn = false; setHint(pantoUp ? '受电弓升起' : '受电弓降下 · VCB 断开'); return; }
     if (k === 'v') { if (!pantoUp) { setHint('先升受电弓再合 VCB'); return; } vcbOn = !vcbOn; setHint(vcbOn ? 'VCB 合 · 主断路器闭合' : 'VCB 分 · 牵引封锁'); return; }
     if (k === 'c') { e.preventDefault(); toggleCab(); return; }
