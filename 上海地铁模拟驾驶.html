@@ -535,6 +535,21 @@
   #hsrMainResult .rows b{color:#8fe06a;font-size:18px}
   #hsrMainResult .acts{display:flex;gap:8px;margin-top:18px}
   #hsrMainResult .acts button{flex:1}
+  #hsrCabHud{position:absolute;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 42%,rgba(3,6,8,.55) 100%)}
+  #hsrCabHud .cab-top{position:absolute;left:50%;top:18px;transform:translateX(-50%);text-align:center;color:#dff0fa;text-shadow:0 2px 8px #000}
+  #hsrCabHud .cab-top b{font:800 34px/1 ui-monospace,monospace;letter-spacing:.02em}
+  #hsrCabHud .cab-top span{font-size:11px;color:#93a7b4;margin-left:4px}
+  #hsrCabHud .cab-atp{font:700 12px/1.4 ui-monospace,monospace;color:#8fe06a;margin-top:5px}
+  #hsrCabHud .cab-next{font:600 10px/1.4 ui-monospace,monospace;color:#ffd479;margin-top:4px}
+  #hsrCabHud .cab-window{position:absolute;left:6.5%;right:6.5%;top:7%;bottom:26%;border:16px solid #090d10;border-radius:20px;box-shadow:0 0 0 2000px rgba(2,5,7,.58),inset 0 0 40px rgba(0,0,0,.35)}
+  #hsrCabHud .cab-window::before,#hsrCabHud .cab-window::after{content:"";position:absolute;top:-16px;bottom:-16px;width:26px;background:#090d10}
+  #hsrCabHud .cab-window::before{left:18%}
+  #hsrCabHud .cab-window::after{right:18%}
+  #hsrCabHud .cab-dash{position:absolute;left:0;right:0;bottom:0;height:26%;background:linear-gradient(180deg,rgba(8,12,15,.2),rgba(5,8,10,.96));border-top:1px solid rgba(150,180,200,.18)}
+  #hsrCabHud .cab-screen{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);width:min(520px,60%);height:64px;border-radius:10px;border:1px solid rgba(120,200,255,.25);background:rgba(8,20,28,.82);box-shadow:inset 0 0 24px rgba(60,150,220,.16)}
+  #hsrCabHud .cab-levers{position:absolute;left:50%;bottom:1.2%;transform:translateX(-50%);display:flex;gap:10px;align-items:center;font:600 9px ui-monospace,monospace;color:#9eb1bd}
+  #hsrCabHud .cab-levers i{display:block;width:120px;height:5px;border-radius:3px;background:#1d2a33;overflow:hidden}
+  #hsrCabHud .cab-levers i b{display:block;height:100%;width:0;background:#8fe06a}
   .hsr-result{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.72);backdrop-filter:blur(8px);border-radius:12px}
   .hsr-result-card{width:min(420px,86%);padding:22px 24px;border-radius:14px;background:rgba(14,21,27,.96);border:1px solid rgba(200,16,46,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
   .hr-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.14em}
@@ -704,6 +719,11 @@
       </div>
       <div class="hsr-stage">
         <canvas id="hsrCanvas"></canvas>
+        <div id="hsrCabHud" class="hidden">
+          <div class="cab-window"></div>
+          <div class="cab-top"><b id="cabSpeed">350</b><span>km/h</span><div class="cab-atp" id="cabAtp">ATP 350</div><div class="cab-next" id="cabNext">下一站 南京南</div></div>
+          <div class="cab-dash"><div class="cab-screen"></div><div class="cab-levers"><span>牵引</span><i><b id="cabTraction"></b></i><span>制动</span><i><b id="cabBrake"></b></i></div></div>
+        </div>
         <div id="hsrLoading" class="hidden"><b>DLC 值乘</b><span>正在编组 CR400AF-BS · 17 辆…</span></div>
         <div id="hsrResult" class="hsr-result hidden">
           <div class="hsr-result-card">
@@ -739,6 +759,7 @@
         <button id="hsrBrake" class="btn-ghost">制动 <kbd>S</kbd></button>
         <button id="hsrResetDrive" class="btn-ghost">重置 <kbd>R</kbd></button>
         <button id="hsrDepart" class="btn-ghost hidden">发车 <kbd>W</kbd></button>
+        <button id="hsrCabBtn" class="btn-ghost">驾驶室 <kbd>C</kbd></button>
       </div>
       <div id="hsrHint">拖拽旋转 · 滚轮缩放 · W/↑ 牵引 · S/↓ 制动 · 这是 DLC-0/1 资产验证，不是正式线路</div>
       <div class="modal-actions">
@@ -20851,6 +20872,9 @@ window.__sim = {
   const resultRows = document.getElementById('hsrResultRows');
   const againBtn = document.getElementById('hsrAgain');
   const resultMenuBtn = document.getElementById('hsrResultMenu');
+  const cabBtn = document.getElementById('hsrCabBtn');
+  const cabHud = document.getElementById('hsrCabHud');
+  let cabMode = false;
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
@@ -21685,8 +21709,13 @@ window.__sim = {
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
 
-      camera.position.set(driveX - 38, 8.0, 22);
-      camera.lookAt(driveX + 4, 2.2, 0);
+      if (cabMode) {
+        camera.position.set(driveX - 8.6, 3.15, 0.05);
+        camera.lookAt(driveX - 40, 2.15, 0);
+      } else {
+        camera.position.set(driveX - 38, 8.0, 22);
+        camera.lookAt(driveX + 4, 2.2, 0);
+      }
 
       const x = Math.min(RUN, Math.max(0, -driveX));
       const permNow = permittedAt(x);
@@ -21771,6 +21800,16 @@ window.__sim = {
     setHint('值乘完成 · 查看结算');
   }
 
+  function toggleCab(on) {
+    if (!drive) return;
+    cabMode = (on == null) ? !cabMode : !!on;
+    if (cabHud) cabHud.classList.toggle('hidden', !cabMode);
+    const dh = document.getElementById('hsrDriveHud');
+    if (dh) dh.classList.toggle('hidden', cabMode);
+    if (cabBtn) cabBtn.textContent = cabMode ? '外部视角 C' : '驾驶室 C';
+    setHint(cabMode ? '驾驶室视角 · W 牵引 / S 制动 / C 切外部' : '外部视角 · C 切驾驶室');
+  }
+
   function maybeAutoDrive() {
     if (pendingDrive && ready && middleModel) {
       pendingDrive = false;
@@ -21826,6 +21865,7 @@ window.__sim = {
 
   segSel && segSel.addEventListener('change', (e) => applySegment(Number(e.target.value)));
   departBtn && departBtn.addEventListener('click', departNext);
+  cabBtn && cabBtn.addEventListener('click', () => toggleCab());
   againBtn && againBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); resetDrive(); });
   resultMenuBtn && resultMenuBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); close(); });
 
@@ -21872,6 +21912,7 @@ window.__sim = {
   window.addEventListener('keydown', (e) => {
     if (!running || !drive) return;
     const k = String(e.key || '').toLowerCase();
+    if (k === 'c') { e.preventDefault(); toggleCab(); return; }
     if (k === 'w' || k === 'arrowup' || k === 's' || k === 'arrowdown' || k === 'r') {
       e.preventDefault();
       if (k === 'r') { resetDrive(); return; }

@@ -38,6 +38,9 @@
   const resultRows = document.getElementById('hsrResultRows');
   const againBtn = document.getElementById('hsrAgain');
   const resultMenuBtn = document.getElementById('hsrResultMenu');
+  const cabBtn = document.getElementById('hsrCabBtn');
+  const cabHud = document.getElementById('hsrCabHud');
+  let cabMode = false;
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
@@ -872,8 +875,13 @@
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
 
-      camera.position.set(driveX - 38, 8.0, 22);
-      camera.lookAt(driveX + 4, 2.2, 0);
+      if (cabMode) {
+        camera.position.set(driveX - 8.6, 3.15, 0.05);
+        camera.lookAt(driveX - 40, 2.15, 0);
+      } else {
+        camera.position.set(driveX - 38, 8.0, 22);
+        camera.lookAt(driveX + 4, 2.2, 0);
+      }
 
       const x = Math.min(RUN, Math.max(0, -driveX));
       const permNow = permittedAt(x);
@@ -958,6 +966,16 @@
     setHint('值乘完成 · 查看结算');
   }
 
+  function toggleCab(on) {
+    if (!drive) return;
+    cabMode = (on == null) ? !cabMode : !!on;
+    if (cabHud) cabHud.classList.toggle('hidden', !cabMode);
+    const dh = document.getElementById('hsrDriveHud');
+    if (dh) dh.classList.toggle('hidden', cabMode);
+    if (cabBtn) cabBtn.textContent = cabMode ? '外部视角 C' : '驾驶室 C';
+    setHint(cabMode ? '驾驶室视角 · W 牵引 / S 制动 / C 切外部' : '外部视角 · C 切驾驶室');
+  }
+
   function maybeAutoDrive() {
     if (pendingDrive && ready && middleModel) {
       pendingDrive = false;
@@ -1013,6 +1031,7 @@
 
   segSel && segSel.addEventListener('change', (e) => applySegment(Number(e.target.value)));
   departBtn && departBtn.addEventListener('click', departNext);
+  cabBtn && cabBtn.addEventListener('click', () => toggleCab());
   againBtn && againBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); resetDrive(); });
   resultMenuBtn && resultMenuBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); close(); });
 
@@ -1059,6 +1078,7 @@
   window.addEventListener('keydown', (e) => {
     if (!running || !drive) return;
     const k = String(e.key || '').toLowerCase();
+    if (k === 'c') { e.preventDefault(); toggleCab(); return; }
     if (k === 'w' || k === 'arrowup' || k === 's' || k === 'arrowdown' || k === 'r') {
       e.preventDefault();
       if (k === 'r') { resetDrive(); return; }
