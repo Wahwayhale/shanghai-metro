@@ -390,7 +390,9 @@ async function buildHsrService() {
     ],
     train, begin: performance.now(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
-    doorT: 0, legs: [], result: false
+    doorT: 0, legs: [], result: false,
+    legSched: [11640, 3840], legStart: performance.now(),
+    tsr: (() => { const start = 300000 + Math.floor(Math.random() * 600000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
@@ -429,12 +431,15 @@ function showHsrMainResult() {
     '<span>区段　京沪高铁 G25</span>' +
     '<span>停站 ' + legs.length + ' 段 · 末段 ' + legs[legs.length - 1].name + '</span>' +
     '<span>平均停站误差　' + avgErr.toFixed(2) + ' m</span>' +
+    '<span>正晚点　' + (legs[legs.length - 1].punc >= 0 ? '早点' : '晚点') + ' ' + Math.abs(Math.round(legs[legs.length - 1].punc || 0)) + ' s</span>' +
     '<span>得分　<b>' + score + ' · ' + grade + '</b></span>';
   const r = document.getElementById('hsrMainResult');
   if (r) r.classList.remove('hidden');
 }
 
 function hsrMainLimit(x) {
+  const t = G.hsr && G.hsr.tsr;
+  if (t && x >= t.start && x < t.end) return t.v;
   if (x < 1201000) return 350;
   if (x < 1270000) return 300;
   if (x < 1290000) return 250;
@@ -462,7 +467,8 @@ function updateHsrMain(dt) {
       st.stopped = true;
       st.stopErr = st.x - stop;
       st.v = 0;
-      st.legs.push({ name: st.stops[st.stopIdx].name, err: st.stopErr });
+      const punc = st.legSched[st.stopIdx] - (performance.now() - st.legStart) / 1000;
+      st.legs.push({ name: st.stops[st.stopIdx].name, err: st.stopErr, punc });
       if (st.stopIdx >= st.stops.length - 1) showHsrMainResult();
     }
   } else {
@@ -473,6 +479,7 @@ function updateHsrMain(dt) {
         st.stopped = false;
         st.v = 0;
         st.stopErr = null;
+        st.legStart = performance.now();
         st.begin = performance.now();
       } else {
         showHsrMainResult();
@@ -496,6 +503,7 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+  if (el('hmTsr')) el('hmTsr').textContent = st.tsr ? 'TSR ' + st.tsr.v + ' · ' + (st.tsr.start / 1000).toFixed(0) + ' km' : '';
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
 }
 function exitHsrMain() {
