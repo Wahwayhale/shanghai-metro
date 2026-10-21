@@ -72,7 +72,8 @@ const ENTRIES = [
   'three/examples/jsm/postprocessing/ShaderPass.js',
   'three/examples/jsm/postprocessing/OutputPass.js',
   'three/examples/jsm/shaders/FXAAShader.js',
-  'three/examples/jsm/utils/BufferGeometryUtils.js'
+  'three/examples/jsm/utils/BufferGeometryUtils.js',
+  'three/examples/jsm/loaders/GLTFLoader.js'
 ];
 
 const cache = new Map();
@@ -135,7 +136,7 @@ function load(file) {
 for (const e of ENTRIES) load(path.join(NM, e));
 
 const jsmSrc = order.map(o => `/* ${path.basename(o.file)} */\n${o.src}`).join('\n');
-const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'FXAAShader', 'BufferGeometryUtils'];
+const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'FXAAShader', 'BufferGeometryUtils', 'GLTFLoader'];
 const bguFile = path.join(NM, 'three/examples/jsm/utils/BufferGeometryUtils.js');
 const bguNames = exportsByName.get(bguFile) || [];
 const jsmBlock = `const { ${want.join(', ')} } = (function(){
@@ -165,10 +166,22 @@ if (READABLE) {
 }
 
 /* ---------- 5. 输出 ---------- */
+/* DLC 资产：京沪高铁头车 GLB 以 base64 内联，保持单文件离线。
+   没有资产时仍能构建（预览按钮会提示资产缺失）。 */
+const hsrGlbFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-headcar-v018.glb');
+let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\n';
+if (fs.existsSync(hsrGlbFile)) {
+  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${JSON.stringify(fs.readFileSync(hsrGlbFile).toString('base64'))};\n`;
+  console.log('[dlc] 高铁头车 GLB 内联', (fs.statSync(hsrGlbFile).size / 1024).toFixed(0) + ' KB');
+} else {
+  console.warn('[dlc] 未找到高铁 GLB，预览按钮会提示缺失：' + hsrGlbFile);
+}
+
 const bundle = `(function(){
 'use strict';
 ${threeBlock}
 ${jsmBlock}
+${hsrAsset}
 ${code}
 })();`;
 

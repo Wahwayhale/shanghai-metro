@@ -490,6 +490,20 @@
   .save-row button:hover{background:rgba(255,255,255,.1);color:#dbe6ed;border-color:rgba(140,198,63,.45)}
   #saveFile{display:none}
 
+  /* ============ 高铁 DLC 资产预览 ============ */
+  .hsr-btn{display:block;width:100%;margin-top:10px;padding:10px 16px;border-radius:12px;cursor:pointer;
+    background:rgba(200,16,46,.10);border:1px solid rgba(200,16,46,.38);color:#ffb3bf;
+    font:inherit;font-size:12px;font-weight:650;letter-spacing:.03em;transition:.18s;text-align:left}
+  .hsr-btn span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#9f7d84;letter-spacing:.02em}
+  .hsr-btn:hover{background:rgba(200,16,46,.18);border-color:rgba(200,16,46,.6);color:#ffd5dc;transform:translateY(-1px)}
+  #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
+    border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
+  #hsrCanvas:active{cursor:grabbing}
+  #hsrHint{font-size:11px;color:#8294a1;margin-top:8px;letter-spacing:.02em}
+  .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#b9c9d4;
+    font:inherit;font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
+  .btn-ghost:hover{background:rgba(255,255,255,.12);color:#e6eef4;border-color:rgba(140,198,63,.45)}
+
   /* ============ 性能探针 ============ */
   #perfBadge{position:absolute;right:14px;bottom:58px;z-index:45;font:600 11px/1.5 ui-monospace,monospace;
     color:#7f939f;background:rgba(8,14,18,.72);border:1px solid rgba(255,255,255,.10);
@@ -555,6 +569,7 @@
       <div class="start-wrap">
         <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
+        <button id="hsrPreviewBtn" class="hsr-btn">高铁 DLC 头车预览 <span>CR400AF-BS · 25.7 m · 350 km/h 设计</span></button>
       </div>
     </div>
         <div class="save-row">
@@ -563,6 +578,20 @@
       <input id="saveFile" type="file" accept="application/json,.json">
     </div>
 <div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
+  </div>
+
+  <!-- ===================== 高铁 DLC 资产预览 ===================== -->
+  <div id="hsrPreview" class="modal-mask hidden">
+    <div class="modal panel" style="width:min(980px,94vw)">
+      <h3>CR400AF-BS · 高铁 DLC</h3>
+      <div class="sub">头车 25.7 m · 17 辆编组目标 · 本地 GLB 资产预览</div>
+      <canvas id="hsrCanvas"></canvas>
+      <div id="hsrHint">拖拽旋转 · 滚轮缩放 · 这是 DLC-0/1 资产验证，不是正式线路</div>
+      <div class="modal-actions">
+        <button id="hsrReset" class="btn-ghost">重置视角</button>
+        <button id="hsrClose" class="btn-primary">关闭</button>
+      </div>
+    </div>
   </div>
 
   <!-- ===================== 加载 ===================== -->
