@@ -34,12 +34,17 @@
   const departBtn = document.getElementById('hsrDepart');
   const loadingEl = document.getElementById('hsrLoading');
   const menuEl = document.getElementById('menu');
+  const resultEl = document.getElementById('hsrResult');
+  const resultRows = document.getElementById('hsrResultRows');
+  const againBtn = document.getElementById('hsrAgain');
+  const resultMenuBtn = document.getElementById('hsrResultMenu');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
   let pendingDrive = false;
   let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0, labelCount = 0;
   let tsr = null, tsrSign = null;
+  let atpViolations = 0, lastAtpWarn = 0, resultShown = false;
   let stopPlan = [], stopIdx = 0, stopPlanSeg = null;
   const LEG_SCHED = [720, 600, 540, 540, 450, 450];
   let audioCtx = null;
@@ -621,6 +626,8 @@
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     if (loadingEl) loadingEl.classList.add('hidden');
     if (!tsr) { tsr = makeTsr(); showTsrSign(); }
+    atpViolations = 0; lastAtpWarn = 0; resultShown = false;
+    if (resultEl) resultEl.classList.add('hidden');
     if (!stopPlan.length || stopPlanSeg !== seg) buildStopPlan();
     drive = true;
     driveX = -segStart;
@@ -628,6 +635,8 @@
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
     stopped = false; stopErr = null; puncSec = null;
+    atpViolations = 0; lastAtpWarn = 0; resultShown = false;
+    if (resultEl) resultEl.classList.add('hidden');
     startWall = performance.now();
     Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     lastT = performance.now();
@@ -723,6 +732,8 @@
         else if (over > 8 / 3.6) atpWarn = 2;
         else if (over > 2 / 3.6) atpWarn = 1;
         else atpWarn = 0;
+        if (atpWarn >= 2 && lastAtpWarn < 2) atpViolations++;
+        lastAtpWarn = atpWarn;
 
         /* 简化动力学：牵引 0.45 m/s²、常用制动 0.75 m/s²、高速阻力 */
         const drag = 0.000005 * v * v;
@@ -798,6 +809,7 @@
         if (staEl) staEl.textContent = segName + ' · 已停站';
         if (modeEl) modeEl.textContent = '停车';
         setHint(segName + '停车 · 车门开启 · 2 min 停站 · 关门后按 W 发车');
+        if (stopIdx >= stopPlan.length - 1) showResult();
       } else if (!stopped && puncEl) {
         puncEl.textContent = '运行 ' + fmtTime((performance.now() - startWall) / 1000);
       }
@@ -829,6 +841,27 @@
       if (model && ready) model.rotation.y += 0.0015;
     }
     renderer.render(scene, camera);
+  }
+
+  function showResult() {
+    if (resultShown) return;
+    resultShown = true;
+    const err = Math.abs(stopErr || 0);
+    const stopScore = Math.max(0, 40 - err * 20);
+    const puncScore = Math.max(0, 30 - Math.abs(puncSec || 0) * 0.5);
+    const atpScore = Math.max(0, 30 - atpViolations * 10);
+    const total = Math.round(stopScore + puncScore + atpScore);
+    const grade = total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : 'C';
+    if (resultRows) {
+      resultRows.innerHTML =
+        `<span>区段　${seg.label}</span>` +
+        `<span>停站误差　${(stopErr || 0).toFixed(2)} m</span>` +
+        `<span>正晚点　${(puncSec || 0) >= 0 ? '早点' : '晚点'} ${Math.abs(Math.round(puncSec || 0))} s</span>` +
+        `<span>ATP 超速　${atpViolations} 次</span>` +
+        `<span>得分　<b>${total} · ${grade}</b></span>`;
+    }
+    if (resultEl) resultEl.classList.remove('hidden');
+    setHint('值乘完成 · 查看结算');
   }
 
   function maybeAutoDrive() {
@@ -865,6 +898,7 @@
 
   function close() {
     pendingDrive = false;
+    if (resultEl) resultEl.classList.add('hidden');
     if (loadingEl) loadingEl.classList.add('hidden');
     if (menuEl) menuEl.classList.remove('hidden');
     running = false;
@@ -885,6 +919,8 @@
 
   segSel && segSel.addEventListener('change', (e) => applySegment(Number(e.target.value)));
   departBtn && departBtn.addEventListener('click', departNext);
+  againBtn && againBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); resetDrive(); });
+  resultMenuBtn && resultMenuBtn.addEventListener('click', () => { if (resultEl) resultEl.classList.add('hidden'); close(); });
 
   function resetDrive() {
     segStart = seg.start;

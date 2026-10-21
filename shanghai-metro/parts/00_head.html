@@ -518,6 +518,14 @@
     gap:6px;background:rgba(5,10,14,.78);backdrop-filter:blur(6px);border-radius:12px;color:#cfdde7}
   #hsrLoading b{font-size:15px;font-weight:750;letter-spacing:.04em}
   #hsrLoading span{font-size:10px;color:#8fa3b0;letter-spacing:.04em}
+  .hsr-result{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.72);backdrop-filter:blur(8px);border-radius:12px}
+  .hsr-result-card{width:min(420px,86%);padding:22px 24px;border-radius:14px;background:rgba(14,21,27,.96);border:1px solid rgba(200,16,46,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .hr-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.14em}
+  .hsr-result h4{margin:7px 0 14px;font-size:22px;color:#f2f7fa}
+  #hsrResultRows{display:flex;flex-direction:column;gap:7px;font:500 12px/1.5 ui-monospace,monospace;color:#b9c9d4}
+  #hsrResultRows b{color:#8fe06a;font-size:16px}
+  .hr-actions{display:flex;gap:8px;margin-top:18px}
+  .hr-actions button{flex:1}
   #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
     border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
   #hsrCanvas:active{cursor:grabbing}
@@ -656,6 +664,17 @@
       <div class="hsr-stage">
         <canvas id="hsrCanvas"></canvas>
         <div id="hsrLoading" class="hidden"><b>DLC 值乘</b><span>正在编组 CR400AF-BS · 17 辆…</span></div>
+        <div id="hsrResult" class="hsr-result hidden">
+          <div class="hsr-result-card">
+            <div class="hr-kicker">DLC · 京沪高铁</div>
+            <h4 id="hsrResultTitle">值乘完成</h4>
+            <div id="hsrResultRows"></div>
+            <div class="hr-actions">
+              <button id="hsrAgain" class="btn-ghost">再跑一次</button>
+              <button id="hsrResultMenu" class="btn-primary">返回主菜单</button>
+            </div>
+          </div>
+        </div>
         <div id="hsrDriveHud" class="hidden">
           <b id="hsrSpeed">0</b><span>km/h</span>
           <i id="hsrDist">0.00 km</i>
