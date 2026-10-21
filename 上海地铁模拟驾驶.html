@@ -496,9 +496,17 @@
     font:inherit;font-size:12px;font-weight:650;letter-spacing:.03em;transition:.18s;text-align:left}
   .hsr-btn span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#9f7d84;letter-spacing:.02em}
   .hsr-btn:hover{background:rgba(200,16,46,.18);border-color:rgba(200,16,46,.6);color:#ffd5dc;transform:translateY(-1px)}
+  .hsr-stage{position:relative}
   #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
     border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
   #hsrCanvas:active{cursor:grabbing}
+  #hsrDriveHud{position:absolute;left:16px;top:14px;z-index:3;padding:10px 14px;border-radius:10px;
+    background:rgba(5,10,14,.72);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(8px);
+    font:600 11px/1.35 ui-monospace,monospace;color:#cfdde7;pointer-events:none}
+  #hsrDriveHud b{font-size:30px;line-height:1;letter-spacing:-.02em;color:#fff}
+  #hsrDriveHud span{font-size:11px;color:#8fa6b6;margin-left:3px}
+  #hsrDriveHud i{display:block;margin-top:5px;font-style:normal;color:#8fe06a}
+  #hsrDriveHud em{display:block;margin-top:2px;font-style:normal;font-size:9.5px;color:#7d929f;letter-spacing:.02em}
   #hsrHint{font-size:11px;color:#8294a1;margin-top:8px;letter-spacing:.02em}
   .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#b9c9d4;
     font:inherit;font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
@@ -585,9 +593,17 @@
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
       <div class="sub">头车 25.7 m · 17 辆编组目标 · 本地 GLB 资产预览</div>
-      <canvas id="hsrCanvas"></canvas>
+      <div class="hsr-stage">
+        <canvas id="hsrCanvas"></canvas>
+        <div id="hsrDriveHud" class="hidden">
+          <b id="hsrSpeed">350</b><span>km/h</span>
+          <i id="hsrDist">0.00 km</i>
+          <em>5.0 km 走廊 · 350 km/h 技术验证</em>
+        </div>
+      </div>
       <div id="hsrHint">拖拽旋转 · 滚轮缩放 · 这是 DLC-0/1 资产验证，不是正式线路</div>
       <div class="modal-actions">
+        <button id="hsrDrive" class="btn-ghost">350 km/h 走廊验证</button>
         <button id="hsrReset" class="btn-ghost">重置视角</button>
         <button id="hsrClose" class="btn-primary">关闭</button>
       </div>
@@ -20463,9 +20479,10 @@ window.__sim = {
 
 /* ===== 90_hsr_preview.js ===== */
 /* ============================================================
-   高铁 DLC 资产预览（DLC-0/1 验证）
-   - 把 build2 内联的 CR400AF-BS GLB 用 GLTFLoader 解析出来
-   - 菜单里点「高铁 DLC 资产预览」打开，拖拽旋转 / 滚轮缩放
+   高铁 DLC 资产预览 + 350 km/h 走廊验证（DLC-0/1）
+   - build2 内联的 CR400AF-BS GLB 用 GLTFLoader 解析
+   - 静态：拖拽旋转 / 滚轮缩放
+   - 走廊：5.0 km 高架，350 km/h 自动运行（97.22 m/s）
    - 不进入正式线路，不改现有地铁运营逻辑
    ============================================================ */
 (function hsrPreviewModule() {
@@ -20476,12 +20493,19 @@ window.__sim = {
 
   const closeBtn = document.getElementById('hsrClose');
   const resetBtn = document.getElementById('hsrReset');
+  const driveBtn = document.getElementById('hsrDrive');
   const hint = document.getElementById('hsrHint');
+  const hud = document.getElementById('hsrDriveHud');
+  const distEl = document.getElementById('hsrDist');
+  const speedEl = document.getElementById('hsrSpeed');
 
-  let renderer = null, scene = null, camera = null, model = null;
+  let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let raf = 0, running = false, ready = false;
-  let yaw = 0.72, pitch = 0.18, dist = 58;
+  let yaw = 0.72, pitch = 0.18, dist = 48;
   let dragging = false, lastX = 0, lastY = 0;
+  let drive = false, driveX = 0, baseX = 0, lastT = 0;
+  const RUN = 5000;                 // 5.0 km
+  const SPEED = 350 / 3.6;          // 97.222 m/s
 
   function setHint(text) { if (hint) hint.textContent = text; }
 
@@ -20499,7 +20523,70 @@ window.__sim = {
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     obj.position.sub(center);
+    baseX = obj.position.x;
     dist = Math.max(size.x, size.z) * 1.55 + 4;
+  }
+
+  function buildCorridor() {
+    if (corridor) return;
+    corridor = new THREE.Group();
+    corridor.name = 'HSR-5KM';
+
+    const deckMat = new THREE.MeshStandardMaterial({ color: 0x3b4249, roughness: 0.92, metalness: 0.05 });
+    const railMat = new THREE.MeshStandardMaterial({ color: 0x9aa4ac, roughness: 0.35, metalness: 0.9 });
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0x4d565e, roughness: 0.6, metalness: 0.7 });
+
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.55, 11), deckMat);
+    deck.position.set(-RUN / 2, -0.28, 0);
+    corridor.add(deck);
+
+    for (const z of [-0.7175, 0.7175]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.12, 0.12), railMat);
+      rail.position.set(-RUN / 2, 0.06, z);
+      corridor.add(rail);
+    }
+
+    // sleepers every 2 m
+    const sleeperGeo = new THREE.BoxGeometry(0.24, 0.08, 2.6);
+    const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.95 });
+    const count = Math.floor(RUN / 2);
+    const sleepers = new THREE.InstancedMesh(sleeperGeo, sleeperMat, count);
+    const m4 = new THREE.Matrix4();
+    for (let i = 0; i < count; i++) {
+      m4.makeTranslation(-i * 2, 0.02, 0);
+      sleepers.setMatrixAt(i, m4);
+    }
+    sleepers.instanceMatrix.needsUpdate = true;
+    corridor.add(sleepers);
+
+    // catenary masts every 50 m on both sides + one contact wire
+    const mastGeo = new THREE.BoxGeometry(0.22, 5.8, 0.22);
+    const mastCount = Math.floor(RUN / 50) * 2;
+    const masts = new THREE.InstancedMesh(mastGeo, steelMat, mastCount);
+    let k = 0;
+    for (let i = 0; i < RUN / 50; i++) {
+      for (const z of [-5.1, 5.1]) {
+        m4.makeTranslation(-i * 50 - 25, 2.9, z);
+        masts.setMatrixAt(k++, m4);
+      }
+    }
+    masts.instanceMatrix.needsUpdate = true;
+    corridor.add(masts);
+
+    const wire = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0x5d6a73 }));
+    wire.position.set(-RUN / 2, 5.6, 0);
+    corridor.add(wire);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(RUN + 600, 500),
+      new THREE.MeshStandardMaterial({ color: 0x10161a, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(-RUN / 2, -18, 0);
+    corridor.add(ground);
+
+    corridor.visible = false;
+    scene.add(corridor);
   }
 
   function init() {
@@ -20507,26 +20594,29 @@ window.__sim = {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMappingExposure = 1.25;
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x080d11);
 
-    scene.add(new THREE.HemisphereLight(0xcfe3f2, 0x1a1410, 1.4));
+    scene.add(new THREE.HemisphereLight(0xcfe3f2, 0x1a1410, 1.5));
     const key = new THREE.DirectionalLight(0xfff2df, 2.8);
     key.position.set(40, -55, 60);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0x8fc4ff, 1.1);
+    const fill = new THREE.DirectionalLight(0x8fc4ff, 1.2);
     fill.position.set(-50, 25, 25);
     scene.add(fill);
     const rim = new THREE.DirectionalLight(0xffd0a8, 1.2);
     rim.position.set(0, 40, -55);
     scene.add(rim);
 
-    const grid = new THREE.GridHelper(160, 32, 0x2b3d48, 0x15222a);
+    grid = new THREE.GridHelper(160, 32, 0x2b3d48, 0x15222a);
     grid.position.y = -2.1;
     scene.add(grid);
 
-    camera = new THREE.PerspectiveCamera(38, 1, 0.1, 3000);
+    buildCorridor();
+
+    camera = new THREE.PerspectiveCamera(38, 1, 0.1, 5000);
     resize();
 
     if (typeof GLTFLoader === 'undefined' || typeof HSR_TRAIN_GLB_B64 === 'undefined' || !HSR_TRAIN_GLB_B64) {
@@ -20550,7 +20640,7 @@ window.__sim = {
         fitModel(model);
         scene.add(model);
         ready = true;
-        setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 这是资产验证，不是正式线路');
+        setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
       }, (err) => {
         console.error('[hsr] GLB 解析失败', err);
         setHint('GLB 解析失败：' + (err && err.message ? err.message : err));
@@ -20561,16 +20651,62 @@ window.__sim = {
     }
   }
 
-  function animate() {
+  function enterDrive() {
+    if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
+    drive = true;
+    driveX = 0;
+    lastT = performance.now();
+    grid.visible = false;
+    corridor.visible = true;
+    scene.fog = new THREE.Fog(0x0a1116, 350, 1600);
+    hud.classList.remove('hidden');
+    if (speedEl) speedEl.textContent = '350';
+    if (distEl) distEl.textContent = '0.00 km';
+    if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
+    model.position.x = baseX;
+    model.rotation.y = 0;
+    setHint('5.0 km 直线走廊 · 350 km/h（97.22 m/s）· 自动运行，约 51 s 跑完');
+  }
+
+  function exitDrive() {
+    drive = false;
+    corridor.visible = false;
+    grid.visible = true;
+    scene.fog = null;
+    hud.classList.add('hidden');
+    if (driveBtn) driveBtn.textContent = '350 km/h 走廊验证';
+    if (model) {
+      model.position.x = baseX;
+      model.rotation.y = 0;
+    }
+    yaw = 0.72; pitch = 0.18;
+    setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+  }
+
+  function animate(now) {
     if (!running) return;
     raf = requestAnimationFrame(animate);
-    if (renderer && scene && camera) {
+    if (!renderer || !scene || !camera) return;
+
+    if (drive && model) {
+      const t = now || performance.now();
+      const dt = Math.min(0.25, Math.max(0, (t - lastT) / 1000));
+      lastT = t;
+      driveX -= SPEED * dt;
+      if (driveX < -RUN) driveX = 0;
+      model.position.x = baseX + driveX;
+      model.rotation.y = 0;
+
+      camera.position.set(driveX - 38, 8.0, 22);
+      camera.lookAt(driveX + 4, 2.2, 0);
+      if (distEl) distEl.textContent = (Math.min(RUN, -driveX) / 1000).toFixed(2) + ' km';
+    } else {
       const cy = Math.cos(pitch) * dist;
       camera.position.set(Math.sin(yaw) * cy, 8 + Math.sin(pitch) * dist, Math.cos(yaw) * cy);
       camera.lookAt(0, 1.6, 0);
       if (model && ready) model.rotation.y += 0.0015;
-      renderer.render(scene, camera);
     }
+    renderer.render(scene, camera);
   }
 
   function open() {
@@ -20579,13 +20715,14 @@ window.__sim = {
     running = true;
     cancelAnimationFrame(raf);
     if (renderer && scene && camera) {
-      requestAnimationFrame(() => { resize(); animate(); });
+      requestAnimationFrame(() => { resize(); lastT = performance.now(); animate(performance.now()); });
     }
   }
 
   function close() {
     running = false;
     cancelAnimationFrame(raf);
+    if (drive) exitDrive();
     mask.classList.add('hidden');
   }
 
@@ -20593,17 +20730,28 @@ window.__sim = {
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 
+  driveBtn && driveBtn.addEventListener('click', () => {
+    if (drive) exitDrive(); else enterDrive();
+  });
+
   resetBtn && resetBtn.addEventListener('click', () => {
-    yaw = 0.72; pitch = 0.18;
-    if (model) { model.rotation.y = 0; fitModel(model); }
+    if (drive) {
+      driveX = 0;
+      lastT = performance.now();
+      if (distEl) distEl.textContent = '0.00 km';
+    } else {
+      yaw = 0.72; pitch = 0.18;
+      if (model) { model.rotation.y = 0; fitModel(model); }
+    }
   });
 
   canvas.addEventListener('pointerdown', (e) => {
+    if (drive) return;
     dragging = true; lastX = e.clientX; lastY = e.clientY;
     canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
+    if (!dragging || drive) return;
     yaw -= (e.clientX - lastX) * 0.006;
     pitch = Math.max(-0.15, Math.min(0.75, pitch + (e.clientY - lastY) * 0.004));
     lastX = e.clientX; lastY = e.clientY;
@@ -20611,6 +20759,7 @@ window.__sim = {
   canvas.addEventListener('pointerup', () => { dragging = false; });
   canvas.addEventListener('pointercancel', () => { dragging = false; });
   canvas.addEventListener('wheel', (e) => {
+    if (drive) return;
     e.preventDefault();
     dist = Math.max(18, Math.min(180, dist * (1 + Math.sign(e.deltaY) * 0.08)));
   }, { passive: false });

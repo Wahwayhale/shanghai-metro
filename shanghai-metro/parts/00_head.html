@@ -496,9 +496,17 @@
     font:inherit;font-size:12px;font-weight:650;letter-spacing:.03em;transition:.18s;text-align:left}
   .hsr-btn span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#9f7d84;letter-spacing:.02em}
   .hsr-btn:hover{background:rgba(200,16,46,.18);border-color:rgba(200,16,46,.6);color:#ffd5dc;transform:translateY(-1px)}
+  .hsr-stage{position:relative}
   #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
     border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
   #hsrCanvas:active{cursor:grabbing}
+  #hsrDriveHud{position:absolute;left:16px;top:14px;z-index:3;padding:10px 14px;border-radius:10px;
+    background:rgba(5,10,14,.72);border:1px solid rgba(255,255,255,.10);backdrop-filter:blur(8px);
+    font:600 11px/1.35 ui-monospace,monospace;color:#cfdde7;pointer-events:none}
+  #hsrDriveHud b{font-size:30px;line-height:1;letter-spacing:-.02em;color:#fff}
+  #hsrDriveHud span{font-size:11px;color:#8fa6b6;margin-left:3px}
+  #hsrDriveHud i{display:block;margin-top:5px;font-style:normal;color:#8fe06a}
+  #hsrDriveHud em{display:block;margin-top:2px;font-style:normal;font-size:9.5px;color:#7d929f;letter-spacing:.02em}
   #hsrHint{font-size:11px;color:#8294a1;margin-top:8px;letter-spacing:.02em}
   .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#b9c9d4;
     font:inherit;font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
@@ -585,9 +593,17 @@
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
       <div class="sub">头车 25.7 m · 17 辆编组目标 · 本地 GLB 资产预览</div>
-      <canvas id="hsrCanvas"></canvas>
+      <div class="hsr-stage">
+        <canvas id="hsrCanvas"></canvas>
+        <div id="hsrDriveHud" class="hidden">
+          <b id="hsrSpeed">350</b><span>km/h</span>
+          <i id="hsrDist">0.00 km</i>
+          <em>5.0 km 走廊 · 350 km/h 技术验证</em>
+        </div>
+      </div>
       <div id="hsrHint">拖拽旋转 · 滚轮缩放 · 这是 DLC-0/1 资产验证，不是正式线路</div>
       <div class="modal-actions">
+        <button id="hsrDrive" class="btn-ghost">350 km/h 走廊验证</button>
         <button id="hsrReset" class="btn-ghost">重置视角</button>
         <button id="hsrClose" class="btn-primary">关闭</button>
       </div>
