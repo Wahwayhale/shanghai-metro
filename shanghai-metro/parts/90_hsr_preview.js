@@ -1045,6 +1045,8 @@
     mask.classList.add('hidden');
   }
 
+  const fallbackBtn = document.getElementById('hsrFallbackBtn');
+  if (fallbackBtn) fallbackBtn.addEventListener('click', openDrive);
   btn.addEventListener('click', () => {
     if (typeof window.buildHsrService === 'function') {
       window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });

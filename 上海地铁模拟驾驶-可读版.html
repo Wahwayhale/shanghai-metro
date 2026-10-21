@@ -671,6 +671,7 @@
         <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
         <button id="hsrPreviewBtn" class="hsr-btn">高铁 DLC · 主场景 G25 <span>CR400AF-BS · 17 辆 · 1302 km 正线 · 主场景驾驶</span></button>
+        <button id="hsrFallbackBtn" class="hsr-btn">弹窗版驾驶 <span>主场景异常时的备用入口</span></button>
       </div>
     </div>
         <div class="save-row">
@@ -83187,6 +83188,8 @@ window.__sim = {
     mask.classList.add('hidden');
   }
 
+  const fallbackBtn = document.getElementById('hsrFallbackBtn');
+  if (fallbackBtn) fallbackBtn.addEventListener('click', openDrive);
   btn.addEventListener('click', () => {
     if (typeof window.buildHsrService === 'function') {
       window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
