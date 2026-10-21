@@ -667,7 +667,7 @@
       <div class="start-wrap">
         <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
         <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
-        <button id="hsrPreviewBtn" class="hsr-btn">高铁 DLC · 京沪 G25 驾驶 <span>CR400AF-BS · 17 辆 · 1318 km / 1302 km 正线</span></button>
+        <button id="hsrPreviewBtn" class="hsr-btn">高铁 DLC · 主场景 G25 <span>CR400AF-BS · 17 辆 · 1302 km 正线 · 主场景驾驶</span></button>
       </div>
     </div>
         <div class="save-row">
@@ -21881,9 +21881,21 @@ window.__sim = {
     mask.classList.add('hidden');
   }
 
-  btn.addEventListener('click', openDrive);
+  btn.addEventListener('click', () => {
+    if (typeof window.buildHsrService === 'function') {
+      window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
+    } else {
+      openDrive();
+    }
+  });
   const dlcCard = document.getElementById('dlcCard');
-  if (dlcCard) dlcCard.addEventListener('click', openDrive);
+  if (dlcCard) dlcCard.addEventListener('click', () => {
+    if (typeof window.buildHsrService === 'function') {
+      window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
+    } else {
+      openDrive();
+    }
+  });
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 
