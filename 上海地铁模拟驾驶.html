@@ -20886,8 +20886,37 @@ window.__sim = {
     departReady = false;
     if (departBtn) departBtn.classList.add('hidden');
     const idx = SEGMENTS.indexOf(seg);
-    if (idx >= 0 && idx < SEGMENTS.length - 1) applySegment(idx + 1);
-    else resetDrive();
+    const next = SEGMENTS[idx + 1];
+    const x = Math.min(RUN, Math.max(0, -driveX));
+    if (!next || next.start < seg.start) {
+      stopped = true;
+      if (dwellEl) dwellEl.textContent = '终点站 · 本段结束';
+      setHint('终点站 · 本段结束 · R 重置');
+      return;
+    }
+    /* 物理发车：不切段/不瞬移，从 0 加速到下一站 */
+    seg = next;
+    segStart = x;
+    stopX = next.end - 100;
+    segName = next.name;
+    sched = next.sched;
+    if (segSel) segSel.value = String(idx + 1);
+    startWall = performance.now();
+    stopped = false; doorsOpen = false; departReady = false;
+    stopErr = null; puncSec = null;
+    v = 0; throttle = 0; brake = 0;
+    touchThrottle = 0; touchBrake = 0;
+    Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
+    if (doorEl) doorEl.textContent = '车门关闭';
+    if (dwellEl) dwellEl.textContent = '停站 --';
+    if (departBtn) departBtn.classList.add('hidden');
+    if (puncEl) puncEl.textContent = '运行 00:00';
+    if (staEl) staEl.textContent = `下一站 ${segName} · ${((stopX - x) / 1000).toFixed(1)} km`;
+    if (planEl) planEl.textContent = '计划用时 ' + fmtTime(sched);
+    if (nextEl) { const nl0 = nextLimitAt(x); nextEl.textContent = nextLabel(nl0, x); }
+    if (modeEl) modeEl.textContent = '发车';
+    atpWarn = 0;
+    setHint(`发车 · ${next.label} · 从 0 加速 · W 牵引`);
   }
 
   function enterDrive() {
