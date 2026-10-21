@@ -70,6 +70,18 @@
     padding-right:6px;mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%)}
   .route-list::-webkit-scrollbar{width:5px}
   .route-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+  .dlc-card{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px 14px;border-radius:12px;cursor:pointer;
+    border:1px solid rgba(200,16,46,.38);background:linear-gradient(110deg,rgba(45,10,18,.85),rgba(15,20,26,.75));
+    transition:.18s;position:relative;overflow:hidden}
+  .dlc-card:hover{transform:translateX(2px);border-color:rgba(200,16,46,.7);background:linear-gradient(110deg,rgba(65,12,24,.9),rgba(18,24,30,.85))}
+  .dlc-badge{width:34px;height:34px;border-radius:9px;background:#c8102e;color:#fff;display:grid;place-items:center;
+    font:800 17px/1 system-ui;flex:0 0 auto;box-shadow:0 0 16px rgba(200,16,46,.35)}
+  .dlc-main{flex:1;min-width:0}
+  .dlc-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.12em;margin-bottom:3px}
+  .dlc-title{font-size:14px;font-weight:700;color:#f0f5f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dlc-title small{font-size:10px;font-weight:500;color:#8b9ca8;margin-left:6px}
+  .dlc-meta{font-size:9.5px;color:#8fa3b0;margin-top:4px;letter-spacing:.02em}
+  .dlc-cta{font-size:11px;font-weight:700;color:#ffb3bf;flex:0 0 auto}
   .route-card{position:relative;flex:0 0 auto;display:grid;grid-template-columns:1fr 190px;gap:14px;align-items:center;
     padding:12px 16px 12px 19px;border-radius:12px;cursor:pointer;
     background:linear-gradient(100deg,rgba(17,23,29,.86),rgba(11,15,19,.7));
@@ -573,6 +585,15 @@
           <div style="font-size:10px;color:#5f7280;letter-spacing:.08em">A 型车 · 6 辆编组 · 最高 120 km/h</div>
         </div>
         <div id="routeList" class="route-list"></div>
+        <div id="dlcCard" class="dlc-card">
+          <div class="dlc-badge">G</div>
+          <div class="dlc-main">
+            <div class="dlc-kicker">DLC · 京沪高铁</div>
+            <div class="dlc-title">G25 标杆车 <small>北京南—上海虹桥 · 1318 km</small></div>
+            <div class="dlc-meta">CR400AF-BS · 17 辆 · 350 km/h · 295 km 切片 · ATP/停站</div>
+          </div>
+          <div class="dlc-cta">进入 →</div>
+        </div>
       </div>
     </div>
 
@@ -82144,11 +82165,27 @@ window.__sim = {
       }
     });
     let x = HEAD + GAP;
+    const carXs = [];
     for (let i = 0; i < 15; i++) {
-      const car = middleModel.clone(true);
-      car.position.set(x + MID / 2, 0, 0);
-      root.add(car);
+      carXs.push(x + MID / 2);
       x += MID + GAP;
+    }
+    /* 中间车用 InstancedMesh：15 辆 × 8 材质组 → 8 个 draw call，而不是 120 个 */
+    middleModel.updateMatrixWorld(true);
+    const midMeshes = [];
+    middleModel.traverse((o) => { if (o.isMesh) midMeshes.push(o); });
+    const im = new THREE.Matrix4();
+    const cm = new THREE.Matrix4();
+    for (const mesh of midMeshes) {
+      const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, carXs.length);
+      for (let i = 0; i < carXs.length; i++) {
+        cm.makeTranslation(carXs[i], 0, 0);
+        im.multiplyMatrices(cm, mesh.matrixWorld);
+        inst.setMatrixAt(i, im);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      inst.frustumCulled = false;
+      root.add(inst);
     }
     const tail = headModel.clone(true);
     tail.visible = true;
@@ -82426,6 +82463,8 @@ window.__sim = {
   }
 
   btn.addEventListener('click', open);
+  const dlcCard = document.getElementById('dlcCard');
+  if (dlcCard) dlcCard.addEventListener('click', open);
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 
@@ -82543,7 +82582,7 @@ window.__sim = {
         station: staEl ? staEl.textContent : '',
         segment: seg.label, segStart, segEnd: stopX,
         doorsOpen, departReady, doorT, dwell: dwellEl ? dwellEl.textContent : '',
-        cars: trainRoot ? trainRoot.children.length : 1
+        cars: trainRoot ? 17 : 1
       };
     },
     setSegment(i) { applySegment(i); },

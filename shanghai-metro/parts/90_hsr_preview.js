@@ -356,11 +356,27 @@
       }
     });
     let x = HEAD + GAP;
+    const carXs = [];
     for (let i = 0; i < 15; i++) {
-      const car = middleModel.clone(true);
-      car.position.set(x + MID / 2, 0, 0);
-      root.add(car);
+      carXs.push(x + MID / 2);
       x += MID + GAP;
+    }
+    /* 中间车用 InstancedMesh：15 辆 × 8 材质组 → 8 个 draw call，而不是 120 个 */
+    middleModel.updateMatrixWorld(true);
+    const midMeshes = [];
+    middleModel.traverse((o) => { if (o.isMesh) midMeshes.push(o); });
+    const im = new THREE.Matrix4();
+    const cm = new THREE.Matrix4();
+    for (const mesh of midMeshes) {
+      const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, carXs.length);
+      for (let i = 0; i < carXs.length; i++) {
+        cm.makeTranslation(carXs[i], 0, 0);
+        im.multiplyMatrices(cm, mesh.matrixWorld);
+        inst.setMatrixAt(i, im);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      inst.frustumCulled = false;
+      root.add(inst);
     }
     const tail = headModel.clone(true);
     tail.visible = true;
@@ -638,6 +654,8 @@
   }
 
   btn.addEventListener('click', open);
+  const dlcCard = document.getElementById('dlcCard');
+  if (dlcCard) dlcCard.addEventListener('click', open);
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 
@@ -755,7 +773,7 @@
         station: staEl ? staEl.textContent : '',
         segment: seg.label, segStart, segEnd: stopX,
         doorsOpen, departReady, doorT, dwell: dwellEl ? dwellEl.textContent : '',
-        cars: trainRoot ? trainRoot.children.length : 1
+        cars: trainRoot ? 17 : 1
       };
     },
     setSegment(i) { applySegment(i); },
