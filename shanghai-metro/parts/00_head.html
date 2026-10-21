@@ -528,6 +528,13 @@
   #hsrMainHud .hm-row b{color:#8fe06a}
   #hsrMainHud .hm-stop{color:#ffd479}
   #hsrMainHud .hm-hint{margin-top:10px;font-size:9px;color:#7f93a0;line-height:1.5}
+  #hsrMainResult{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.76);backdrop-filter:blur(8px)}
+  #hsrMainResult .card{width:min(430px,88%);padding:24px;border-radius:16px;background:rgba(13,20,26,.97);border:1px solid rgba(200,16,46,.4);box-shadow:0 20px 60px rgba(0,0,0,.55);color:#e8f1f6}
+  #hsrMainResult h4{margin:6px 0 14px;font-size:23px}
+  #hsrMainResult .rows{display:flex;flex-direction:column;gap:8px;font:500 12px/1.5 ui-monospace,monospace;color:#b9c9d4}
+  #hsrMainResult .rows b{color:#8fe06a;font-size:18px}
+  #hsrMainResult .acts{display:flex;gap:8px;margin-top:18px}
+  #hsrMainResult .acts button{flex:1}
   .hsr-result{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.72);backdrop-filter:blur(8px);border-radius:12px}
   .hsr-result-card{width:min(420px,86%);padding:22px 24px;border-radius:14px;background:rgba(14,21,27,.96);border:1px solid rgba(200,16,46,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
   .hr-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.14em}
@@ -664,7 +671,19 @@
       <div class="hm-row"><span class="hm-stop" id="hmNext">下一站 南京南 · 1017.9 km</span></div>
       <div class="hm-row"><span id="hmDist">0.0 km</span><span id="hmErr"></span></div>
       <div class="hm-row"><span id="hmDoor">车门关闭</span><span id="hmState"></span></div>
-      <div class="hm-hint">W 牵引 · S 制动 · R 重置 · Esc 返回</div>
+      <div class="hm-hint">W 牵引 / 发车 · S 制动 · R 重置 · Esc 返回</div>
+    </div>
+
+    <div id="hsrMainResult" class="hidden">
+      <div class="card">
+        <div class="hm-k">DLC · 京沪高铁 G25</div>
+        <h4>值乘完成</h4>
+        <div class="rows" id="hmResultRows"></div>
+        <div class="acts">
+          <button id="hmAgain" class="btn-ghost">再跑一次</button>
+          <button id="hmExit" class="btn-primary">返回主菜单</button>
+        </div>
+      </div>
     </div>
 
     <div id="hsrPreview" class="modal-mask hidden">
