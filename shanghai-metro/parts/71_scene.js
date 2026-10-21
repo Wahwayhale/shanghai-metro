@@ -389,7 +389,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, begin: performance.now(), touchThrottle: 0, touchBrake: 0,
+    train, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -412,6 +412,7 @@ async function buildHsrService() {
   hold('hmBrake', 'touchBrake');
   bind('hmDepart', hsrMainDepart);
   bind('hmReset', resetHsrMain);
+  bind('hmView', () => { if (G.hsr) G.hsr.cab = !G.hsr.cab; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
   if (again) again.addEventListener('click', () => resetHsrMain());
@@ -545,10 +546,16 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
-  if (st.train) st.train.position.x = -st.x;
-  camera.position.set(-st.x - 24, 5.8, 13);
-  camera.lookAt(-st.x + 3, 2.4, 0);
-
+  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
+  const cabEl = document.getElementById('hsrMainCab');
+  if (cabEl) cabEl.classList.toggle('hidden', !st.cab);
+  if (st.cab) {
+    camera.position.set(-st.x + 2.0, 3.2, 0.0);
+    camera.lookAt(-st.x - 40, 2.8, 0);
+  } else {
+    camera.position.set(-st.x - 24, 5.8, 13);
+    camera.lookAt(-st.x + 3, 2.4, 0);
+  }
   const kmh = st.v * 3.6;
   const el = (id) => document.getElementById(id);
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
@@ -558,6 +565,9 @@ function updateHsrMain(dt) {
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
   if (el('hmTsr')) el('hmTsr').textContent = st.tsr ? 'TSR ' + st.tsr.v + ' · ' + (st.tsr.start / 1000).toFixed(0) + ' km' : '';
+  if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
+  if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
+  if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
 }
 function exitHsrMain() {
