@@ -245,3 +245,13 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 验证：`RUN=1302000`、`STATIONS=23`、`SEGMENTS=6`、南京南 1018000、上海 1302000。
 - smoke 通过；正式版 3.01 MB、可读版 3.67 MB。
 - **C 仍未完成**：只是数据面打通，主场景/物理/HUD/会话尚未合并。
+
+### DLC-1 第三十六轮（C 项第二步：主场景世界构建器）
+
+- 新增 `parts/92_hsr_main.js`：`window.HSR_MAIN.buildHsrWorld(scene, THREE)`
+  用 `HSR_DATA` 生成 1302 km 主场景世界——道床/双轨/枕木/接触网杆/23 站台/雨棚/立柱。
+- `window.HSR_MAIN.buildHsrScene()` 可独立验证；当前生成 **304 个顶层对象**，
+  `HSR-MAIN-WORLD`，RUN=1302000。
+- 仍**未接入** `buildService`：没有主场景列车、HUD、物理、会话；
+  只是把世界构建从独立 canvas 解耦出来。
+- 正式版 3.01 MB、可读版约 3.67 MB；smoke 通过。
