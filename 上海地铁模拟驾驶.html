@@ -18274,8 +18274,8 @@ async function buildHsrService() {
   dir.position.set(-60, 80, 40);
   s.add(dir);
   scene = s;
-  camera.position.set(-80, 10, 28);
-  camera.lookAt(0, 2.4, 0);
+  camera.position.set(-24, 5.8, 13);
+  camera.lookAt(3, 2.4, 0);
   camera.near = 0.1;
   camera.far = 5000;
   camera.updateProjectionMatrix();
@@ -18283,7 +18283,7 @@ async function buildHsrService() {
   const train = s.getObjectByName('HSR-MAIN-TRAIN');
   const world = s.getObjectByName('HSR-MAIN-WORLD');
   G.hsr = {
-    x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
+    x: 0, v: 0, stopped: false, stopErr: null,
     stopIdx: 0,
     stops: [
       { name: '南京南', x: 1017900 },
@@ -18344,7 +18344,7 @@ function hsrMainDepart() {
 
 function resetHsrMain() {
   if (!G.hsr) return;
-  G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null;
+  G.hsr.x = 0; G.hsr.v = 0; G.hsr.stopped = false; G.hsr.stopErr = null;
   G.hsr.stopIdx = 0; G.hsr.doorT = 0; G.hsr.legs = []; G.hsr.result = false;
   const r = document.getElementById('hsrMainResult');
   if (r) r.classList.add('hidden');
@@ -18446,8 +18446,8 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train) st.train.position.x = -st.x;
-  camera.position.set(-st.x - 38, 8.0, 22);
-  camera.lookAt(-st.x + 4, 2.2, 0);
+  camera.position.set(-st.x - 24, 5.8, 13);
+  camera.lookAt(-st.x + 3, 2.4, 0);
 
   const kmh = st.v * 3.6;
   const el = (id) => document.getElementById(id);
