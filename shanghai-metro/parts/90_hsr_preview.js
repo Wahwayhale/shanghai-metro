@@ -999,7 +999,13 @@
 
   btn.addEventListener('click', open);
   const dlcCard = document.getElementById('dlcCard');
-  if (dlcCard) dlcCard.addEventListener('click', openDrive);
+  if (dlcCard) dlcCard.addEventListener('click', () => {
+    if (typeof window.buildHsrService === 'function') {
+      window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
+    } else {
+      openDrive();
+    }
+  });
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 

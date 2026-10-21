@@ -288,3 +288,13 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
   Esc 后主菜单恢复、HUD 隐藏；截图可见主场景 17 辆编组 + HUD。
 - **仍未接**主菜单 DLC 卡/`buildService` 正式路由、车门动画、结算/会话。
 - 正式版 3.02 MB、可读版 3.67 MB；smoke 通过。
+
+### DLC-1 第四十轮（C 项第六步：DLC 卡接入主场景）
+
+- 主菜单「DLC · 京沪高铁 G25」卡改为调用 `window.buildHsrService()`，
+  不再打开独立 canvas 弹窗；失败才回退旧 `openDrive()`。
+- 自动化：点卡后 `menu=false`、`hsrMainHud=true`、`hsrPreview=false`、
+  `__hsrMainScene` 存在、state 运行；Esc 后菜单恢复、HUD 隐藏。
+- 主场景 HSR 现在可从主菜单直接进入并驾驶；旧「高铁 DLC 头车预览」按钮仍保留弹窗。
+- **仍未接**主场景车门动画、停站结算、会话/正晚点；当前是 HUD/物理/入口版本。
+- 正式版 3.02 MB、可读版 3.68 MB；smoke 通过。
