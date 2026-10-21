@@ -255,3 +255,14 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 仍**未接入** `buildService`：没有主场景列车、HUD、物理、会话；
   只是把世界构建从独立 canvas 解耦出来。
 - 正式版 3.01 MB、可读版约 3.67 MB；smoke 通过。
+
+### DLC-1 第三十七轮（C 项第三步：主场景 17 辆列车构建器）
+
+- `parts/92_hsr_main.js` 增加 `buildTrain(scene)` / `buildTrainScene()`：
+  加载 head/middle/merged 三个 GLB，拼 2 头车 + 15 中间车。
+- 中间车继续用 InstancedMesh；主场景列车根节点 `HSR-MAIN-TRAIN`
+  14 个顶层对象（头车 + 12 个中间车 primitive + 尾车）。
+- 验证：头车中心 12.85 m、尾车中心 426.65 m、尾车 rotation.y=π，
+  总长约 439.5 m；`HSR-MAIN-WORLD` 304 个对象，RUN=1302000。
+- 仍未接入 `buildService`：没有 HUD、物理、会话；列车只是被构建出来。
+- 正式版 3.01 MB、可读版 3.67 MB；smoke 通过。

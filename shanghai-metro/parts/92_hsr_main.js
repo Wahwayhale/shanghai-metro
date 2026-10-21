@@ -62,11 +62,82 @@
     scene.add(g);
     return g;
   }
+
+  function decodeB64(b64) {
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const u8 = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return buf;
+  }
+
+  function loadGltf(b64) {
+    return new Promise((resolve, reject) => {
+      try {
+        const loader = new window.__HSR_LOADER();
+        loader.parse(decodeB64(b64), '', resolve, reject);
+      } catch (e) { reject(e); }
+    });
+  }
+
+  async function buildTrain(scene) {
+    const THREE = window.__HSR_THREE;
+    const [headG, midG, tailG] = await Promise.all([
+      loadGltf(window.__HSR_ASSETS.head),
+      loadGltf(window.__HSR_ASSETS.middle),
+      loadGltf(window.__HSR_ASSETS.merged || window.__HSR_ASSETS.head)
+    ]);
+    const root = new THREE.Group();
+    root.name = 'HSR-MAIN-TRAIN';
+    const HEAD = 25.7, MID = 25.5, GAP = 0.35;
+
+    const head = headG.scene;
+    head.visible = true;
+    head.position.set(HEAD / 2, 0, 0);
+    root.add(head);
+
+    const middle = midG.scene;
+    middle.updateMatrixWorld(true);
+    const midMeshes = [];
+    middle.traverse(o => { if (o.isMesh) midMeshes.push(o); });
+    const carXs = [];
+    let x = HEAD + GAP;
+    for (let i = 0; i < 15; i++) { carXs.push(x + MID / 2); x += MID + GAP; }
+    const cm = new THREE.Matrix4(), im = new THREE.Matrix4();
+    for (const mesh of midMeshes) {
+      const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, carXs.length);
+      for (let i = 0; i < carXs.length; i++) {
+        cm.makeTranslation(carXs[i], 0, 0);
+        im.multiplyMatrices(cm, mesh.matrixWorld);
+        inst.setMatrixAt(i, im);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      inst.frustumCulled = false;
+      root.add(inst);
+    }
+
+    const tail = tailG.scene;
+    tail.visible = true;
+    tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
+    tail.rotation.y = Math.PI;
+    root.add(tail);
+
+    scene.add(root);
+    return root;
+  }
+
+  async function buildTrainScene() {
+    const s = new THREE.Scene();
+    buildHsrWorld(s);
+    await buildTrain(s);
+    return s;
+  }
+
   function buildHsrScene() {
     const THREE = window.__HSR_THREE;
     const s = new THREE.Scene();
     buildHsrWorld(s);
     return s;
   }
-  window.HSR_MAIN = { buildHsrWorld, buildHsrScene, THREE };
+  window.HSR_MAIN = { buildHsrWorld, buildTrain, buildTrainScene, buildHsrScene, THREE };
 })();

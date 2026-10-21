@@ -1110,6 +1110,8 @@
   /* 自动化测试用：只读状态 + 定位（不影响正常 UI） */
   /* C 项第一步：把 HSR 线路数据暴露给主游戏，供 buildHsrService 使用 */
   window.__HSR_THREE = THREE;
+  window.__HSR_ASSETS = { head: HSR_TRAIN_GLB_B64, middle: HSR_MIDDLE_GLB_B64, merged: HSR_HEAD_MERGED_GLB_B64 };
+  window.__HSR_LOADER = GLTFLoader;
   window.HSR_DATA = Object.freeze({
     RUN, SPEED, ACC, BRK,
     STATIONS: STATIONS.map(s => Object.assign({}, s)),
