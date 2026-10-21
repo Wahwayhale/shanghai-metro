@@ -137,10 +137,9 @@
 
   async function buildTrain(scene) {
     const THREE = window.__HSR_THREE;
-    const [headG, midG, tailG] = await Promise.all([
+    const [headG, midG] = await Promise.all([
       loadGltf(window.__HSR_ASSETS.head),
-      loadGltf(window.__HSR_ASSETS.middle),
-      loadGltf(window.__HSR_ASSETS.merged || window.__HSR_ASSETS.head)
+      loadGltf(window.__HSR_ASSETS.middle)
     ]);
     const root = new THREE.Group();
     root.name = 'HSR-MAIN-TRAIN';
@@ -193,11 +192,22 @@
       }
     }
 
-    const tail = tailG.scene;
+    const tail = headG.scene.clone(true);
     tail.visible = true;
     tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
     tail.rotation.y = Math.PI;
     root.add(tail);
+    tail.traverse((o) => {
+      if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
+          && !o.name.includes('frame') && !o.name.includes('window')) {
+        root.userData.doorNodes.push({ node: o, y0: o.position.y, side: o.position.y >= 0 ? 1 : -1 });
+      }
+    });
+    const tailLivery = new THREE.Mesh(liveryGeo, liveryMat);
+    tailLivery.position.x = tail.position.x;
+    tailLivery.rotation.y = Math.PI;
+    tailLivery.renderOrder = 2;
+    root.add(tailLivery);
 
     const midLivery = new THREE.InstancedMesh(liveryGeo, liveryMat, carXs.length);
     const lm = new THREE.Matrix4();
