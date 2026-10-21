@@ -390,10 +390,14 @@ async function buildHsrService() {
     ],
     train, begin: performance.now(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
-    doorT: 0
+    doorT: 0, legs: [], result: false
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
+  const again = document.getElementById('hmAgain');
+  if (again) again.addEventListener('click', () => resetHsrMain());
+  const exit = document.getElementById('hmExit');
+  if (exit) exit.addEventListener('click', () => exitHsrMain());
   G.mode = 'hsr';
   G.ready = true;
   window.__hsrMainScene = s;
@@ -402,6 +406,33 @@ async function buildHsrService() {
 window.buildHsrService = buildHsrService;
 window.__hsrMainStart = buildHsrService;
 
+
+
+
+function resetHsrMain() {
+  if (!G.hsr) return;
+  G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null;
+  G.hsr.stopIdx = 0; G.hsr.doorT = 0; G.hsr.legs = []; G.hsr.result = false;
+  const r = document.getElementById('hsrMainResult');
+  if (r) r.classList.add('hidden');
+}
+function showHsrMainResult() {
+  const st = G.hsr;
+  if (!st || st.result) return;
+  st.result = true;
+  const rows = document.getElementById('hmResultRows');
+  const legs = st.legs.length ? st.legs : [{ name: st.stops[st.stopIdx].name, err: st.stopErr }];
+  const avgErr = legs.reduce((a, b) => a + Math.abs(b.err || 0), 0) / legs.length;
+  const score = Math.max(0, Math.round(100 - avgErr * 20));
+  const grade = score >= 90 ? 'S' : score >= 75 ? 'A' : score >= 60 ? 'B' : 'C';
+  if (rows) rows.innerHTML =
+    '<span>区段　京沪高铁 G25</span>' +
+    '<span>停站 ' + legs.length + ' 段 · 末段 ' + legs[legs.length - 1].name + '</span>' +
+    '<span>平均停站误差　' + avgErr.toFixed(2) + ' m</span>' +
+    '<span>得分　<b>' + score + ' · ' + grade + '</b></span>';
+  const r = document.getElementById('hsrMainResult');
+  if (r) r.classList.remove('hidden');
+}
 
 function hsrMainLimit(x) {
   if (x < 1201000) return 350;
@@ -431,9 +462,22 @@ function updateHsrMain(dt) {
       st.stopped = true;
       st.stopErr = st.x - stop;
       st.v = 0;
+      st.legs.push({ name: st.stops[st.stopIdx].name, err: st.stopErr });
+      if (st.stopIdx >= st.stops.length - 1) showHsrMainResult();
     }
   } else {
     st.v = 0;
+    if (!st.result && st.doorT > 0.4 && (keys['KeyW'] || keys['ArrowUp'])) {
+      if (st.stopIdx < st.stops.length - 1) {
+        st.stopIdx++;
+        st.stopped = false;
+        st.v = 0;
+        st.stopErr = null;
+        st.begin = performance.now();
+      } else {
+        showHsrMainResult();
+      }
+    }
   }
   const doorTarget = st.stopped ? 1 : 0;
   const dstep = Math.min(1, dt / 0.8);
@@ -452,7 +496,7 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
-  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.5 ? '车门开启' : '车门关闭') : '车门关闭';
+  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
 }
 function exitHsrMain() {
   if (G.mode !== 'hsr') return;
@@ -462,11 +506,13 @@ function exitHsrMain() {
   if (hud) hud.classList.add('hidden');
   const menu = document.getElementById('menu');
   if (menu) menu.classList.remove('hidden');
+  const r = document.getElementById('hsrMainResult');
+  if (r) r.classList.add('hidden');
 }
 window.addEventListener('keydown', (e) => {
   if (G.mode !== 'hsr') return;
   if (e.code === 'KeyR') {
-    if (G.hsr) { G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null; G.hsr.stopIdx = 0; }
+    resetHsrMain();
   } else if (e.code === 'Escape') {
     exitHsrMain();
   }
@@ -475,5 +521,6 @@ window.addEventListener('keydown', (e) => {
 window.__hsrMain = {
   get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx, doorT: G.hsr.doorT, doors: G.hsr.doorNodes.length } : null; },
   setX(x) { if (G.hsr) { G.hsr.x = x; G.hsr.v = 0; G.hsr.stopped = false; } },
+  setStop(i) { if (G.hsr) { G.hsr.stopIdx = i; G.hsr.stopped = false; G.hsr.stopErr = null; } },
   exit: exitHsrMain
 };
