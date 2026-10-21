@@ -81853,7 +81853,7 @@ window.__sim = {
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
   let pendingDrive = false;
-  let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0;
+  let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0, labelCount = 0;
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
@@ -82040,6 +82040,33 @@ window.__sim = {
         col.position.set(sx - 210 + i * 30, 2.7, -6.8);
         corridor.add(col);
       }
+    }
+  function stationSprite(name) {
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(6,10,14,.86)';
+    g.fillRect(0, 0, 512, 128);
+    g.strokeStyle = '#c8102e'; g.lineWidth = 6;
+    g.strokeRect(3, 3, 506, 122);
+    g.font = '700 64px "Microsoft YaHei", "PingFang SC", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = '#f2f7fa';
+    g.fillText(name, 256, 64);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, side: THREE.DoubleSide });
+    const sp = new THREE.Mesh(new THREE.PlaneGeometry(30, 7.5), mat);
+    sp.rotation.y = -Math.PI / 2;
+    sp.renderOrder = 10;
+    sp.frustumCulled = false;
+    return sp;
+  }
+
+    for (const st of STATIONS) {
+      const label = stationSprite(st.name);
+      label.position.set(-st.x + 220, 6.5, -5.6);
+      corridor.add(label); labelCount++;
     }
     const stopXs = [...new Set(SEGMENTS.map(s => s.end - 100))];
     for (const sx of stopXs) {
@@ -82642,7 +82669,7 @@ window.__sim = {
         station: staEl ? staEl.textContent : '',
         segment: seg.label, segStart, segEnd: stopX,
         doorsOpen, departReady, doorT, dwell: dwellEl ? dwellEl.textContent : '',
-        cars: trainRoot ? 17 : 1
+        cars: trainRoot ? 17 : 1, labels: labelCount
       };
     },
     setSegment(i) { applySegment(i); },
