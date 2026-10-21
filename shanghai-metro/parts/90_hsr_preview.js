@@ -22,6 +22,9 @@
   const atpEl = document.getElementById('hsrAtp');
   const nextEl = document.getElementById('hsrNext');
   const warnEl = document.getElementById('hsrWarn');
+  const staEl = document.getElementById('hsrSta');
+  const planEl = document.getElementById('hsrPlan');
+  const puncEl = document.getElementById('hsrPunc');
   const throttleBtn = document.getElementById('hsrThrottle');
   const brakeBtn = document.getElementById('hsrBrake');
   const resetDriveBtn = document.getElementById('hsrResetDrive');
@@ -33,17 +36,22 @@
   let drive = false, driveX = 0, baseX = 0, lastT = 0;
   let v = 0, throttle = 0, brake = 0, touchThrottle = 0, touchBrake = 0;
   const keysDown = Object.create(null);
-  const RUN = 8000;                 // 8.0 km：350→0 制动约 6.3 km，留 1.7 km 余量
+  const RUN = 60000;                // 60 km：北京南—廊坊短交路
+  const STOP_X = 59900;             // 廊坊停车标
   const SPEED = 350 / 3.6;          // 97.222 m/s
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
+  const SCHED = 750;                // 计划 08:12:30（750 s）
+  let startWall = 0, stopped = false, stopErr = null, puncSec = null;
 
-  /* 静态限速剖面（m, km/h）：350 → 300 → 250 → 180 → 停车 */
+  /* 静态限速剖面（m, km/h）：350 → 300 → 250 → 180 → 120 → 停车 */
   const LIMITS = [
     { x: 0, v: 350 },
-    { x: 4000, v: 300 },
-    { x: 6000, v: 250 },
-    { x: 7200, v: 180 }
+    { x: 20000, v: 300 },
+    { x: 35000, v: 250 },
+    { x: 45000, v: 180 },
+    { x: 52000, v: 120 },
+    { x: STOP_X, v: 0 }
   ];
   const LOOK = 12000;               // 12 km ATP 前瞻
   let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
@@ -115,11 +123,11 @@
     // sleepers every 2 m
     const sleeperGeo = new THREE.BoxGeometry(0.24, 0.08, 2.6);
     const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.95 });
-    const count = Math.floor(RUN / 2);
+    const count = Math.floor(RUN / 4);
     const sleepers = new THREE.InstancedMesh(sleeperGeo, sleeperMat, count);
     const m4 = new THREE.Matrix4();
     for (let i = 0; i < count; i++) {
-      m4.makeTranslation(-i * 2, 0.02, 0);
+      m4.makeTranslation(-i * 4, 0.02, 0);
       sleepers.setMatrixAt(i, m4);
     }
     sleepers.instanceMatrix.needsUpdate = true;
@@ -150,6 +158,26 @@
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(-RUN / 2, -18, 0);
     corridor.add(ground);
+
+    /* 廊坊站台（块模）：450 m 站台 + 雨棚 + 停车标 */
+    const concrete = new THREE.MeshStandardMaterial({ color: 0x5b6066, roughness: 0.9 });
+    const plat = new THREE.Mesh(new THREE.BoxGeometry(450, 1.2, 12), concrete);
+    plat.position.set(-59950, 0.6, -6.8);
+    corridor.add(plat);
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(450, 0.3, 14), new THREE.MeshStandardMaterial({ color: 0xb9c2c8, roughness: 0.7 }));
+    canopy.position.set(-59950, 5.4, -6.8);
+    corridor.add(canopy);
+    for (let i = 0; i < 15; i++) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.22, 4.2, 0.22), steelMat);
+      col.position.set(-60160 + i * 30, 2.7, -6.8);
+      corridor.add(col);
+    }
+    const stopPost = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.2, 0.25), steelMat);
+    stopPost.position.set(-STOP_X, 1.6, -4.2);
+    corridor.add(stopPost);
+    const stopBoard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 1.2), new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5 }));
+    stopBoard.position.set(-STOP_X - 0.2, 2.6, -4.2);
+    corridor.add(stopBoard);
 
     corridor.visible = false;
     scene.add(corridor);
@@ -224,6 +252,8 @@
     v = SPEED;
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
+    stopped = false; stopErr = null; puncSec = null;
+    startWall = performance.now();
     Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     lastT = performance.now();
     grid.visible = false;
@@ -234,18 +264,22 @@
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
     if (atpEl) atpEl.textContent = 'ATP 350';
-    if (nextEl) nextEl.textContent = '下一限速 300 · 4.0 km';
+    if (nextEl) nextEl.textContent = '下一限速 300 · 20.0 km';
     if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
+    if (staEl) staEl.textContent = '下一站 廊坊 · 59.9 km';
+    if (planEl) planEl.textContent = '计划 08:12:30';
+    if (puncEl) puncEl.textContent = '运行 00:00';
     atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
     model.position.x = baseX;
     model.rotation.y = 0;
-    setHint('8.0 km 直线走廊 · 350 km/h（97.22 m/s）· W 牵引 / S 制动 / R 重置');
+    setHint('60 km 北京南—廊坊 · 350 km/h（97.22 m/s）· W 牵引 / S 制动 / R 重置');
   }
 
   function exitDrive() {
     drive = false;
     v = 0; throttle = 0; brake = 0; touchThrottle = 0; touchBrake = 0;
+    stopped = false; stopErr = null; puncSec = null;
     Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     corridor.visible = false;
     grid.visible = true;
@@ -258,6 +292,12 @@
     }
     yaw = 0.72; pitch = 0.18;
     setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+  }
+
+  function fmtTime(sec) {
+    const m = Math.floor(Math.max(0, sec) / 60);
+    const s = Math.floor(Math.max(0, sec) % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
   }
 
   function animate(now) {
@@ -273,23 +313,29 @@
       throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
       brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
 
-      /* ATP：静态限速 + 12 km 目标-距离制动曲线 + 超速分级 */
-      const x0 = Math.min(RUN, Math.max(0, -driveX));
-      const perm = permittedAt(x0);
-      const over = v - perm;
-      if (over > 15 / 3.6) atpWarn = 3;
-      else if (over > 8 / 3.6) atpWarn = 2;
-      else if (over > 2 / 3.6) atpWarn = 1;
-      else atpWarn = 0;
+      if (!stopped) {
+        /* ATP：静态限速 + 12 km 目标-距离制动曲线 + 超速分级 */
+        const x0 = Math.min(RUN, Math.max(0, -driveX));
+        const perm = permittedAt(x0);
+        const over = v - perm;
+        if (over > 15 / 3.6) atpWarn = 3;
+        else if (over > 8 / 3.6) atpWarn = 2;
+        else if (over > 2 / 3.6) atpWarn = 1;
+        else atpWarn = 0;
 
-      /* 简化动力学：牵引 0.45 m/s²、常用制动 0.75 m/s²、高速阻力 */
-      const drag = 0.000005 * v * v;
-      let a = ACC * throttle - BRK * brake - drag;
-      if (atpWarn === 3) a = Math.min(a, -1.2);       // EB
-      else if (atpWarn === 2) a = Math.min(a, -BRK);  // ATP 常用制动
-      v = Math.max(0, Math.min(SPEED, v + a * dt));
-      driveX -= v * dt;
-      if (driveX < -RUN) { driveX = 0; v = SPEED; }
+        /* 简化动力学：牵引 0.45 m/s²、常用制动 0.75 m/s²、高速阻力 */
+        const drag = 0.000005 * v * v;
+        let a = ACC * throttle - BRK * brake - drag;
+        if (atpWarn === 3) a = Math.min(a, -1.2);       // EB
+        else if (atpWarn === 2) a = Math.min(a, -BRK);  // ATP 常用制动
+        v = Math.max(0, Math.min(SPEED, v + a * dt));
+        driveX -= v * dt;
+        if (driveX < -RUN) { driveX = -RUN; v = 0; }
+      } else {
+        v = 0;
+        atpWarn = 0;
+      }
+
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
 
@@ -299,6 +345,25 @@
       const x = Math.min(RUN, Math.max(0, -driveX));
       const permNow = permittedAt(x);
       const nl = nextLimitAt(x);
+
+      /* 停站判定：速度 < 0.3，且在停车标 ±500 m */
+      if (!stopped && v < 0.3 && Math.abs(x - STOP_X) < 500) {
+        stopped = true;
+        stopErr = x - STOP_X;
+        const elapsed = (performance.now() - startWall) / 1000;
+        puncSec = SCHED - elapsed;
+        if (puncEl) {
+          const e = stopErr >= 0 ? '+' : '';
+          const p = puncSec >= 0 ? '早点' : '晚点';
+          puncEl.textContent = `停站 ${e}${stopErr.toFixed(2)} m · ${p} ${Math.abs(puncSec).toFixed(0)} s`;
+        }
+        if (staEl) staEl.textContent = '廊坊 · 已停站';
+        if (modeEl) modeEl.textContent = '停车';
+        setHint('廊坊停车完成 · R 重置 · 停站误差与正晚点见 HUD');
+      } else if (!stopped && puncEl) {
+        puncEl.textContent = '运行 ' + fmtTime((performance.now() - startWall) / 1000);
+      }
+
       if (speedEl) speedEl.textContent = String(Math.round(v * 3.6));
       if (distEl) distEl.textContent = (x / 1000).toFixed(2) + ' km';
       if (atpEl) atpEl.textContent = 'ATP ' + Math.max(0, Math.round(permNow * 3.6));
@@ -306,14 +371,15 @@
         const dkm = Math.max(0, (nl.x - x) / 1000);
         nextEl.textContent = nl.v > 0
           ? `下一限速 ${nl.v} · ${dkm.toFixed(1)} km`
-          : `走廊终点 · ${dkm.toFixed(2)} km`;
+          : `停车标 · ${dkm.toFixed(2)} km`;
       }
+      if (staEl && !stopped) staEl.textContent = `下一站 廊坊 · ${(Math.max(0, STOP_X - x) / 1000).toFixed(1)} km`;
       if (warnEl) {
         warnEl.textContent = atpWarn === 3 ? '超速 EB' : atpWarn === 2 ? '超速' : atpWarn === 1 ? '接近限速' : '';
         warnEl.classList.toggle('hidden', atpWarn === 0);
         warnEl.classList.toggle('eb', atpWarn === 3);
       }
-      if (modeEl) {
+      if (modeEl && !stopped) {
         modeEl.textContent = atpWarn === 3 ? 'EB'
           : atpWarn === 2 ? 'ATP 制动'
             : brake ? '制动'
@@ -359,14 +425,18 @@
     v = SPEED;
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
+    stopped = false; stopErr = null; puncSec = null;
+    startWall = performance.now();
     Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     lastT = performance.now();
     if (speedEl) speedEl.textContent = '350';
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
     if (atpEl) atpEl.textContent = 'ATP 350';
-    if (nextEl) nextEl.textContent = '下一限速 300 · 4.0 km';
+    if (nextEl) nextEl.textContent = '下一限速 300 · 20.0 km';
     if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
+    if (staEl) staEl.textContent = '下一站 廊坊 · 59.9 km';
+    if (puncEl) puncEl.textContent = '运行 00:00';
     atpWarn = 0;
     if (throttleBtn) throttleBtn.classList.remove('on');
     if (brakeBtn) brakeBtn.classList.remove('on');
@@ -446,7 +516,10 @@
         x, v: v * 3.6, permitted: permittedAt(x) * 3.6,
         warn: atpWarn, atp: atpEl ? atpEl.textContent : '',
         next: nextEl ? nextEl.textContent : '',
-        mode: modeEl ? modeEl.textContent : ''
+        mode: modeEl ? modeEl.textContent : '',
+        stopped, stopErr, puncSec,
+        punc: puncEl ? puncEl.textContent : '',
+        station: staEl ? staEl.textContent : ''
       };
     },
     setPosition(m, kmh) {
