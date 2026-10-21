@@ -79723,7 +79723,38 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
-  if (st.cabGroup) { st.cabGroup.position.x = -st.x; st.cabGroup.visible = st.cab; }
+  if (st.cabGroup) {
+    st.cabGroup.position.x = -st.x;
+    st.cabGroup.visible = st.cab;
+    if (st.cab) {
+      const now = performance.now();
+      if (!st.lastDmi || now - st.lastDmi > 220) {
+        st.lastDmi = now;
+        const kmhD = Math.round(st.v * 3.6);
+        const modeD = st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行')));
+        const vals = [
+          ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
+          ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
+          ['G25', modeD, st.stopped ? '车门开启' : '车门关闭']
+        ];
+        const mats = st.cabGroup.userData.dmis || [];
+        for (let i = 0; i < mats.length; i++) {
+          const m = mats[i], d = m.userData; if (!d) continue;
+          const ctx = d.ctx; ctx.clearRect(0, 0, 320, 180);
+          ctx.fillStyle = '#04121a'; ctx.fillRect(0, 0, 320, 180);
+          ctx.strokeStyle = '#2a7a96'; ctx.lineWidth = 5; ctx.strokeRect(5, 5, 310, 170);
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#86c6dd'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][0], 160, 38);
+          ctx.fillStyle = '#e8f7ff'; ctx.font = '800 46px ui-monospace,monospace'; ctx.fillText(vals[i][1], 160, 100);
+          ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][2], 160, 148);
+          m.map.needsUpdate = true;
+        }
+        const lev = st.cabGroup.userData.levers || [];
+        if (lev[0]) lev[0].rotation.z = 0.2 + 0.35 * throttle;
+        if (lev[1]) lev[1].rotation.z = -0.2 - 0.35 * ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0);
+      }
+    }
+  }
   const cabEl = document.getElementById('hsrMainCab');
   if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
@@ -83624,7 +83655,9 @@ window.__sim = {
       ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace';
       ctx.fillText(sub, 160, 148);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      return new THREE.MeshBasicMaterial({ map: t });
+      const m = new THREE.MeshBasicMaterial({ map: t });
+      m.userData = { canvas: c, ctx };
+      return m;
     };
     const makeDmi = (x, y, z, w, h, mat, tilt) => {
       add(new THREE.BoxGeometry(0.06, h + 0.06, w + 0.06), dark, x, y, z);
@@ -83654,9 +83687,13 @@ window.__sim = {
     add(new THREE.BoxGeometry(1.3, 0.09, 2.72), trim, 4.35, 2.34, 0);
     add(new THREE.BoxGeometry(0.6, 0.3, 2.8), dark, 4.9, 1.8, 0);
     // DMI screens
-    makeDmi(4.02, 2.58, -0.52, 0.52, 0.36, screen('DMI-1', '0', 'ATP 350'), -0.1);
-    makeDmi(4.02, 2.58, 0.52, 0.52, 0.36, screen('DMI-2', '南京南', '1017.9 km'), -0.1);
-    makeDmi(4.03, 2.43, 0.0, 0.28, 0.20, screen('G25', '待发', '车门关闭'), -0.08);
+    const dmi1 = screen('DMI-1', '0', 'ATP 350');
+    const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
+    const dmi3 = screen('G25', '待发', '车门关闭');
+    makeDmi(4.02, 2.58, -0.52, 0.52, 0.36, dmi1, -0.1);
+    makeDmi(4.02, 2.58, 0.52, 0.52, 0.36, dmi2, -0.1);
+    makeDmi(4.03, 2.43, 0.0, 0.28, 0.20, dmi3, -0.08);
+    g.userData.dmis = [dmi1, dmi2, dmi3];
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, 1.05);
@@ -83666,6 +83703,7 @@ window.__sim = {
     add(knob, trim, 4.68, 2.58, -1.05);
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
+    g.userData.levers = [l1, l2];
     // button clusters
     const btnMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x0e3b2a, emissiveIntensity: 0.4 });
     for (let i = 0; i < 6; i++) {

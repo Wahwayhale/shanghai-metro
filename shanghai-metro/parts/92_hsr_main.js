@@ -204,7 +204,9 @@
       ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace';
       ctx.fillText(sub, 160, 148);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      return new THREE.MeshBasicMaterial({ map: t });
+      const m = new THREE.MeshBasicMaterial({ map: t });
+      m.userData = { canvas: c, ctx };
+      return m;
     };
     const makeDmi = (x, y, z, w, h, mat, tilt) => {
       add(new THREE.BoxGeometry(0.06, h + 0.06, w + 0.06), dark, x, y, z);
@@ -234,9 +236,13 @@
     add(new THREE.BoxGeometry(1.3, 0.09, 2.72), trim, 4.35, 2.34, 0);
     add(new THREE.BoxGeometry(0.6, 0.3, 2.8), dark, 4.9, 1.8, 0);
     // DMI screens
-    makeDmi(4.02, 2.58, -0.52, 0.52, 0.36, screen('DMI-1', '0', 'ATP 350'), -0.1);
-    makeDmi(4.02, 2.58, 0.52, 0.52, 0.36, screen('DMI-2', '南京南', '1017.9 km'), -0.1);
-    makeDmi(4.03, 2.43, 0.0, 0.28, 0.20, screen('G25', '待发', '车门关闭'), -0.08);
+    const dmi1 = screen('DMI-1', '0', 'ATP 350');
+    const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
+    const dmi3 = screen('G25', '待发', '车门关闭');
+    makeDmi(4.02, 2.58, -0.52, 0.52, 0.36, dmi1, -0.1);
+    makeDmi(4.02, 2.58, 0.52, 0.52, 0.36, dmi2, -0.1);
+    makeDmi(4.03, 2.43, 0.0, 0.28, 0.20, dmi3, -0.08);
+    g.userData.dmis = [dmi1, dmi2, dmi3];
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, 1.05);
@@ -246,6 +252,7 @@
     add(knob, trim, 4.68, 2.58, -1.05);
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
+    g.userData.levers = [l1, l2];
     // button clusters
     const btnMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x0e3b2a, emissiveIntensity: 0.4 });
     for (let i = 0; i < 6; i++) {

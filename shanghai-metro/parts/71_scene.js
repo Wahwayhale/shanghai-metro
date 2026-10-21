@@ -550,7 +550,38 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
-  if (st.cabGroup) { st.cabGroup.position.x = -st.x; st.cabGroup.visible = st.cab; }
+  if (st.cabGroup) {
+    st.cabGroup.position.x = -st.x;
+    st.cabGroup.visible = st.cab;
+    if (st.cab) {
+      const now = performance.now();
+      if (!st.lastDmi || now - st.lastDmi > 220) {
+        st.lastDmi = now;
+        const kmhD = Math.round(st.v * 3.6);
+        const modeD = st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行')));
+        const vals = [
+          ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
+          ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
+          ['G25', modeD, st.stopped ? '车门开启' : '车门关闭']
+        ];
+        const mats = st.cabGroup.userData.dmis || [];
+        for (let i = 0; i < mats.length; i++) {
+          const m = mats[i], d = m.userData; if (!d) continue;
+          const ctx = d.ctx; ctx.clearRect(0, 0, 320, 180);
+          ctx.fillStyle = '#04121a'; ctx.fillRect(0, 0, 320, 180);
+          ctx.strokeStyle = '#2a7a96'; ctx.lineWidth = 5; ctx.strokeRect(5, 5, 310, 170);
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#86c6dd'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][0], 160, 38);
+          ctx.fillStyle = '#e8f7ff'; ctx.font = '800 46px ui-monospace,monospace'; ctx.fillText(vals[i][1], 160, 100);
+          ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][2], 160, 148);
+          m.map.needsUpdate = true;
+        }
+        const lev = st.cabGroup.userData.levers || [];
+        if (lev[0]) lev[0].rotation.z = 0.2 + 0.35 * throttle;
+        if (lev[1]) lev[1].rotation.z = -0.2 - 0.35 * ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0);
+      }
+    }
+  }
   const cabEl = document.getElementById('hsrMainCab');
   if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
