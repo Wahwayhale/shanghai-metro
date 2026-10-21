@@ -523,6 +523,10 @@
   .hsr-sta{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
   .hsr-sta span{font:600 9.5px/1.3 ui-monospace,monospace;color:#b9c9d4;letter-spacing:.02em}
   .hsr-sta b{font:700 9.5px/1.3 ui-monospace,monospace;color:#8fe06a;letter-spacing:.02em}
+  .hsr-dwell{display:flex;gap:10px;align-items:center;margin-top:5px}
+  .hsr-dwell span{font:600 9.5px/1.3 ui-monospace,monospace;color:#ffd479;letter-spacing:.02em}
+  .hsr-dwell b{font:700 9.5px/1.3 ui-monospace,monospace;color:#8fd8ff;letter-spacing:.02em}
+  #hsrDepart{background:rgba(140,198,63,.14);border-color:rgba(140,198,63,.5);color:#d8f5b0}
   .hsr-pad{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
   .hsr-pad .btn-ghost{flex:1;min-width:100px;padding:9px 10px;font-size:11px}
   .hsr-pad kbd{font:600 9px/1 ui-monospace,monospace;color:#7f939f;border:1px solid rgba(255,255,255,.16);
@@ -640,6 +644,7 @@
             <span id="hsrPlan">计划用时 55:00</span>
             <b id="hsrPunc">--</b>
           </div>
+          <div class="hsr-dwell"><span id="hsrDoor">车门关闭</span><b id="hsrDwell">停站 --</b></div>
           <em>295 km 南京南—上海虹桥 · ATP 350→300→250→200→160</em>
         </div>
       </div>
@@ -647,6 +652,7 @@
         <button id="hsrThrottle" class="btn-ghost">牵引 <kbd>W</kbd></button>
         <button id="hsrBrake" class="btn-ghost">制动 <kbd>S</kbd></button>
         <button id="hsrResetDrive" class="btn-ghost">重置 <kbd>R</kbd></button>
+        <button id="hsrDepart" class="btn-ghost hidden">发车 <kbd>W</kbd></button>
       </div>
       <div id="hsrHint">拖拽旋转 · 滚轮缩放 · W/↑ 牵引 · S/↓ 制动 · 这是 DLC-0/1 资产验证，不是正式线路</div>
       <div class="modal-actions">

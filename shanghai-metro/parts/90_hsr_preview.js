@@ -29,6 +29,9 @@
   const brakeBtn = document.getElementById('hsrBrake');
   const resetDriveBtn = document.getElementById('hsrResetDrive');
   const segSel = document.getElementById('hsrSeg');
+  const doorEl = document.getElementById('hsrDoor');
+  const dwellEl = document.getElementById('hsrDwell');
+  const departBtn = document.getElementById('hsrDepart');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, trainRoot = null, headBaseX = 0;
@@ -43,6 +46,9 @@
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
   let startWall = 0, stopped = false, stopErr = null, puncSec = null;
+  const DWELL = 120;                // 2 min 停站
+  const DOOR_CLOSE = 90;
+  let dwellStart = 0, doorsOpen = false, departReady = false;
 
   /* 南京南—上海虹桥 295 km 站序（m） */
   const STATIONS = [
@@ -341,6 +347,15 @@
     if (wasDrive) enterDrive();
   }
 
+  function departNext() {
+    if (!departReady) return;
+    departReady = false;
+    if (departBtn) departBtn.classList.add('hidden');
+    const idx = SEGMENTS.indexOf(seg);
+    if (idx >= 0 && idx < SEGMENTS.length - 1) applySegment(idx + 1);
+    else resetDrive();
+  }
+
   function enterDrive() {
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     drive = true;
@@ -365,6 +380,10 @@
     if (staEl) staEl.textContent = `下一站 ${segName} · ${((stopX - segStart) / 1000).toFixed(1)} km`;
     if (planEl) planEl.textContent = '计划用时 ' + fmtTime(sched);
     if (puncEl) puncEl.textContent = '运行 00:00';
+    if (doorEl) doorEl.textContent = '车门关闭';
+    if (dwellEl) dwellEl.textContent = '停站 --';
+    if (departBtn) departBtn.classList.add('hidden');
+    doorsOpen = false; departReady = false;
     atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
 
@@ -429,6 +448,8 @@
       throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
       brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
 
+      if (stopped && departReady && throttle) { departNext(); return; }
+
       if (!stopped) {
         /* ATP：静态限速 + 12 km 目标-距离制动曲线 + 超速分级 */
         const x0 = Math.min(RUN, Math.max(0, -driveX));
@@ -450,6 +471,19 @@
       } else {
         v = 0;
         atpWarn = 0;
+        const ds = (performance.now() - dwellStart) / 1000;
+        if (doorsOpen && ds >= DOOR_CLOSE) {
+          doorsOpen = false;
+          if (doorEl) doorEl.textContent = '车门关闭';
+          setHint('车门关闭 · 停站完成，按 W 或「发车」进入下一段');
+        }
+        if (!departReady && ds >= DWELL) {
+          departReady = true;
+          if (dwellEl) dwellEl.textContent = '停站完成';
+          if (departBtn) departBtn.classList.remove('hidden');
+          setHint('停站完成 · 按 W 或「发车」进入下一段');
+        }
+        if (!departReady && dwellEl) dwellEl.textContent = '停站 ' + fmtTime(Math.max(0, DWELL - ds));
       }
 
       model.position.x = baseX + driveX;
@@ -466,6 +500,11 @@
       if (!stopped && v < 0.3 && Math.abs(x - stopX) < 500) {
         stopped = true;
         stopErr = x - stopX;
+        dwellStart = performance.now();
+        doorsOpen = true; departReady = false;
+        if (doorEl) doorEl.textContent = '车门开启';
+        if (dwellEl) dwellEl.textContent = '停站 2:00';
+        if (departBtn) departBtn.classList.add('hidden');
         const elapsed = (performance.now() - startWall) / 1000;
         puncSec = sched - elapsed;
         if (puncEl) {
@@ -475,7 +514,7 @@
         }
         if (staEl) staEl.textContent = segName + ' · 已停站';
         if (modeEl) modeEl.textContent = '停车';
-        setHint(segName + '停车完成 · R 重置 · 停站误差与正晚点见 HUD');
+        setHint(segName + '停车 · 车门开启 · 2 min 停站 · 关门后按 W 发车');
       } else if (!stopped && puncEl) {
         puncEl.textContent = '运行 ' + fmtTime((performance.now() - startWall) / 1000);
       }
@@ -535,6 +574,7 @@
   });
 
   segSel && segSel.addEventListener('change', (e) => applySegment(Number(e.target.value)));
+  departBtn && departBtn.addEventListener('click', departNext);
 
   function resetDrive() {
     driveX = -segStart;
@@ -554,6 +594,10 @@
     if (staEl) staEl.textContent = `下一站 ${segName} · ${((stopX - segStart) / 1000).toFixed(1)} km`;
     if (planEl) planEl.textContent = '计划用时 ' + fmtTime(sched);
     if (puncEl) puncEl.textContent = '运行 00:00';
+    if (doorEl) doorEl.textContent = '车门关闭';
+    if (dwellEl) dwellEl.textContent = '停站 --';
+    if (departBtn) departBtn.classList.add('hidden');
+    doorsOpen = false; departReady = false;
     atpWarn = 0;
     if (throttleBtn) throttleBtn.classList.remove('on');
     if (brakeBtn) brakeBtn.classList.remove('on');
@@ -638,10 +682,12 @@
         punc: puncEl ? puncEl.textContent : '',
         station: staEl ? staEl.textContent : '',
         segment: seg.label, segStart, segEnd: stopX,
+        doorsOpen, departReady, dwell: dwellEl ? dwellEl.textContent : '',
         cars: trainRoot ? trainRoot.children.length : 1
       };
     },
     setSegment(i) { applySegment(i); },
+    skipDwell() { if (stopped) dwellStart = performance.now() - 121000; },
     setPosition(m, kmh) {
       driveX = -Math.max(0, Math.min(RUN, m));
       v = Math.min(SPEED, Math.max(0, (kmh == null ? 350 : kmh) / 3.6));
