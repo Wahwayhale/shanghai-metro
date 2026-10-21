@@ -48,6 +48,7 @@
   let legResults = [], legAtpStart = 0;
   let stopPlan = [], stopIdx = 0, stopPlanSeg = null;
   const LEG_SCHED = [720, 600, 540, 540, 450, 450];
+  const EXPRESS_SCHED = [11640, 3840];
   let audioCtx = null;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
@@ -55,7 +56,7 @@
   let drive = false, driveX = 0, baseX = 0, lastT = 0;
   let v = 0, throttle = 0, brake = 0, touchThrottle = 0, touchBrake = 0;
   const keysDown = Object.create(null);
-  const RUN = 295000;               // 295 km：南京南—上海虹桥
+  const RUN = 1318000;              // 1318 km：京沪高铁
   const SPEED = 350 / 3.6;          // 97.222 m/s
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
@@ -64,24 +65,41 @@
   const DOOR_CLOSE = 90;
   let dwellStart = 0, doorsOpen = false, departReady = false;
 
-  /* 南京南—上海虹桥 295 km 站序（m） */
+  /* 京沪高铁 23 座正线车站（m，近似里程） */
   const STATIONS = [
-    { name: '南京南', x: 0 },
-    { name: '镇江南', x: 65000 },
-    { name: '常州北', x: 120000 },
-    { name: '无锡东', x: 160000 },
-    { name: '苏州北', x: 200000 },
-    { name: '昆山南', x: 250000 },
-    { name: '上海虹桥', x: 295000 }
+    { name: '北京南', x: 0 },
+    { name: '廊坊', x: 60000 },
+    { name: '天津南', x: 120000 },
+    { name: '沧州西', x: 210000 },
+    { name: '德州东', x: 300000 },
+    { name: '济南西', x: 406000 },
+    { name: '泰安', x: 465000 },
+    { name: '曲阜东', x: 535000 },
+    { name: '滕州东', x: 590000 },
+    { name: '枣庄', x: 625000 },
+    { name: '徐州东', x: 690000 },
+    { name: '宿州东', x: 770000 },
+    { name: '蚌埠南', x: 845000 },
+    { name: '定远', x: 900000 },
+    { name: '滁州', x: 960000 },
+    { name: '南京南', x: 1023000 },
+    { name: '镇江南', x: 1088000 },
+    { name: '丹阳北', x: 1115000 },
+    { name: '常州北', x: 1155000 },
+    { name: '无锡东', x: 1200000 },
+    { name: '苏州北', x: 1240000 },
+    { name: '昆山南', x: 1280000 },
+    { name: '上海虹桥', x: 1318000 }
   ];
 
-  /* 可驾驶区段：一局 10–20 min；终点站停车标在 end-100 */
+  /* 可驾驶区段：京沪全程 G25 / 295 km 分段 / 南京南—上海虹桥 */
   const SEGMENTS = [
-    { label: '南京南—镇江南', start: 0, end: 65000, sched: 780, name: '镇江南' },
-    { label: '镇江南—常州北', start: 65000, end: 120000, sched: 660, name: '常州北' },
-    { label: '常州北—苏州北', start: 120000, end: 200000, sched: 960, name: '苏州北' },
-    { label: '苏州北—上海虹桥', start: 200000, end: 295000, sched: 1140, name: '上海虹桥' },
-    { label: '南京南—上海虹桥（全程）', start: 0, end: 295000, sched: 3300, name: '上海虹桥' }
+    { label: '京沪全程 G25', start: 0, end: 1318000, sched: 15480, name: '上海虹桥', express: true },
+    { label: '南京南—上海虹桥（295 km）', start: 1023000, end: 1318000, sched: 3300, name: '上海虹桥', full295: true },
+    { label: '南京南—镇江南', start: 1023000, end: 1088000, sched: 780, name: '镇江南' },
+    { label: '镇江南—常州北', start: 1088000, end: 1155000, sched: 660, name: '常州北' },
+    { label: '常州北—苏州北', start: 1155000, end: 1240000, sched: 960, name: '苏州北' },
+    { label: '苏州北—上海虹桥', start: 1240000, end: 1318000, sched: 1140, name: '上海虹桥' }
   ];
   let seg = SEGMENTS[0];
   let stopX = seg.end - 100;
@@ -94,10 +112,10 @@
     { x: 0, v: 350 },
     { x: 30000, v: 160 },
     { x: 32000, v: 350 },
-    { x: 250000, v: 300 },
-    { x: 285000, v: 250 },
-    { x: 290000, v: 200 },
-    { x: 293500, v: 160 }
+    { x: 1200000, v: 300 },
+    { x: 1280000, v: 250 },
+    { x: 1300000, v: 200 },
+    { x: 1310000, v: 160 }
   ];
   const LOOK = 12000;               // 12 km ATP 前瞻
   let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
@@ -119,20 +137,28 @@
     return out;
   }
 
+  function schedFor(i) {
+    if (seg.express) return EXPRESS_SCHED[i] || seg.sched;
+    if (seg.full295) return LEG_SCHED[i] || seg.sched;
+    return seg.sched;
+  }
+
   function buildStopPlan() {
-    if (seg.label.includes('全程')) {
-      stopPlan = STATIONS.slice(1).map(s => ({ name: s.name, x: s.x - 100 }));
-      stopIdx = 0;
-      stopX = stopPlan[0].x;
-      segName = stopPlan[0].name;
-      sched = LEG_SCHED[0];
+    if (seg.express) {
+      stopPlan = [
+        { name: '南京南', x: 1023000 - 100 },
+        { name: '上海虹桥', x: 1318000 - 100 }
+      ];
+    } else if (seg.full295) {
+      const i0 = STATIONS.findIndex(s => s.name === '南京南');
+      stopPlan = STATIONS.slice(i0 + 1).map(s => ({ name: s.name, x: s.x - 100 }));
     } else {
       stopPlan = [{ name: seg.name, x: seg.end - 100 }];
-      stopIdx = 0;
-      stopX = stopPlan[0].x;
-      segName = seg.name;
-      sched = seg.sched;
     }
+    stopIdx = 0;
+    stopX = stopPlan[0].x;
+    segName = stopPlan[0].name;
+    sched = schedFor(0);
     stopPlanSeg = seg;
   }
 
@@ -251,11 +277,11 @@
     // sleepers every 4 m
     const sleeperGeo = new THREE.BoxGeometry(0.24, 0.08, 2.6);
     const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.95 });
-    const count = Math.floor(CORR / 4);
+    const count = Math.floor(CORR / 10);
     const sleepers = new THREE.InstancedMesh(sleeperGeo, sleeperMat, count);
     const m4 = new THREE.Matrix4();
     for (let i = 0; i < count; i++) {
-      m4.makeTranslation(600 - i * 4, 0.02, 0);
+      m4.makeTranslation(600 - i * 10, 0.02, 0);
       sleepers.setMatrixAt(i, m4);
     }
     sleepers.instanceMatrix.needsUpdate = true;
@@ -263,12 +289,12 @@
 
     // catenary masts every 50 m on both sides + one contact wire
     const mastGeo = new THREE.BoxGeometry(0.22, 5.8, 0.22);
-    const mastCount = Math.floor(CORR / 50) * 2;
+    const mastCount = Math.floor(CORR / 100) * 2;
     const masts = new THREE.InstancedMesh(mastGeo, steelMat, mastCount);
     let k = 0;
-    for (let i = 0; i < CORR / 50; i++) {
+    for (let i = 0; i < CORR / 100; i++) {
       for (const z of [-5.1, 5.1]) {
-        m4.makeTranslation(600 - i * 50 - 25, 2.9, z);
+        m4.makeTranslation(600 - i * 100 - 50, 2.9, z);
         masts.setMatrixAt(k++, m4);
       }
     }
@@ -600,7 +626,7 @@
     segStart = x;
     stopX = np.x;
     segName = np.name;
-    sched = seg.label.includes('全程') && LEG_SCHED[stopIdx] ? LEG_SCHED[stopIdx] : seg.sched;
+    sched = schedFor(stopIdx);
     tsr = null;
     if (tsrSign) { corridor.remove(tsrSign); tsrSign = null; }
     tsr = makeTsr(); showTsrSign();
