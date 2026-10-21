@@ -83310,6 +83310,61 @@ window.__sim = {
     });
   }
 
+
+  function liveryTexture() {
+    const c = document.createElement('canvas');
+    c.width = 2048; c.height = 256;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, 2048, 256);
+    const band = (y0, y1, color, lift) => {
+      g.strokeStyle = color; g.lineWidth = y1 - y0; g.lineCap = 'butt';
+      g.beginPath(); g.moveTo(0, y0 + lift);
+      g.bezierCurveTo(210, y0 + lift, 320, y0, 560, y0);
+      g.lineTo(2048, y0); g.stroke();
+    };
+    band(150, 230, '#c8102e', 34);
+    band(126, 146, '#e87722', 24);
+    band(112, 122, '#c9a227', 18);
+    g.fillStyle = '#15181a';
+    g.font = '700 54px system-ui, sans-serif';
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText('CR400AF-BS-2341', 1120, 52);
+    g.fillStyle = '#c8102e';
+    g.font = '600 32px "Microsoft YaHei", sans-serif';
+    g.fillText('复兴号', 1120, 102);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }
+
+  function liveryRibbonGeometry() {
+    const N = 64, z0 = 1.50, z1 = 2.40;
+    const pos = [], uv = [], idx = [];
+    for (const side of [-1, 1]) {
+      for (let i = 0; i <= N; i++) {
+        const x = -12.7 + (25.4 * i) / N;
+        const nose = Math.max(0, (-x - 8) / 4.7);
+        const w = 1.72 * (1 - 0.45 * Math.pow(nose, 1.3)) + 0.012;
+        pos.push(x, z0, side * w, x, z1, side * w);
+        const u = side > 0 ? i / N : 1 - i / N;
+        uv.push(u, 0, u, 1);
+        if (i < N) {
+          const a = i * 2 + (side > 0 ? 0 : (N + 1) * 2);
+          const b = a + 1, c = a + 2, d = a + 3;
+          if (side > 0) idx.push(a, b, c, b, d, c);
+          else idx.push(a, c, b, b, c, d);
+        }
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
   async function buildTrain(scene) {
     const THREE = window.__HSR_THREE;
     const [headG, midG, tailG] = await Promise.all([
@@ -83325,6 +83380,12 @@ window.__sim = {
     head.visible = true;
     head.position.set(HEAD / 2, 0, 0);
     root.add(head);
+    const liveryGeo = liveryRibbonGeometry();
+    const liveryMat = new THREE.MeshBasicMaterial({ map: liveryTexture(), side: THREE.DoubleSide, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    const headLivery = new THREE.Mesh(liveryGeo, liveryMat);
+    headLivery.position.x = HEAD / 2;
+    headLivery.renderOrder = 2;
+    root.add(headLivery);
     root.userData.doorNodes = [];
     root.userData.midDoors = [];
     head.traverse((o) => {
@@ -83367,6 +83428,14 @@ window.__sim = {
     tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
     tail.rotation.y = Math.PI;
     root.add(tail);
+
+    const midLivery = new THREE.InstancedMesh(liveryGeo, liveryMat, carXs.length);
+    const lm = new THREE.Matrix4();
+    for (let i = 0; i < carXs.length; i++) { lm.makeTranslation(carXs[i], 0, 0); midLivery.setMatrixAt(i, lm); }
+    midLivery.instanceMatrix.needsUpdate = true;
+    midLivery.frustumCulled = false;
+    midLivery.renderOrder = 2;
+    root.add(midLivery);
 
     scene.add(root);
     return root;

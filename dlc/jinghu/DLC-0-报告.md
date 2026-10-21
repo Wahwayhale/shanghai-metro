@@ -359,3 +359,15 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
   `doorT=0.3`、`doors=4`、`midDoors=4`、HUD「车门开启」。
 - 正式版 3.10 MB、可读版 3.75 MB；smoke 通过。
 - 主场景头车 + 15 辆中间车车门均已动画；尾车仍是合并 LOD。
+
+### DLC-1 第四十七轮（主场景全列 UV 腰线）
+
+- 主场景 17 辆编组统一加透明 UV 腰线条带：
+  - 头车 1 个 Mesh；
+  - 15 辆中间车 1 个 InstancedMesh；
+  - 共享 2K CanvasTexture（红/橙/金 + 车号/复兴号）。
+- 中间车门 InstancedMesh 保持，`midDoors=4`；尾车仍是合并 LOD，无腰线/门动画。
+- 验证：主场景 `cars=17`、`doors=4`、`midDoors=4`、下一站镇江南 69.0 km；
+  截图全列腰线连续。
+- 正式版 3.10 MB、可读版 3.76 MB；smoke 通过。
+- **B 仍未完成**：腰线是贴花带，不是整车车身 UV；鼻锥是 2.9 m 鼻帽。
