@@ -41,10 +41,12 @@ CR400AF-BS 与南京南站站台块模。
 | 列车 GLB | `assets/cr400af-bs-headcar-v018.glb` | 229 KB、71 个 mesh、7 种材质，glTF 2.0 / Y-up |
 | 司机台 | `model/jinghu-cab-v003.blend` | 三块 DMI、CTCS 屏、绿色 DMI 条、座椅、侧窗、遮光板 |
 | 南京南站台 | `model/jinghu-station-nanjing-v005.blend` | 120 m 站台块模（目标 450 m）、拱形雨棚+桁架、中文站名、4 股道、黄线、玻璃站房 |
+| 17 辆编组 | `model/jinghu-train-17-v004.blend` | 2 头车 + 15 中间车，约 439.5 m；含 17 辆透视渲染 |
 | 渲染 | `renders/hero-v018-front3q.png` | 列车前 3/4（DLC-1） |
 | 渲染 | `renders/hero-v018-side.png` | 列车侧视（长鼻/上扬腰线） |
 | 渲染 | `renders/cab-v003.png` | 司机台 |
 | 渲染 | `renders/station-nanjing-v005.png` | 南京南站台（拱形雨棚/桁架/中文站名） |
+| 渲染 | `renders/train-17-v004-head.png` | 17 辆编组前 3/4（2 头车 + 15 中间车） |
 
 GLB v017 已用 `blender_validate_export` 重新导入验证：全部 mesh 可读，
 材质/节点/尺寸正常。v018 导出成功（229 KB / 71 mesh），待下一轮重导入验证。
@@ -71,7 +73,7 @@ GLB v017 已用 `blender_validate_export` 重新导入验证：全部 mesh 可�
 - 司机台屏幕压暗、加绿色 DMI 条，不再是一块过曝白屏。
 - 南京南雨棚改为**拱形屋面 + 纵向桁架 + 中央天窗**，不再是一块平板。
 - 加中文站名「南京南站」与英文「NANJING SOUTH」（微软雅黑），站台视角可见。
-- 17 辆中间车编组（439.1 m）已建，头车/尾车尚未接上。
+- 17 辆完整编组已组装：2 辆头车 + 15 辆中间车，约 439.5 m，见 `renders/train-17-v004-head.png`。
 - 加中文站名「南京南站」与英文「NANJING SOUTH」（微软雅黑）。
 
 ### 还没达标（下一轮重点）
@@ -85,7 +87,7 @@ GLB v017 已用 `blender_validate_export` 重新导入验证：全部 mesh 可�
 5. **站房**：已加中文站名/拱形雨棚，但还没有南京南的大跨站房外壳、吊屏内容和 450 m 全长。
 6. **性能**：站台 226 个独立对象，必须按材质合并/实例化；列车 71 个 mesh
    也要做 LOD 和合并，否则进游戏 draw call 超标。
-7. **17 辆编组**：已建 17 辆中间车编组（439.1 m），但头车/尾车还没接上，渲染也待补。
+7. **17 辆编组**：已组装 2 头车 + 15 中间车（约 439.5 m），渲染通过；车门/转向架细节和编组级 LOD 还没做。
 8. **纹理/UV**：目前全是纯色材质，没有腰线贴花、车窗反射、金属漆细节。
 
 ---
