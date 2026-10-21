@@ -528,6 +528,9 @@
   #hsrMainHud .hm-row b{color:#8fe06a}
   #hsrMainHud .hm-stop{color:#ffd479}
   #hsrMainHud .hm-hint{margin-top:10px;font-size:9px;color:#7f93a0;line-height:1.5}
+  #hsrMainHud .hm-ctrl{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  #hsrMainHud .hm-ctrl button{pointer-events:auto;flex:1;min-width:54px;padding:8px 6px;border-radius:7px;border:1px solid rgba(160,190,210,.28);background:rgba(20,30,38,.9);color:#dceaf2;font:700 10px/1 ui-monospace,monospace;cursor:pointer}
+  #hsrMainHud .hm-ctrl button:active{background:rgba(200,16,46,.45)}
   #hsrMainResult{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.76);backdrop-filter:blur(8px)}
   #hsrMainResult .card{width:min(430px,88%);padding:24px;border-radius:16px;background:rgba(13,20,26,.97);border:1px solid rgba(200,16,46,.4);box-shadow:0 20px 60px rgba(0,0,0,.55);color:#e8f1f6}
   #hsrMainResult h4{margin:6px 0 14px;font-size:23px}
@@ -687,7 +690,14 @@
       <div class="hm-row"><span id="hmDist">0.0 km</span><span id="hmErr"></span></div>
       <div class="hm-row"><span id="hmDoor">车门关闭</span><span id="hmState"></span></div>
       <div class="hm-row"><span id="hmTsr"></span></div>
-      <div class="hm-hint">W 牵引 / 发车 · S 制动 · R 重置 · Esc 返回</div>
+      <div class="hm-hint">W/牵引 加速 · S/制动 · 停站后点「发车」</div>
+      <div class="hm-ctrl">
+        <button id="hmThrottle">牵引</button>
+        <button id="hmBrake">制动</button>
+        <button id="hmDepart">发车</button>
+        <button id="hmReset">重置</button>
+        <button id="hmExit">退出</button>
+      </div>
     </div>
 
     <div id="hsrMainResult" class="hidden">
@@ -18269,7 +18279,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, begin: performance.now(),
+    train, begin: performance.now(), touchThrottle: 0, touchBrake: 0,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -18279,6 +18289,20 @@ async function buildHsrService() {
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
+  const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+  const hold = (id, key) => {
+    const el = document.getElementById(id); if (!el) return;
+    const on = (v) => { if (G.hsr) G.hsr[key] = v; el.classList.toggle('on', !!v); };
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); on(1); });
+    el.addEventListener('pointerup', () => on(0));
+    el.addEventListener('pointerleave', () => on(0));
+    el.addEventListener('pointercancel', () => on(0));
+  };
+  hold('hmThrottle', 'touchThrottle');
+  hold('hmBrake', 'touchBrake');
+  bind('hmDepart', hsrMainDepart);
+  bind('hmReset', resetHsrMain);
+  bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
   if (again) again.addEventListener('click', () => resetHsrMain());
   const exit = document.getElementById('hmExit');
@@ -18293,6 +18317,20 @@ window.__hsrMainStart = buildHsrService;
 
 
 
+
+function hsrMainDepart() {
+  const st = G.hsr;
+  if (!st || !st.stopped) return;
+  if (st.stopIdx < st.stops.length - 1) {
+    st.stopIdx++;
+    st.stopped = false;
+    st.v = 0;
+    st.stopErr = null;
+    st.legStart = performance.now();
+  } else {
+    showHsrMainResult();
+  }
+}
 
 function resetHsrMain() {
   if (!G.hsr) return;
@@ -18336,11 +18374,11 @@ function updateHsrMain(dt) {
   if (!st) return;
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
-  const throttle = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
+  const throttle = (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? 1 : 0;
   if (!st.stopped) {
     const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     const perm = Math.min(limit / 3.6, stopV);
-    const brake = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const brake = (keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0;
     const drag = 0.000005 * st.v * st.v;
     let a = 0.45 * throttle - 0.8 * brake - drag;
     if (st.v > perm + 0.3) a = Math.min(a, -0.8);

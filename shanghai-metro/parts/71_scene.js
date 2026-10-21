@@ -389,7 +389,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, begin: performance.now(),
+    train, begin: performance.now(), touchThrottle: 0, touchBrake: 0,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -399,6 +399,20 @@ async function buildHsrService() {
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
+  const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+  const hold = (id, key) => {
+    const el = document.getElementById(id); if (!el) return;
+    const on = (v) => { if (G.hsr) G.hsr[key] = v; el.classList.toggle('on', !!v); };
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); on(1); });
+    el.addEventListener('pointerup', () => on(0));
+    el.addEventListener('pointerleave', () => on(0));
+    el.addEventListener('pointercancel', () => on(0));
+  };
+  hold('hmThrottle', 'touchThrottle');
+  hold('hmBrake', 'touchBrake');
+  bind('hmDepart', hsrMainDepart);
+  bind('hmReset', resetHsrMain);
+  bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
   if (again) again.addEventListener('click', () => resetHsrMain());
   const exit = document.getElementById('hmExit');
@@ -413,6 +427,20 @@ window.__hsrMainStart = buildHsrService;
 
 
 
+
+function hsrMainDepart() {
+  const st = G.hsr;
+  if (!st || !st.stopped) return;
+  if (st.stopIdx < st.stops.length - 1) {
+    st.stopIdx++;
+    st.stopped = false;
+    st.v = 0;
+    st.stopErr = null;
+    st.legStart = performance.now();
+  } else {
+    showHsrMainResult();
+  }
+}
 
 function resetHsrMain() {
   if (!G.hsr) return;
@@ -456,11 +484,11 @@ function updateHsrMain(dt) {
   if (!st) return;
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
-  const throttle = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
+  const throttle = (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? 1 : 0;
   if (!st.stopped) {
     const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     const perm = Math.min(limit / 3.6, stopV);
-    const brake = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const brake = (keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0;
     const drag = 0.000005 * st.v * st.v;
     let a = 0.45 * throttle - 0.8 * brake - drag;
     if (st.v > perm + 0.3) a = Math.min(a, -0.8);
