@@ -96,6 +96,7 @@
     head.position.set(HEAD / 2, 0, 0);
     root.add(head);
     root.userData.doorNodes = [];
+    root.userData.midDoors = [];
     head.traverse((o) => {
       if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
           && !o.name.includes('frame') && !o.name.includes('window')) {
@@ -121,6 +122,14 @@
       inst.instanceMatrix.needsUpdate = true;
       inst.frustumCulled = false;
       root.add(inst);
+      if (mesh.name && mesh.name.startsWith('M-door_') && !mesh.name.includes('frame') && !mesh.name.includes('win')) {
+        root.userData.midDoors.push({
+          inst,
+          side: mesh.name.includes('_-1_') ? -1 : 1,
+          carXs: carXs.slice(),
+          world: mesh.matrixWorld.clone()
+        });
+      }
     }
 
     const tail = tailG.scene;

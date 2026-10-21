@@ -394,6 +394,7 @@ async function buildHsrService() {
     ],
     train, begin: performance.now(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
+    midDoors: (train && train.userData && train.userData.midDoors) || [],
     doorT: 0, legs: [], result: false,
     legSched: [720, 600, 540, 540, 450, 450], legStart: performance.now(),
     tsr: (() => { const start = 1040000 + Math.floor(Math.random() * 240000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
@@ -495,6 +496,17 @@ function updateHsrMain(dt) {
   if (st.doorT < doorTarget) st.doorT = Math.min(doorTarget, st.doorT + dstep);
   else if (st.doorT > doorTarget) st.doorT = Math.max(doorTarget, st.doorT - dstep);
   for (const d of st.doorNodes) d.node.position.y = d.y0 + d.side * 0.55 * st.doorT;
+  if (st.midDoors && st.midDoors.length) {
+    const cm = new THREE.Matrix4(), im = new THREE.Matrix4();
+    for (const d of st.midDoors) {
+      for (let i = 0; i < d.carXs.length; i++) {
+        cm.makeTranslation(d.carXs[i], d.side * 0.55 * st.doorT, 0);
+        im.multiplyMatrices(cm, d.world);
+        d.inst.setMatrixAt(i, im);
+      }
+      d.inst.instanceMatrix.needsUpdate = true;
+    }
+  }
   if (st.train) st.train.position.x = -st.x;
   camera.position.set(-st.x - 38, 8.0, 22);
   camera.lookAt(-st.x + 4, 2.2, 0);
@@ -531,7 +543,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.__hsrMain = {
-  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx, doorT: G.hsr.doorT, doors: G.hsr.doorNodes.length } : null; },
+  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx, doorT: G.hsr.doorT, doors: G.hsr.doorNodes.length, midDoors: G.hsr.midDoors.length } : null; },
   setX(x) { if (G.hsr) { G.hsr.x = x; G.hsr.v = 0; G.hsr.stopped = false; } },
   setStop(i) { if (G.hsr) { G.hsr.stopIdx = i; G.hsr.stopped = false; G.hsr.stopErr = null; } },
   exit: exitHsrMain
