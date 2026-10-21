@@ -28,6 +28,7 @@
   const throttleBtn = document.getElementById('hsrThrottle');
   const brakeBtn = document.getElementById('hsrBrake');
   const resetDriveBtn = document.getElementById('hsrResetDrive');
+  const segSel = document.getElementById('hsrSeg');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let raf = 0, running = false, ready = false;
@@ -36,12 +37,10 @@
   let drive = false, driveX = 0, baseX = 0, lastT = 0;
   let v = 0, throttle = 0, brake = 0, touchThrottle = 0, touchBrake = 0;
   const keysDown = Object.create(null);
-  const RUN = 295000;               // 295 km：南京南—上海虹桥切片
-  const STOP_X = 294900;            // 上海虹桥停车标
+  const RUN = 295000;               // 295 km：南京南—上海虹桥
   const SPEED = 350 / 3.6;          // 97.222 m/s
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
-  const SCHED = 3300;               // 计划 08:55:00（3300 s）
   let startWall = 0, stopped = false, stopErr = null, puncSec = null;
 
   /* 南京南—上海虹桥 295 km 站序（m） */
@@ -55,28 +54,47 @@
     { name: '上海虹桥', x: 295000 }
   ];
 
+  /* 可驾驶区段：一局 10–20 min；终点站停车标在 end-100 */
+  const SEGMENTS = [
+    { label: '南京南—镇江南', start: 0, end: 65000, sched: 780, name: '镇江南' },
+    { label: '镇江南—常州北', start: 65000, end: 120000, sched: 660, name: '常州北' },
+    { label: '常州北—苏州北', start: 120000, end: 200000, sched: 960, name: '苏州北' },
+    { label: '苏州北—上海虹桥', start: 200000, end: 295000, sched: 1140, name: '上海虹桥' },
+    { label: '南京南—上海虹桥（全程）', start: 0, end: 295000, sched: 3300, name: '上海虹桥' }
+  ];
+  let seg = SEGMENTS[0];
+  let stopX = seg.end - 100;
+  let segStart = seg.start;
+  let segName = seg.name;
+  let sched = seg.sched;
+
   /* 静态限速剖面（m, km/h）：350 → 300 → 250 → 200 → 160 → 停车 */
-  const LIMITS = [
+  const BASE_LIMITS = [
     { x: 0, v: 350 },
     { x: 250000, v: 300 },
     { x: 285000, v: 250 },
     { x: 290000, v: 200 },
-    { x: 293500, v: 160 },
-    { x: STOP_X, v: 0 }
+    { x: 293500, v: 160 }
   ];
   const LOOK = 12000;               // 12 km ATP 前瞻
   let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
 
+  function activeLimits() {
+    const out = BASE_LIMITS.filter(l => l.x < stopX);
+    out.push({ x: stopX, v: 0 });
+    return out;
+  }
+
   function limitAt(x) {
-    let v = LIMITS[0].v;
-    for (const l of LIMITS) if (x >= l.x) v = l.v;
+    let v = activeLimits()[0].v;
+    for (const l of activeLimits()) if (x >= l.x) v = l.v;
     return v / 3.6;
   }
 
   /* 目标-距离制动曲线：min(当前静态限速, 到下一个限速点的允许速度) */
   function permittedAt(x) {
     let lim = limitAt(x);
-    for (const l of LIMITS) {
+    for (const l of activeLimits()) {
       if (l.x <= x) continue;
       const d = l.x - x;
       if (d > LOOK) break;
@@ -88,8 +106,13 @@
   }
 
   function nextLimitAt(x) {
-    for (const l of LIMITS) if (l.x > x) return l;
-    return { x: RUN, v: 0 };
+    for (const l of activeLimits()) if (l.x > x) return l;
+    return { x: stopX, v: 0 };
+  }
+
+  function nextLabel(nl, x) {
+    const d = Math.max(0, (nl.x - x) / 1000).toFixed(1);
+    return nl.v > 0 ? `下一限速 ${nl.v} · ${d} km` : `停车标 · ${d} km`;
   }
 
   function setHint(text) { if (hint) hint.textContent = text; }
@@ -187,12 +210,15 @@
         corridor.add(col);
       }
     }
-    const stopPost = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.2, 0.25), steelMat);
-    stopPost.position.set(-STOP_X, 1.6, -4.2);
-    corridor.add(stopPost);
-    const stopBoard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 1.2), new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5 }));
-    stopBoard.position.set(-STOP_X - 0.2, 2.6, -4.2);
-    corridor.add(stopBoard);
+    const stopXs = [...new Set(SEGMENTS.map(s => s.end - 100))];
+    for (const sx of stopXs) {
+      const stopPost = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.2, 0.25), steelMat);
+      stopPost.position.set(-sx, 1.6, -4.2);
+      corridor.add(stopPost);
+      const stopBoard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.7, 1.2), new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5 }));
+      stopBoard.position.set(-sx - 0.2, 2.6, -4.2);
+      corridor.add(stopBoard);
+    }
 
     corridor.visible = false;
     scene.add(corridor);
@@ -260,10 +286,22 @@
     }
   }
 
+  function applySegment(i) {
+    const wasDrive = drive;
+    if (wasDrive) exitDrive();
+    seg = SEGMENTS[i] || SEGMENTS[0];
+    stopX = seg.end - 100;
+    segStart = seg.start;
+    segName = seg.name;
+    sched = seg.sched;
+    if (segSel) segSel.value = String(i);
+    if (wasDrive) enterDrive();
+  }
+
   function enterDrive() {
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
     drive = true;
-    driveX = 0;
+    driveX = -segStart;
     v = SPEED;
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
@@ -279,16 +317,16 @@
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
     if (atpEl) atpEl.textContent = 'ATP 350';
-    if (nextEl) nextEl.textContent = '下一限速 300 · 250.0 km';
+    if (nextEl) { const nl0 = nextLimitAt(segStart); nextEl.textContent = nextLabel(nl0, segStart); }
     if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
-    if (staEl) staEl.textContent = '下一站 上海虹桥 · 294.9 km';
-    if (planEl) planEl.textContent = '计划 08:55:00';
+    if (staEl) staEl.textContent = `下一站 ${segName} · ${((stopX - segStart) / 1000).toFixed(1)} km`;
+    if (planEl) planEl.textContent = '计划用时 ' + fmtTime(sched);
     if (puncEl) puncEl.textContent = '运行 00:00';
     atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
     model.position.x = baseX;
     model.rotation.y = 0;
-    setHint('295 km 南京南—上海虹桥 · 350 km/h（97.22 m/s）· W 牵引 / S 制动 / R 重置');
+    setHint(`${seg.label} · ${((stopX - segStart) / 1000).toFixed(0)} km · 350 km/h · W 牵引 / S 制动 / R 重置`);
   }
 
   function exitDrive() {
@@ -362,33 +400,31 @@
       const nl = nextLimitAt(x);
 
       /* 停站判定：速度 < 0.3，且在停车标 ±500 m */
-      if (!stopped && v < 0.3 && Math.abs(x - STOP_X) < 500) {
+      if (!stopped && v < 0.3 && Math.abs(x - stopX) < 500) {
         stopped = true;
-        stopErr = x - STOP_X;
+        stopErr = x - stopX;
         const elapsed = (performance.now() - startWall) / 1000;
-        puncSec = SCHED - elapsed;
+        puncSec = sched - elapsed;
         if (puncEl) {
           const e = stopErr >= 0 ? '+' : '';
           const p = puncSec >= 0 ? '早点' : '晚点';
           puncEl.textContent = `停站 ${e}${stopErr.toFixed(2)} m · ${p} ${Math.abs(puncSec).toFixed(0)} s`;
         }
-        if (staEl) staEl.textContent = '上海虹桥 · 已停站';
+        if (staEl) staEl.textContent = segName + ' · 已停站';
         if (modeEl) modeEl.textContent = '停车';
-        setHint('上海虹桥停车完成 · R 重置 · 停站误差与正晚点见 HUD');
+        setHint(segName + '停车完成 · R 重置 · 停站误差与正晚点见 HUD');
       } else if (!stopped && puncEl) {
         puncEl.textContent = '运行 ' + fmtTime((performance.now() - startWall) / 1000);
       }
 
       if (speedEl) speedEl.textContent = String(Math.round(v * 3.6));
-      if (distEl) distEl.textContent = (x / 1000).toFixed(2) + ' km';
+      if (distEl) distEl.textContent = ((x - segStart) / 1000).toFixed(2) + ' km';
       if (atpEl) atpEl.textContent = 'ATP ' + Math.max(0, Math.round(permNow * 3.6));
       if (nextEl) {
         const dkm = Math.max(0, (nl.x - x) / 1000);
-        nextEl.textContent = nl.v > 0
-          ? `下一限速 ${nl.v} · ${dkm.toFixed(1)} km`
-          : `停车标 · ${dkm.toFixed(2)} km`;
+        nextEl.textContent = nextLabel(nl, x);
       }
-      if (staEl && !stopped) staEl.textContent = `下一站 上海虹桥 · ${(Math.max(0, STOP_X - x) / 1000).toFixed(1)} km`;
+      if (staEl && !stopped) staEl.textContent = `下一站 ${segName} · ${(Math.max(0, stopX - x) / 1000).toFixed(1)} km`;
       if (warnEl) {
         warnEl.textContent = atpWarn === 3 ? '超速 EB' : atpWarn === 2 ? '超速' : atpWarn === 1 ? '接近限速' : '';
         warnEl.classList.toggle('hidden', atpWarn === 0);
@@ -435,8 +471,10 @@
     if (drive) exitDrive(); else enterDrive();
   });
 
+  segSel && segSel.addEventListener('change', (e) => applySegment(Number(e.target.value)));
+
   function resetDrive() {
-    driveX = 0;
+    driveX = -segStart;
     v = SPEED;
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
@@ -448,9 +486,10 @@
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
     if (atpEl) atpEl.textContent = 'ATP 350';
-    if (nextEl) nextEl.textContent = '下一限速 300 · 250.0 km';
+    if (nextEl) { const nl0 = nextLimitAt(segStart); nextEl.textContent = nextLabel(nl0, segStart); }
     if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
-    if (staEl) staEl.textContent = '下一站 上海虹桥 · 294.9 km';
+    if (staEl) staEl.textContent = `下一站 ${segName} · ${((stopX - segStart) / 1000).toFixed(1)} km`;
+    if (planEl) planEl.textContent = '计划用时 ' + fmtTime(sched);
     if (puncEl) puncEl.textContent = '运行 00:00';
     atpWarn = 0;
     if (throttleBtn) throttleBtn.classList.remove('on');
@@ -534,9 +573,11 @@
         mode: modeEl ? modeEl.textContent : '',
         stopped, stopErr, puncSec,
         punc: puncEl ? puncEl.textContent : '',
-        station: staEl ? staEl.textContent : ''
+        station: staEl ? staEl.textContent : '',
+        segment: seg.label, segStart, segEnd: stopX
       };
     },
+    setSegment(i) { applySegment(i); },
     setPosition(m, kmh) {
       driveX = -Math.max(0, Math.min(RUN, m));
       v = Math.min(SPEED, Math.max(0, (kmh == null ? 350 : kmh) / 3.6));

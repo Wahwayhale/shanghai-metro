@@ -496,6 +496,11 @@
     font:inherit;font-size:12px;font-weight:650;letter-spacing:.03em;transition:.18s;text-align:left}
   .hsr-btn span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#9f7d84;letter-spacing:.02em}
   .hsr-btn:hover{background:rgba(200,16,46,.18);border-color:rgba(200,16,46,.6);color:#ffd5dc;transform:translateY(-1px)}
+  .hsr-seg{display:flex;align-items:center;gap:10px;margin:12px 0 10px}
+  .hsr-seg label{font:600 10px/1 ui-monospace,monospace;color:#7f939f;letter-spacing:.06em}
+  .hsr-seg select{flex:1;background:#0d151b;border:1px solid rgba(255,255,255,.14);border-radius:8px;
+    color:#cfdde7;font:inherit;font-size:11px;padding:8px 10px;outline:none;cursor:pointer}
+  .hsr-seg select:focus{border-color:rgba(140,198,63,.55)}
   .hsr-stage{position:relative}
   #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
     border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
@@ -608,7 +613,17 @@
   <div id="hsrPreview" class="modal-mask hidden">
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
-      <div class="sub">头车 25.7 m · 17 辆编组目标 · 本地 GLB 资产预览</div>
+      <div class="sub">头车 25.7 m · 17 辆编组目标 · 295 km 切片 · 5 个可驾驶区段</div>
+      <div class="hsr-seg">
+        <label for="hsrSeg">区段</label>
+        <select id="hsrSeg">
+          <option value="0">南京南—镇江南 · 65 km</option>
+          <option value="1">镇江南—常州北 · 55 km</option>
+          <option value="2">常州北—苏州北 · 80 km</option>
+          <option value="3">苏州北—上海虹桥 · 95 km</option>
+          <option value="4">南京南—上海虹桥（全程）· 295 km</option>
+        </select>
+      </div>
       <div class="hsr-stage">
         <canvas id="hsrCanvas"></canvas>
         <div id="hsrDriveHud" class="hidden">
@@ -622,7 +637,7 @@
           </div>
           <div class="hsr-sta">
             <span id="hsrSta">下一站 上海虹桥 · 294.9 km</span>
-            <span id="hsrPlan">计划 08:55:00</span>
+            <span id="hsrPlan">计划用时 55:00</span>
             <b id="hsrPunc">--</b>
           </div>
           <em>295 km 南京南—上海虹桥 · ATP 350→300→250→200→160</em>
