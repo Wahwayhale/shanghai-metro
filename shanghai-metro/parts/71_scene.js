@@ -382,22 +382,18 @@ async function buildHsrService() {
   document.getElementById('menu').classList.add('hidden');
   const train = s.getObjectByName('HSR-MAIN-TRAIN');
   G.hsr = {
-    x: 1017900, v: 350 / 3.6, stopped: false, stopErr: null,
+    x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
     stopIdx: 0,
     stops: [
-      { name: '镇江南', x: 1086900 },
-      { name: '常州北', x: 1143900 },
-      { name: '无锡东', x: 1200900 },
-      { name: '苏州北', x: 1226900 },
-      { name: '昆山南', x: 1258900 },
+      { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
     train, begin: performance.now(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
     doorT: 0, legs: [], result: false,
-    legSched: [720, 600, 540, 540, 450, 450], legStart: performance.now(),
-    tsr: (() => { const start = 1040000 + Math.floor(Math.random() * 240000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
+    legSched: [11640, 3840], legStart: performance.now(),
+    tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
@@ -418,7 +414,7 @@ window.__hsrMainStart = buildHsrService;
 
 function resetHsrMain() {
   if (!G.hsr) return;
-  G.hsr.x = 1017900; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null;
+  G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null;
   G.hsr.stopIdx = 0; G.hsr.doorT = 0; G.hsr.legs = []; G.hsr.result = false;
   const r = document.getElementById('hsrMainResult');
   if (r) r.classList.add('hidden');
@@ -433,7 +429,7 @@ function showHsrMainResult() {
   const score = Math.max(0, Math.round(100 - avgErr * 20));
   const grade = score >= 90 ? 'S' : score >= 75 ? 'A' : score >= 60 ? 'B' : 'C';
   if (rows) rows.innerHTML =
-    '<span>区段　京沪高铁 284 km 六站</span>' +
+    '<span>区段　京沪高铁 G25 全程</span>' +
     '<span>停站 ' + legs.length + ' 段 · 末段 ' + legs[legs.length - 1].name + '</span>' +
     '<span>平均停站误差　' + avgErr.toFixed(2) + ' m</span>' +
     '<span>正晚点　' + (legs[legs.length - 1].punc >= 0 ? '早点' : '晚点') + ' ' + Math.abs(Math.round(legs[legs.length - 1].punc || 0)) + ' s</span>' +
