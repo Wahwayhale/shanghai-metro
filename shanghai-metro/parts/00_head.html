@@ -518,6 +518,16 @@
     gap:6px;background:rgba(5,10,14,.78);backdrop-filter:blur(6px);border-radius:12px;color:#cfdde7}
   #hsrLoading b{font-size:15px;font-weight:750;letter-spacing:.04em}
   #hsrLoading span{font-size:10px;color:#8fa3b0;letter-spacing:.04em}
+  #hsrMainHud{position:fixed;left:22px;top:22px;z-index:80;width:300px;padding:16px 18px;border-radius:14px;
+    background:rgba(7,12,16,.84);border:1px solid rgba(200,16,46,.32);backdrop-filter:blur(10px);color:#e8f1f6;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  #hsrMainHud .hm-k{font-size:9px;color:#8fa3b0;letter-spacing:.14em}
+  #hsrMainHud .hm-speed{font-size:40px;font-weight:800;line-height:1;color:#fff}
+  #hsrMainHud .hm-speed small{font-size:12px;font-weight:500;color:#9fb2bf}
+  #hsrMainHud .hm-row{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:#c7d6df}
+  #hsrMainHud .hm-row b{color:#8fe06a}
+  #hsrMainHud .hm-stop{color:#ffd479}
+  #hsrMainHud .hm-hint{margin-top:10px;font-size:9px;color:#7f93a0;line-height:1.5}
   .hsr-result{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.72);backdrop-filter:blur(8px);border-radius:12px}
   .hsr-result-card{width:min(420px,86%);padding:22px 24px;border-radius:14px;background:rgba(14,21,27,.96);border:1px solid rgba(200,16,46,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
   .hr-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.14em}
@@ -647,7 +657,16 @@
   </div>
 
   <!-- ===================== 高铁 DLC 资产预览 ===================== -->
-  <div id="hsrPreview" class="modal-mask hidden">
+  <div id="hsrMainHud" class="hidden">
+      <div class="hm-k">CR400AF-BS · 京沪高铁 G25</div>
+      <div class="hm-speed"><b id="hmSpeed">350</b><small> km/h</small></div>
+      <div class="hm-row"><span id="hmAtp">ATP 350</span><b id="hmMode">牵引</b></div>
+      <div class="hm-row"><span class="hm-stop" id="hmNext">下一站 南京南 · 1017.9 km</span></div>
+      <div class="hm-row"><span id="hmDist">0.0 km</span><span id="hmErr"></span></div>
+      <div class="hm-hint">W 牵引 · S 制动 · R 重置 · Esc 返回</div>
+    </div>
+
+    <div id="hsrPreview" class="modal-mask hidden">
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
       <div class="sub">头车 25.7 m · 17 辆编组 · 1318 km 全长 / 1302 km 正线</div>

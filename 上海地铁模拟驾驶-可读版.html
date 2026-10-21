@@ -518,6 +518,16 @@
     gap:6px;background:rgba(5,10,14,.78);backdrop-filter:blur(6px);border-radius:12px;color:#cfdde7}
   #hsrLoading b{font-size:15px;font-weight:750;letter-spacing:.04em}
   #hsrLoading span{font-size:10px;color:#8fa3b0;letter-spacing:.04em}
+  #hsrMainHud{position:fixed;left:22px;top:22px;z-index:80;width:300px;padding:16px 18px;border-radius:14px;
+    background:rgba(7,12,16,.84);border:1px solid rgba(200,16,46,.32);backdrop-filter:blur(10px);color:#e8f1f6;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+  #hsrMainHud .hm-k{font-size:9px;color:#8fa3b0;letter-spacing:.14em}
+  #hsrMainHud .hm-speed{font-size:40px;font-weight:800;line-height:1;color:#fff}
+  #hsrMainHud .hm-speed small{font-size:12px;font-weight:500;color:#9fb2bf}
+  #hsrMainHud .hm-row{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:#c7d6df}
+  #hsrMainHud .hm-row b{color:#8fe06a}
+  #hsrMainHud .hm-stop{color:#ffd479}
+  #hsrMainHud .hm-hint{margin-top:10px;font-size:9px;color:#7f93a0;line-height:1.5}
   .hsr-result{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;background:rgba(4,8,11,.72);backdrop-filter:blur(8px);border-radius:12px}
   .hsr-result-card{width:min(420px,86%);padding:22px 24px;border-radius:14px;background:rgba(14,21,27,.96);border:1px solid rgba(200,16,46,.35);box-shadow:0 18px 50px rgba(0,0,0,.5)}
   .hr-kicker{font:600 9px/1 ui-monospace,monospace;color:#ff8c9a;letter-spacing:.14em}
@@ -647,7 +657,16 @@
   </div>
 
   <!-- ===================== 高铁 DLC 资产预览 ===================== -->
-  <div id="hsrPreview" class="modal-mask hidden">
+  <div id="hsrMainHud" class="hidden">
+      <div class="hm-k">CR400AF-BS · 京沪高铁 G25</div>
+      <div class="hm-speed"><b id="hmSpeed">350</b><small> km/h</small></div>
+      <div class="hm-row"><span id="hmAtp">ATP 350</span><b id="hmMode">牵引</b></div>
+      <div class="hm-row"><span class="hm-stop" id="hmNext">下一站 南京南 · 1017.9 km</span></div>
+      <div class="hm-row"><span id="hmDist">0.0 km</span><span id="hmErr"></span></div>
+      <div class="hm-hint">W 牵引 · S 制动 · R 重置 · Esc 返回</div>
+    </div>
+
+    <div id="hsrPreview" class="modal-mask hidden">
     <div class="modal panel" style="width:min(980px,94vw)">
       <h3>CR400AF-BS · 高铁 DLC</h3>
       <div class="sub">头车 25.7 m · 17 辆编组 · 1318 km 全长 / 1302 km 正线</div>
@@ -79037,6 +79056,7 @@ function loop() {
     return;
   }
   if (G.mode === 'hsr') {
+    updateHsrMain(dt);
     renderer.render(scene, camera);
     return;
   }
@@ -79450,6 +79470,18 @@ async function buildHsrService() {
   camera.far = 5000;
   camera.updateProjectionMatrix();
   document.getElementById('menu').classList.add('hidden');
+  const train = s.getObjectByName('HSR-MAIN-TRAIN');
+  G.hsr = {
+    x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
+    stopIdx: 0,
+    stops: [
+      { name: '南京南', x: 1017900 },
+      { name: '上海虹桥', x: 1301900 }
+    ],
+    train, begin: performance.now()
+  };
+  const hud = document.getElementById('hsrMainHud');
+  if (hud) hud.classList.remove('hidden');
   G.mode = 'hsr';
   G.ready = true;
   window.__hsrMainScene = s;
@@ -79457,6 +79489,76 @@ async function buildHsrService() {
 }
 window.buildHsrService = buildHsrService;
 window.__hsrMainStart = buildHsrService;
+
+
+function hsrMainLimit(x) {
+  if (x < 1201000) return 350;
+  if (x < 1270000) return 300;
+  if (x < 1290000) return 250;
+  if (x < 1298000) return 200;
+  if (x < 1301900) return 160;
+  return 0;
+}
+
+function updateHsrMain(dt) {
+  const st = G.hsr;
+  if (!st) return;
+  const stop = st.stops[st.stopIdx].x;
+  const limit = hsrMainLimit(st.x);
+  const throttle = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
+  if (!st.stopped) {
+    const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
+    const perm = Math.min(limit / 3.6, stopV);
+    const brake = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const drag = 0.000005 * st.v * st.v;
+    let a = 0.45 * throttle - 0.8 * brake - drag;
+    if (st.v > perm + 0.3) a = Math.min(a, -0.8);
+    st.v = Math.max(0, Math.min(350 / 3.6, st.v + a * dt));
+    st.x = Math.min(1301900, st.x + st.v * dt);
+    if (st.v < 0.3 && Math.abs(st.x - stop) < 500) {
+      st.stopped = true;
+      st.stopErr = st.x - stop;
+      st.v = 0;
+    }
+  } else {
+    st.v = 0;
+  }
+  if (st.train) st.train.position.x = -st.x;
+  camera.position.set(-st.x - 38, 8.0, 22);
+  camera.lookAt(-st.x + 4, 2.2, 0);
+
+  const kmh = st.v * 3.6;
+  const el = (id) => document.getElementById(id);
+  if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
+  if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
+  if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (throttle ? '牵引' : '惰行'));
+  if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
+  if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
+  if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+}
+function exitHsrMain() {
+  if (G.mode !== 'hsr') return;
+  G.mode = 'menu';
+  G.hsr = null;
+  const hud = document.getElementById('hsrMainHud');
+  if (hud) hud.classList.add('hidden');
+  const menu = document.getElementById('menu');
+  if (menu) menu.classList.remove('hidden');
+}
+window.addEventListener('keydown', (e) => {
+  if (G.mode !== 'hsr') return;
+  if (e.code === 'KeyR') {
+    if (G.hsr) { G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null; G.hsr.stopIdx = 0; }
+  } else if (e.code === 'Escape') {
+    exitHsrMain();
+  }
+});
+
+window.__hsrMain = {
+  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx } : null; },
+  setX(x) { if (G.hsr) { G.hsr.x = x; G.hsr.v = 0; G.hsr.stopped = false; } },
+  exit: exitHsrMain
+};
 
 
 /* ===== 72_physics.js ===== */

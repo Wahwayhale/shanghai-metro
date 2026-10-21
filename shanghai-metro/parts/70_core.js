@@ -662,6 +662,7 @@ function loop() {
     return;
   }
   if (G.mode === 'hsr') {
+    updateHsrMain(dt);
     renderer.render(scene, camera);
     return;
   }

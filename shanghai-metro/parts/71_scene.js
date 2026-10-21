@@ -380,6 +380,18 @@ async function buildHsrService() {
   camera.far = 5000;
   camera.updateProjectionMatrix();
   document.getElementById('menu').classList.add('hidden');
+  const train = s.getObjectByName('HSR-MAIN-TRAIN');
+  G.hsr = {
+    x: 0, v: 350 / 3.6, stopped: false, stopErr: null,
+    stopIdx: 0,
+    stops: [
+      { name: '南京南', x: 1017900 },
+      { name: '上海虹桥', x: 1301900 }
+    ],
+    train, begin: performance.now()
+  };
+  const hud = document.getElementById('hsrMainHud');
+  if (hud) hud.classList.remove('hidden');
   G.mode = 'hsr';
   G.ready = true;
   window.__hsrMainScene = s;
@@ -387,3 +399,73 @@ async function buildHsrService() {
 }
 window.buildHsrService = buildHsrService;
 window.__hsrMainStart = buildHsrService;
+
+
+function hsrMainLimit(x) {
+  if (x < 1201000) return 350;
+  if (x < 1270000) return 300;
+  if (x < 1290000) return 250;
+  if (x < 1298000) return 200;
+  if (x < 1301900) return 160;
+  return 0;
+}
+
+function updateHsrMain(dt) {
+  const st = G.hsr;
+  if (!st) return;
+  const stop = st.stops[st.stopIdx].x;
+  const limit = hsrMainLimit(st.x);
+  const throttle = (keys['KeyW'] || keys['ArrowUp']) ? 1 : 0;
+  if (!st.stopped) {
+    const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
+    const perm = Math.min(limit / 3.6, stopV);
+    const brake = (keys['KeyS'] || keys['ArrowDown']) ? 1 : 0;
+    const drag = 0.000005 * st.v * st.v;
+    let a = 0.45 * throttle - 0.8 * brake - drag;
+    if (st.v > perm + 0.3) a = Math.min(a, -0.8);
+    st.v = Math.max(0, Math.min(350 / 3.6, st.v + a * dt));
+    st.x = Math.min(1301900, st.x + st.v * dt);
+    if (st.v < 0.3 && Math.abs(st.x - stop) < 500) {
+      st.stopped = true;
+      st.stopErr = st.x - stop;
+      st.v = 0;
+    }
+  } else {
+    st.v = 0;
+  }
+  if (st.train) st.train.position.x = -st.x;
+  camera.position.set(-st.x - 38, 8.0, 22);
+  camera.lookAt(-st.x + 4, 2.2, 0);
+
+  const kmh = st.v * 3.6;
+  const el = (id) => document.getElementById(id);
+  if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
+  if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
+  if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (throttle ? '牵引' : '惰行'));
+  if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
+  if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
+  if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+}
+function exitHsrMain() {
+  if (G.mode !== 'hsr') return;
+  G.mode = 'menu';
+  G.hsr = null;
+  const hud = document.getElementById('hsrMainHud');
+  if (hud) hud.classList.add('hidden');
+  const menu = document.getElementById('menu');
+  if (menu) menu.classList.remove('hidden');
+}
+window.addEventListener('keydown', (e) => {
+  if (G.mode !== 'hsr') return;
+  if (e.code === 'KeyR') {
+    if (G.hsr) { G.hsr.x = 0; G.hsr.v = 350 / 3.6; G.hsr.stopped = false; G.hsr.stopErr = null; G.hsr.stopIdx = 0; }
+  } else if (e.code === 'Escape') {
+    exitHsrMain();
+  }
+});
+
+window.__hsrMain = {
+  get state() { return G.hsr ? { x: G.hsr.x, v: G.hsr.v, stopped: G.hsr.stopped, stopErr: G.hsr.stopErr, stopIdx: G.hsr.stopIdx } : null; },
+  setX(x) { if (G.hsr) { G.hsr.x = x; G.hsr.v = 0; G.hsr.stopped = false; } },
+  exit: exitHsrMain
+};
