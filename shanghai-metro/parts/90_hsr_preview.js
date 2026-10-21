@@ -40,7 +40,16 @@
   const resultMenuBtn = document.getElementById('hsrResultMenu');
   const cabBtn = document.getElementById('hsrCabBtn');
   const cabHud = document.getElementById('hsrCabHud');
+  const pantoEl = document.getElementById('hsrPanto');
+  const signalEl = document.getElementById('hsrSignal');
+  const cabSignalEl = document.getElementById('cabSignal');
+  const cabSpeedEl = document.getElementById('cabSpeed');
+  const cabAtpEl = document.getElementById('cabAtp');
+  const cabNextEl = document.getElementById('cabNext');
+  const cabTractionEl = document.getElementById('cabTraction');
+  const cabBrakeEl = document.getElementById('cabBrake');
   let cabMode = false;
+  let pantoUp = true, vcbOn = true;
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
@@ -813,6 +822,7 @@
 
       throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
       brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
+      if (!pantoUp || !vcbOn || doorsOpen) throttle = 0;
 
       if (stopped && departReady && throttle) { departNext(); return; }
 
@@ -921,6 +931,16 @@
       if (speedEl) speedEl.textContent = String(Math.round(v * 3.6));
       if (distEl) distEl.textContent = ((x - segStart) / 1000).toFixed(2) + ' km';
       if (atpEl) atpEl.textContent = 'ATP ' + Math.max(0, Math.round(permNow * 3.6));
+      if (cabSpeedEl) cabSpeedEl.textContent = String(Math.round(v * 3.6));
+      if (cabAtpEl) cabAtpEl.textContent = 'ATP ' + Math.max(0, Math.round(permNow * 3.6));
+      if (cabNextEl) cabNextEl.textContent = staEl ? staEl.textContent : '';
+      if (cabTractionEl) cabTractionEl.style.width = Math.round(throttle * 100) + '%';
+      if (cabBrakeEl) cabBrakeEl.style.width = Math.round(brake * 100) + '%';
+      if (pantoEl) pantoEl.textContent = (pantoUp ? '受电弓 升' : '受电弓 降') + ' · VCB ' + (vcbOn ? '合' : '分');
+      const nlSig = nextLimitAt(x);
+      const sigTxt = (stopX - x < 2000) ? '红' : (nlSig.v < 350 ? '黄' : '绿');
+      if (signalEl) signalEl.textContent = '信号 ' + sigTxt;
+      if (cabSignalEl) cabSignalEl.textContent = '信号 ' + sigTxt;
       if (nextEl) {
         const dkm = Math.max(0, (nl.x - x) / 1000);
         nextEl.textContent = nextLabel(nl, x);
@@ -1078,6 +1098,8 @@
   window.addEventListener('keydown', (e) => {
     if (!running || !drive) return;
     const k = String(e.key || '').toLowerCase();
+    if (k === 'p') { pantoUp = !pantoUp; if (!pantoUp) vcbOn = false; setHint(pantoUp ? '受电弓升起' : '受电弓降下 · VCB 断开'); return; }
+    if (k === 'v') { if (!pantoUp) { setHint('先升受电弓再合 VCB'); return; } vcbOn = !vcbOn; setHint(vcbOn ? 'VCB 合 · 主断路器闭合' : 'VCB 分 · 牵引封锁'); return; }
     if (k === 'c') { e.preventDefault(); toggleCab(); return; }
     if (k === 'w' || k === 'arrowup' || k === 's' || k === 'arrowdown' || k === 'r') {
       e.preventDefault();
