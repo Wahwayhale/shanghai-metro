@@ -31,6 +31,7 @@
   const segSel = document.getElementById('hsrSeg');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
+  let headModel = null, middleModel = null, trainRoot = null, headBaseX = 0;
   let raf = 0, running = false, ready = false;
   let yaw = 0.72, pitch = 0.18, dist = 48;
   let dragging = false, lastX = 0, lastY = 0;
@@ -132,6 +133,7 @@
     const center = box.getCenter(new THREE.Vector3());
     obj.position.sub(center);
     baseX = obj.position.x;
+    headBaseX = obj.position.x;
     dist = Math.max(size.x, size.z) * 1.55 + 4;
   }
 
@@ -144,24 +146,27 @@
     const railMat = new THREE.MeshStandardMaterial({ color: 0x9aa4ac, roughness: 0.35, metalness: 0.9 });
     const steelMat = new THREE.MeshStandardMaterial({ color: 0x4d565e, roughness: 0.6, metalness: 0.7 });
 
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.55, 11), deckMat);
-    deck.position.set(-RUN / 2, -0.28, 0);
+    /* 起点向后多铺 600 m：439 m 编组在始发站不会悬空 */
+    const CORR = RUN + 600;
+    const CORR_C = -(RUN - 600) / 2;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(CORR, 0.55, 11), deckMat);
+    deck.position.set(CORR_C, -0.28, 0);
     corridor.add(deck);
 
     for (const z of [-0.7175, 0.7175]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.12, 0.12), railMat);
-      rail.position.set(-RUN / 2, 0.06, z);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(CORR, 0.12, 0.12), railMat);
+      rail.position.set(CORR_C, 0.06, z);
       corridor.add(rail);
     }
 
-    // sleepers every 2 m
+    // sleepers every 4 m
     const sleeperGeo = new THREE.BoxGeometry(0.24, 0.08, 2.6);
     const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x2a3036, roughness: 0.95 });
-    const count = Math.floor(RUN / 4);
+    const count = Math.floor(CORR / 4);
     const sleepers = new THREE.InstancedMesh(sleeperGeo, sleeperMat, count);
     const m4 = new THREE.Matrix4();
     for (let i = 0; i < count; i++) {
-      m4.makeTranslation(-i * 4, 0.02, 0);
+      m4.makeTranslation(600 - i * 4, 0.02, 0);
       sleepers.setMatrixAt(i, m4);
     }
     sleepers.instanceMatrix.needsUpdate = true;
@@ -169,28 +174,28 @@
 
     // catenary masts every 50 m on both sides + one contact wire
     const mastGeo = new THREE.BoxGeometry(0.22, 5.8, 0.22);
-    const mastCount = Math.floor(RUN / 50) * 2;
+    const mastCount = Math.floor(CORR / 50) * 2;
     const masts = new THREE.InstancedMesh(mastGeo, steelMat, mastCount);
     let k = 0;
-    for (let i = 0; i < RUN / 50; i++) {
+    for (let i = 0; i < CORR / 50; i++) {
       for (const z of [-5.1, 5.1]) {
-        m4.makeTranslation(-i * 50 - 25, 2.9, z);
+        m4.makeTranslation(600 - i * 50 - 25, 2.9, z);
         masts.setMatrixAt(k++, m4);
       }
     }
     masts.instanceMatrix.needsUpdate = true;
     corridor.add(masts);
 
-    const wire = new THREE.Mesh(new THREE.BoxGeometry(RUN, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0x5d6a73 }));
-    wire.position.set(-RUN / 2, 5.6, 0);
+    const wire = new THREE.Mesh(new THREE.BoxGeometry(CORR, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0x5d6a73 }));
+    wire.position.set(CORR_C, 5.6, 0);
     corridor.add(wire);
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(RUN + 600, 500),
+      new THREE.PlaneGeometry(CORR + 600, 500),
       new THREE.MeshStandardMaterial({ color: 0x10161a, roughness: 1 })
     );
     ground.rotation.x = -Math.PI / 2;
-    ground.position.set(-RUN / 2, -18, 0);
+    ground.position.set(CORR_C, -18, 0);
     corridor.add(ground);
 
     /* 7 座车站站台（块模）：450 m 站台 + 雨棚；上海虹桥加停车标 */
@@ -259,31 +264,69 @@
       return;
     }
 
-    try {
-      const bin = atob(HSR_TRAIN_GLB_B64);
+    const loader = new GLTFLoader();
+    function parseB64(b64, onDone) {
+      const bin = atob(b64);
       const bytes = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-      const loader = new GLTFLoader();
-      loader.parse(bytes.buffer, '', (gltf) => {
-        model = gltf.scene;
-        model.traverse((o) => {
-          if (o.isMesh && o.material) {
-            o.material.envMapIntensity = 0.8;
-            o.frustumCulled = false;
-          }
-        });
-        fitModel(model);
-        scene.add(model);
-        ready = true;
-        setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
-      }, (err) => {
+      loader.parse(bytes.buffer, '', onDone, (err) => {
         console.error('[hsr] GLB 解析失败', err);
         setHint('GLB 解析失败：' + (err && err.message ? err.message : err));
+      });
+    }
+
+    function prep(root) {
+      root.traverse((o) => {
+        if (o.isMesh && o.material) {
+          o.material.envMapIntensity = 0.8;
+          o.frustumCulled = false;
+        }
+      });
+      return root;
+    }
+
+    try {
+      parseB64(HSR_TRAIN_GLB_B64, (gltf) => {
+        headModel = prep(gltf.scene);
+        model = headModel;
+        fitModel(headModel);
+        scene.add(headModel);
+        ready = true;
+        setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+        if (typeof HSR_MIDDLE_GLB_B64 !== 'undefined' && HSR_MIDDLE_GLB_B64) {
+          parseB64(HSR_MIDDLE_GLB_B64, (mid) => {
+            middleModel = prep(mid.scene);
+            setHint('CR400AF-BS 17 辆编组就绪 · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
+          });
+        }
       });
     } catch (err) {
       console.error('[hsr] GLB 初始化失败', err);
       setHint('GLB 初始化失败：' + (err && err.message ? err.message : err));
     }
+  }
+
+  function buildTrain() {
+    if (!headModel || !middleModel) return null;
+    const root = new THREE.Group();
+    const HEAD = 25.7, MID = 25.5, GAP = 0.35;
+    const head = headModel.clone(true);
+    head.visible = true;
+    head.position.set(HEAD / 2, 0, 0);
+    root.add(head);
+    let x = HEAD + GAP;
+    for (let i = 0; i < 15; i++) {
+      const car = middleModel.clone(true);
+      car.position.set(x + MID / 2, 0, 0);
+      root.add(car);
+      x += MID + GAP;
+    }
+    const tail = headModel.clone(true);
+    tail.visible = true;
+    tail.position.set(x + HEAD / 2, 0, 0);
+    tail.rotation.y = Math.PI;
+    root.add(tail);
+    return root;
   }
 
   function applySegment(i) {
@@ -324,9 +367,25 @@
     if (puncEl) puncEl.textContent = '运行 00:00';
     atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
+
+    const root = buildTrain();
+    if (root) {
+      if (trainRoot) scene.remove(trainRoot);
+      trainRoot = root;
+      scene.add(trainRoot);
+      headModel.visible = false;
+      model = trainRoot;
+      baseX = 0;
+    } else {
+      if (trainRoot) { scene.remove(trainRoot); trainRoot = null; }
+      model = headModel;
+      headModel.visible = true;
+      baseX = headBaseX;
+    }
+
     model.position.x = baseX;
     model.rotation.y = 0;
-    setHint(`${seg.label} · ${((stopX - segStart) / 1000).toFixed(0)} km · 350 km/h · W 牵引 / S 制动 / R 重置`);
+    setHint(`${seg.label} · ${((stopX - segStart) / 1000).toFixed(0)} km · ${root ? '17 辆编组' : '单节头车'} · W 牵引 / S 制动 / R 重置`);
   }
 
   function exitDrive() {
@@ -339,7 +398,11 @@
     scene.fog = null;
     hud.classList.add('hidden');
     if (driveBtn) driveBtn.textContent = '350 km/h 走廊验证';
-    if (model) {
+    if (trainRoot) { scene.remove(trainRoot); trainRoot = null; }
+    if (headModel) {
+      headModel.visible = true;
+      model = headModel;
+      baseX = headBaseX;
       model.position.x = baseX;
       model.rotation.y = 0;
     }
@@ -574,7 +637,8 @@
         stopped, stopErr, puncSec,
         punc: puncEl ? puncEl.textContent : '',
         station: staEl ? staEl.textContent : '',
-        segment: seg.label, segStart, segEnd: stopX
+        segment: seg.label, segStart, segEnd: stopX,
+        cars: trainRoot ? trainRoot.children.length : 1
       };
     },
     setSegment(i) { applySegment(i); },
