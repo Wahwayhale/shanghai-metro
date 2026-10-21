@@ -32,6 +32,8 @@
   const doorEl = document.getElementById('hsrDoor');
   const dwellEl = document.getElementById('hsrDwell');
   const departBtn = document.getElementById('hsrDepart');
+  const loadingEl = document.getElementById('hsrLoading');
+  const menuEl = document.getElementById('menu');
 
   let renderer = null, scene = null, camera = null, model = null, grid = null, corridor = null;
   let headModel = null, middleModel = null, headMergedModel = null, trainRoot = null, headBaseX = 0;
@@ -453,6 +455,7 @@
 
   function enterDrive() {
     if (!ready || !model) { setHint('模型还没加载完，稍后再试'); return; }
+    if (loadingEl) loadingEl.classList.add('hidden');
     drive = true;
     driveX = -segStart;
     v = SPEED;
@@ -671,6 +674,8 @@
 
   function openDrive() {
     pendingDrive = true;
+    if (menuEl) menuEl.classList.add('hidden');
+    if (loadingEl) loadingEl.classList.remove('hidden');
     open();
     if (ready && middleModel) {
       pendingDrive = false;
@@ -694,6 +699,8 @@
 
   function close() {
     pendingDrive = false;
+    if (loadingEl) loadingEl.classList.add('hidden');
+    if (menuEl) menuEl.classList.remove('hidden');
     running = false;
     cancelAnimationFrame(raf);
     if (drive) exitDrive();

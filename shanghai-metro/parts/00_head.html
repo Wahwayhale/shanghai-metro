@@ -514,6 +514,10 @@
     color:#cfdde7;font:inherit;font-size:11px;padding:8px 10px;outline:none;cursor:pointer}
   .hsr-seg select:focus{border-color:rgba(140,198,63,.55)}
   .hsr-stage{position:relative}
+  #hsrLoading{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;background:rgba(5,10,14,.78);backdrop-filter:blur(6px);border-radius:12px;color:#cfdde7}
+  #hsrLoading b{font-size:15px;font-weight:750;letter-spacing:.04em}
+  #hsrLoading span{font-size:10px;color:#8fa3b0;letter-spacing:.04em}
   #hsrCanvas{width:100%;height:min(54vh,500px);display:block;border-radius:12px;background:#080d11;
     border:1px solid rgba(255,255,255,.08);cursor:grab;touch-action:none}
   #hsrCanvas:active{cursor:grabbing}
@@ -592,7 +596,7 @@
             <div class="dlc-title">G25 标杆车 <small>北京南—上海虹桥 · 1318 km</small></div>
             <div class="dlc-meta">CR400AF-BS · 17 辆 · 350 km/h · 295 km 切片 · ATP/停站</div>
           </div>
-          <div class="dlc-cta">进入 →</div>
+          <div class="dlc-cta">值乘 →</div>
         </div>
       </div>
     </div>
@@ -651,6 +655,7 @@
       </div>
       <div class="hsr-stage">
         <canvas id="hsrCanvas"></canvas>
+        <div id="hsrLoading" class="hidden"><b>DLC 值乘</b><span>正在编组 CR400AF-BS · 17 辆…</span></div>
         <div id="hsrDriveHud" class="hidden">
           <b id="hsrSpeed">0</b><span>km/h</span>
           <i id="hsrDist">0.00 km</i>
@@ -679,7 +684,7 @@
       <div class="modal-actions">
         <button id="hsrDrive" class="btn-ghost">350 km/h 走廊验证</button>
         <button id="hsrReset" class="btn-ghost">重置视角</button>
-        <button id="hsrClose" class="btn-primary">关闭</button>
+        <button id="hsrClose" class="btn-primary">返回主菜单</button>
       </div>
     </div>
   </div>
