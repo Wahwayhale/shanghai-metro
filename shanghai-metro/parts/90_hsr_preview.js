@@ -1045,23 +1045,36 @@
     mask.classList.add('hidden');
   }
 
-  const fallbackBtn = document.getElementById('hsrFallbackBtn');
-  if (fallbackBtn) fallbackBtn.addEventListener('click', openDrive);
-  btn.addEventListener('click', () => {
-    if (typeof window.buildHsrService === 'function') {
-      window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
-    } else {
-      openDrive();
+  function mainLoading(text) {
+    const el = document.getElementById('hsrMainLoading');
+    if (!el) return;
+    el.classList.toggle('hidden', !text);
+    const b = el.querySelector('b');
+    if (b && text) b.textContent = text;
+  }
+
+  async function startMainHsr() {
+    mainLoading('正在进入京沪高铁主场景');
+    if (menuEl) menuEl.classList.add('hidden');
+    for (let i = 0; i < 80 && !window.HSR_MAIN; i++) {
+      await new Promise((r) => setTimeout(r, 150));
     }
-  });
+    if (!window.HSR_MAIN) {
+      mainLoading('主场景加载失败：资源未就绪');
+      return;
+    }
+    try {
+      await window.buildHsrService();
+      mainLoading('');
+    } catch (e) {
+      console.error('[hsr-main]', e);
+      mainLoading('主场景加载失败：' + (e && e.message ? e.message : e));
+    }
+  }
+
+  btn.addEventListener('click', startMainHsr);
   const dlcCard = document.getElementById('dlcCard');
-  if (dlcCard) dlcCard.addEventListener('click', () => {
-    if (typeof window.buildHsrService === 'function') {
-      window.buildHsrService().catch((e) => { console.error('[hsr-main]', e); openDrive(); });
-    } else {
-      openDrive();
-    }
-  });
+  if (dlcCard) dlcCard.addEventListener('click', startMainHsr);
   closeBtn && closeBtn.addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
 

@@ -570,3 +570,12 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 验证：点该按钮 → `modal=true`、`drive=true`、`cars=17`、350 km/h。
 - 主场景按钮保留屏幕牵引/制动/发车；两条入口都可开。
 - 正式版 2.97 MB、可读版 3.62 MB；smoke 通过。
+# 热修复 5：只保留主场景驾驶，移除弹窗入口
+
+- 主菜单删除「弹窗版驾驶」按钮；DLC 卡/主按钮都只调用 `startMainHsr()`。
+- `startMainHsr()` 等待 `HSR_MAIN` 就绪（最多 12 s），再 `buildHsrService()`；
+  失败显示主场景加载错误，不再回退弹窗。
+- 新增全屏加载层「正在进入京沪高铁主场景」。
+- 验证：页面加载后立即点主按钮 → menu=false、loading=false、hud=true、
+  modal=false，列车 350 km/h 运行。
+- 正式版 2.97 MB、可读版 3.62 MB；smoke 通过。
