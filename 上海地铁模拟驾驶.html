@@ -20625,6 +20625,7 @@ window.__sim = {
   let doorNodes = [], midDoorInsts = [], doorT = 0, doorTarget = 0, labelCount = 0;
   let tsr = null, tsrSign = null;
   let atpViolations = 0, lastAtpWarn = 0, resultShown = false;
+  let legResults = [], legAtpStart = 0;
   let stopPlan = [], stopIdx = 0, stopPlanSeg = null;
   const LEG_SCHED = [720, 600, 540, 540, 450, 450];
   let audioCtx = null;
@@ -21207,6 +21208,7 @@ window.__sim = {
     if (loadingEl) loadingEl.classList.add('hidden');
     if (!tsr) { tsr = makeTsr(); showTsrSign(); }
     atpViolations = 0; lastAtpWarn = 0; resultShown = false;
+    legResults = []; legAtpStart = 0;
     if (resultEl) resultEl.classList.add('hidden');
     if (!stopPlan.length || stopPlanSeg !== seg) buildStopPlan();
     drive = true;
@@ -21215,8 +21217,6 @@ window.__sim = {
     throttle = 0; brake = 0;
     touchThrottle = 0; touchBrake = 0;
     stopped = false; stopErr = null; puncSec = null;
-    atpViolations = 0; lastAtpWarn = 0; resultShown = false;
-    if (resultEl) resultEl.classList.add('hidden');
     startWall = performance.now();
     Object.keys(keysDown).forEach(k => { keysDown[k] = false; });
     lastT = performance.now();
@@ -21381,6 +21381,12 @@ window.__sim = {
         if (departBtn) departBtn.classList.add('hidden');
         const elapsed = (performance.now() - startWall) / 1000;
         puncSec = sched - elapsed;
+        const legAtp = Math.max(0, atpViolations - legAtpStart);
+        const legStop = Math.max(0, 40 - Math.abs(stopErr) * 20);
+        const legPunc = Math.max(0, 30 - Math.abs(puncSec) * 0.5);
+        const legScore = Math.round(legStop + legPunc + Math.max(0, 30 - legAtp * 10));
+        legResults.push({ name: segName, err: stopErr, punc: puncSec, atp: legAtp, score: legScore });
+        legAtpStart = atpViolations;
         if (puncEl) {
           const e = stopErr >= 0 ? '+' : '';
           const p = puncSec >= 0 ? '早点' : '晚点';
@@ -21426,19 +21432,17 @@ window.__sim = {
   function showResult() {
     if (resultShown) return;
     resultShown = true;
-    const err = Math.abs(stopErr || 0);
-    const stopScore = Math.max(0, 40 - err * 20);
-    const puncScore = Math.max(0, 30 - Math.abs(puncSec || 0) * 0.5);
-    const atpScore = Math.max(0, 30 - atpViolations * 10);
-    const total = Math.round(stopScore + puncScore + atpScore);
+    const legs = legResults.length ? legResults : [{ name: segName, err: stopErr, punc: puncSec, atp: atpViolations, score: 0 }];
+    const last = legs[legs.length - 1];
+    const total = Math.round(legs.reduce((a, b) => a + b.score, 0) / legs.length);
     const grade = total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : 'C';
     if (resultRows) {
       resultRows.innerHTML =
         `<span>区段　${seg.label}</span>` +
-        `<span>停站误差　${(stopErr || 0).toFixed(2)} m</span>` +
-        `<span>正晚点　${(puncSec || 0) >= 0 ? '早点' : '晚点'} ${Math.abs(Math.round(puncSec || 0))} s</span>` +
+        `<span>停站 ${legs.length} 段 · 末段 ${last.name}</span>` +
+        `<span>末段误差　${(last.err || 0).toFixed(2)} m · ${(last.punc || 0) >= 0 ? '早点' : '晚点'} ${Math.abs(Math.round(last.punc || 0))} s</span>` +
         `<span>ATP 超速　${atpViolations} 次</span>` +
-        `<span>得分　<b>${total} · ${grade}</b></span>`;
+        `<span>平均得分　<b>${total} · ${grade}</b></span>`;
     }
     if (resultEl) resultEl.classList.remove('hidden');
     setHint('值乘完成 · 查看结算');
