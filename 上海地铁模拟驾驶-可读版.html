@@ -83668,8 +83668,21 @@ window.__sim = {
     // shell
     add(new THREE.BoxGeometry(4.4, 0.14, 2.75), dark, 5.2, 1.25, 0);
     add(new THREE.BoxGeometry(4.4, 0.12, 2.75), dark, 5.2, 3.95, 0);
-    add(new THREE.BoxGeometry(4.4, 2.7, 0.12), dark, 5.2, 2.65, -1.36);
-    add(new THREE.BoxGeometry(4.4, 2.7, 0.12), dark, 5.2, 2.65, 1.36);
+    for (const z of [-1.36, 1.36]) {
+      add(new THREE.BoxGeometry(4.4, 0.9, 0.12), dark, 5.2, 1.7, z);
+      add(new THREE.BoxGeometry(4.4, 0.55, 0.12), dark, 5.2, 3.62, z);
+      add(new THREE.BoxGeometry(0.35, 2.7, 0.12), dark, 3.2, 2.65, z);
+      add(new THREE.BoxGeometry(0.35, 2.7, 0.12), dark, 7.0, 2.65, z);
+    }
+    const glassMat = new THREE.MeshBasicMaterial({ color: 0xbcd8e8, transparent: true, opacity: 0.10, depthWrite: false, side: THREE.DoubleSide });
+    for (const z of [-1.35, 1.35]) {
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 1.1), glassMat);
+      glass.position.set(5.1, 2.75, z);
+      if (z < 0) glass.rotation.y = Math.PI;
+      g.add(glass);
+    }
+    const shield = new THREE.Mesh(new THREE.PlaneGeometry(2.35, 1.75), glassMat);
+    shield.position.set(3.06, 3.12, 0); shield.rotation.y = Math.PI / 2; g.add(shield);
     add(new THREE.BoxGeometry(0.12, 2.7, 2.8), dark, 7.35, 2.65, 0);
     // windshield frame
     add(new THREE.BoxGeometry(0.16, 1.85, 0.16), trim, 3.0, 3.15, -1.18);
