@@ -20787,6 +20787,31 @@ window.__sim = {
         corridor.add(col);
       }
     }
+  function speedSign(v) {
+    const g = new THREE.Group();
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f2f4f5'; ctx.fillRect(0, 0, 256, 256);
+    ctx.strokeStyle = '#c8102e'; ctx.lineWidth = 18; ctx.strokeRect(9, 9, 238, 238);
+    ctx.fillStyle = '#111416';
+    ctx.font = '800 132px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(v), 128, 132);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const board = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.0, 3.0),
+      new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+    );
+    board.position.set(0, 4.3, 0);
+    board.rotation.y = -Math.PI / 2;
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.0, 0.18), new THREE.MeshStandardMaterial({ color: 0x9aa4ac, metalness: 0.8, roughness: 0.4 }));
+    post.position.set(0, 2.0, 0);
+    g.add(post, board);
+    return g;
+  }
+
   function stationSprite(name) {
     const c = document.createElement('canvas');
     c.width = 512; c.height = 128;
@@ -20809,6 +20834,12 @@ window.__sim = {
     return sp;
   }
 
+    for (const l of BASE_LIMITS) {
+      if (l.v <= 0) continue;
+      const sign = speedSign(l.v);
+      sign.position.set(-l.x, 0, 5.9);
+      corridor.add(sign);
+    }
     for (const st of STATIONS) {
       const label = stationSprite(st.name);
       label.position.set(-st.x + 220, 6.5, -5.6);
