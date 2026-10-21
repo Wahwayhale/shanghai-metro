@@ -467,6 +467,10 @@
         fitModel(headModel);
         scene.add(headModel);
         ready = true;
+        if (pendingDrive && !(typeof HSR_MIDDLE_GLB_B64 !== 'undefined' && HSR_MIDDLE_GLB_B64)) {
+          pendingDrive = false;
+          enterDrive();
+        }
         setHint('CR400AF-BS 头车 · 25.7 m · 拖拽旋转 / 滚轮缩放 · 可切换 350 km/h 走廊验证');
         if (typeof HSR_HEAD_MERGED_GLB_B64 !== 'undefined' && HSR_HEAD_MERGED_GLB_B64) {
           parseB64(HSR_HEAD_MERGED_GLB_B64, (hm) => { headMergedModel = prep(hm.scene); });
@@ -744,7 +748,7 @@
     if (departBtn) departBtn.classList.add('hidden');
     doorsOpen = false; departReady = false; doorTarget = 0; doorT = 0;
     atpWarn = 0;
-    if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
+    if (driveBtn) driveBtn.textContent = '退出驾驶';
 
     const root = buildTrain();
     if (root) {
@@ -775,7 +779,7 @@
     grid.visible = true;
     scene.fog = null;
     hud.classList.add('hidden');
-    if (driveBtn) driveBtn.textContent = '350 km/h 走廊验证';
+    if (driveBtn) driveBtn.textContent = '开始驾驶';
     if (trainRoot) { scene.remove(trainRoot); trainRoot = null; }
     if (headModel) {
       headModel.visible = true;
@@ -972,8 +976,8 @@
       return;
     }
     setTimeout(() => {
-      if (pendingDrive) { pendingDrive = false; enterDrive(); }
-    }, 1600);
+      if (pendingDrive && ready && model) { pendingDrive = false; enterDrive(); }
+    }, 5000);
   }
 
   function open() {
@@ -997,7 +1001,7 @@
     mask.classList.add('hidden');
   }
 
-  btn.addEventListener('click', open);
+  btn.addEventListener('click', openDrive);
   const dlcCard = document.getElementById('dlcCard');
   if (dlcCard) dlcCard.addEventListener('click', openDrive);
   closeBtn && closeBtn.addEventListener('click', close);
