@@ -19,6 +19,9 @@
   const distEl = document.getElementById('hsrDist');
   const speedEl = document.getElementById('hsrSpeed');
   const modeEl = document.getElementById('hsrMode');
+  const atpEl = document.getElementById('hsrAtp');
+  const nextEl = document.getElementById('hsrNext');
+  const warnEl = document.getElementById('hsrWarn');
   const throttleBtn = document.getElementById('hsrThrottle');
   const brakeBtn = document.getElementById('hsrBrake');
   const resetDriveBtn = document.getElementById('hsrResetDrive');
@@ -34,6 +37,41 @@
   const SPEED = 350 / 3.6;          // 97.222 m/s
   const ACC = 0.45;                 // 牵引加速度 m/s²
   const BRK = 0.75;                 // 常用制动 m/s²
+
+  /* 静态限速剖面（m, km/h）：350 → 300 → 250 → 180 → 停车 */
+  const LIMITS = [
+    { x: 0, v: 350 },
+    { x: 4000, v: 300 },
+    { x: 6000, v: 250 },
+    { x: 7200, v: 180 }
+  ];
+  const LOOK = 12000;               // 12 km ATP 前瞻
+  let atpWarn = 0;                  // 0 正常 / 1 报警 / 2 常用制动 / 3 EB
+
+  function limitAt(x) {
+    let v = LIMITS[0].v;
+    for (const l of LIMITS) if (x >= l.x) v = l.v;
+    return v / 3.6;
+  }
+
+  /* 目标-距离制动曲线：min(当前静态限速, 到下一个限速点的允许速度) */
+  function permittedAt(x) {
+    let lim = limitAt(x);
+    for (const l of LIMITS) {
+      if (l.x <= x) continue;
+      const d = l.x - x;
+      if (d > LOOK) break;
+      const target = l.v / 3.6;
+      const allowed = Math.sqrt(target * target + 2 * BRK * Math.max(0, d - 80));
+      lim = Math.min(lim, allowed);
+    }
+    return lim;
+  }
+
+  function nextLimitAt(x) {
+    for (const l of LIMITS) if (l.x > x) return l;
+    return { x: RUN, v: 0 };
+  }
 
   function setHint(text) { if (hint) hint.textContent = text; }
 
@@ -195,6 +233,10 @@
     if (speedEl) speedEl.textContent = '350';
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
+    if (atpEl) atpEl.textContent = 'ATP 350';
+    if (nextEl) nextEl.textContent = '下一限速 300 · 4.0 km';
+    if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
+    atpWarn = 0;
     if (driveBtn) driveBtn.textContent = '退出 350 km/h 走廊';
     model.position.x = baseX;
     model.rotation.y = 0;
@@ -231,23 +273,53 @@
       throttle = (keysDown.w || keysDown.arrowup || touchThrottle) ? 1 : 0;
       brake = (keysDown.s || keysDown.arrowdown || touchBrake) ? 1 : 0;
 
+      /* ATP：静态限速 + 12 km 目标-距离制动曲线 + 超速分级 */
+      const x0 = Math.min(RUN, Math.max(0, -driveX));
+      const perm = permittedAt(x0);
+      const over = v - perm;
+      if (over > 15 / 3.6) atpWarn = 3;
+      else if (over > 8 / 3.6) atpWarn = 2;
+      else if (over > 2 / 3.6) atpWarn = 1;
+      else atpWarn = 0;
+
       /* 简化动力学：牵引 0.45 m/s²、常用制动 0.75 m/s²、高速阻力 */
       const drag = 0.000005 * v * v;
-      const a = ACC * throttle - BRK * brake - drag;
+      let a = ACC * throttle - BRK * brake - drag;
+      if (atpWarn === 3) a = Math.min(a, -1.2);       // EB
+      else if (atpWarn === 2) a = Math.min(a, -BRK);  // ATP 常用制动
       v = Math.max(0, Math.min(SPEED, v + a * dt));
       driveX -= v * dt;
-      if (driveX < -RUN) {
-        driveX = 0;
-        v = SPEED;
-      }
+      if (driveX < -RUN) { driveX = 0; v = SPEED; }
       model.position.x = baseX + driveX;
       model.rotation.y = 0;
 
       camera.position.set(driveX - 38, 8.0, 22);
       camera.lookAt(driveX + 4, 2.2, 0);
+
+      const x = Math.min(RUN, Math.max(0, -driveX));
+      const permNow = permittedAt(x);
+      const nl = nextLimitAt(x);
       if (speedEl) speedEl.textContent = String(Math.round(v * 3.6));
-      if (distEl) distEl.textContent = (Math.min(RUN, -driveX) / 1000).toFixed(2) + ' km';
-      if (modeEl) modeEl.textContent = brake ? '制动' : (throttle ? '牵引' : (v > 0.5 ? '惰行' : '停车'));
+      if (distEl) distEl.textContent = (x / 1000).toFixed(2) + ' km';
+      if (atpEl) atpEl.textContent = 'ATP ' + Math.max(0, Math.round(permNow * 3.6));
+      if (nextEl) {
+        const dkm = Math.max(0, (nl.x - x) / 1000);
+        nextEl.textContent = nl.v > 0
+          ? `下一限速 ${nl.v} · ${dkm.toFixed(1)} km`
+          : `走廊终点 · ${dkm.toFixed(2)} km`;
+      }
+      if (warnEl) {
+        warnEl.textContent = atpWarn === 3 ? '超速 EB' : atpWarn === 2 ? '超速' : atpWarn === 1 ? '接近限速' : '';
+        warnEl.classList.toggle('hidden', atpWarn === 0);
+        warnEl.classList.toggle('eb', atpWarn === 3);
+      }
+      if (modeEl) {
+        modeEl.textContent = atpWarn === 3 ? 'EB'
+          : atpWarn === 2 ? 'ATP 制动'
+            : brake ? '制动'
+              : throttle ? '牵引'
+                : (v > 0.5 ? '惰行' : '停车');
+      }
     } else {
       const cy = Math.cos(pitch) * dist;
       camera.position.set(Math.sin(yaw) * cy, 8 + Math.sin(pitch) * dist, Math.cos(yaw) * cy);
@@ -292,6 +364,10 @@
     if (speedEl) speedEl.textContent = '350';
     if (distEl) distEl.textContent = '0.00 km';
     if (modeEl) modeEl.textContent = '惰行';
+    if (atpEl) atpEl.textContent = 'ATP 350';
+    if (nextEl) nextEl.textContent = '下一限速 300 · 4.0 km';
+    if (warnEl) { warnEl.textContent = ''; warnEl.classList.add('hidden'); warnEl.classList.remove('eb'); }
+    atpWarn = 0;
     if (throttleBtn) throttleBtn.classList.remove('on');
     if (brakeBtn) brakeBtn.classList.remove('on');
   }
@@ -360,4 +436,23 @@
   }, { passive: false });
 
   window.addEventListener('resize', () => { if (running) resize(); });
+
+  /* 自动化测试用：只读状态 + 定位（不影响正常 UI） */
+  window.__hsr = {
+    get state() {
+      const x = Math.min(RUN, Math.max(0, -driveX));
+      return {
+        open: running, drive,
+        x, v: v * 3.6, permitted: permittedAt(x) * 3.6,
+        warn: atpWarn, atp: atpEl ? atpEl.textContent : '',
+        next: nextEl ? nextEl.textContent : '',
+        mode: modeEl ? modeEl.textContent : ''
+      };
+    },
+    setPosition(m, kmh) {
+      driveX = -Math.max(0, Math.min(RUN, m));
+      v = Math.min(SPEED, Math.max(0, (kmh == null ? 350 : kmh) / 3.6));
+      lastT = performance.now();
+    }
+  };
 })();
