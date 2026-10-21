@@ -79036,6 +79036,10 @@ function loop() {
     if (hero) renderer.render(hero.scene, camera);
     return;
   }
+  if (G.mode === 'hsr') {
+    renderer.render(scene, camera);
+    return;
+  }
   if (G.mode === 'turnback') {
     updateTurnback(dt);
     if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
@@ -79423,6 +79427,36 @@ async function buildService(routeIdx, reverse) {
   makeComposer(scene);
   G.ready = true;
 }
+
+
+/* C 项：主游戏 buildService 的 HSR 分支入口（当前为视觉接线版） */
+async function buildHsrService() {
+  if (!window.HSR_MAIN || !window.HSR_MAIN.buildTrainScene) {
+    throw new Error('HSR_MAIN 未就绪');
+  }
+  G.mode = 'loading';
+  const s = await window.HSR_MAIN.buildTrainScene();
+  s.background = new THREE.Color(0x0a1116);
+  s.fog = new THREE.Fog(0x0a1116, 350, 1600);
+  const hemi = new THREE.HemisphereLight(0xbfd7e8, 0x1a2228, 1.3);
+  s.add(hemi);
+  const dir = new THREE.DirectionalLight(0xfff2dd, 2.0);
+  dir.position.set(-60, 80, 40);
+  s.add(dir);
+  scene = s;
+  camera.position.set(-80, 10, 28);
+  camera.lookAt(0, 2.4, 0);
+  camera.near = 0.1;
+  camera.far = 5000;
+  camera.updateProjectionMatrix();
+  document.getElementById('menu').classList.add('hidden');
+  G.mode = 'hsr';
+  G.ready = true;
+  window.__hsrMainScene = s;
+  return s;
+}
+window.buildHsrService = buildHsrService;
+window.__hsrMainStart = buildHsrService;
 
 
 /* ===== 72_physics.js ===== */

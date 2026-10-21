@@ -661,6 +661,10 @@ function loop() {
     if (hero) renderer.render(hero.scene, camera);
     return;
   }
+  if (G.mode === 'hsr') {
+    renderer.render(scene, camera);
+    return;
+  }
   if (G.mode === 'turnback') {
     updateTurnback(dt);
     if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);

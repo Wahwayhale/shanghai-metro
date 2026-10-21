@@ -266,3 +266,14 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
   总长约 439.5 m；`HSR-MAIN-WORLD` 304 个对象，RUN=1302000。
 - 仍未接入 `buildService`：没有 HUD、物理、会话；列车只是被构建出来。
 - 正式版 3.01 MB、可读版 3.67 MB；smoke 通过。
+
+### DLC-1 第三十八轮（C 项第四步：buildHsrService 视觉接线）
+
+- `71_scene.js` 新增 `buildHsrService()`：调用 `HSR_MAIN.buildTrainScene()`，
+  把 1302 km 世界 + 17 辆列车装进主 `scene`，设置相机/雾/半球光/方向光。
+- `70_core.js` 主循环增加 `G.mode==='hsr'` 分支：直接渲染主场景。
+- 验证：`buildHsrService()` 后主场景 4 个顶层（world/train/hemi/dir），
+  1440×900 截图可见 17 辆编组和站台；主菜单隐藏。
+- 仍**未接** HUD/物理/停站/会话/返回入口；当前只能通过
+  `window.__hsrMainStart()` 调试启动，主菜单不会调用。
+- 正式版 3.01 MB、可读版 3.67 MB；smoke 通过。
