@@ -178,6 +178,66 @@
     return mesh;
   }
 
+
+  function buildCab() {
+    const g = new THREE.Group();
+    g.name = 'HSR-MAIN-CAB';
+    const dark = new THREE.MeshStandardMaterial({ color: 0x11171c, roughness: 0.85, metalness: 0.1 });
+    const mid = new THREE.MeshStandardMaterial({ color: 0x2a343d, roughness: 0.75, metalness: 0.15 });
+    const screenMat = new THREE.MeshStandardMaterial({ color: 0x0a2230, emissive: 0x1d7fa8, emissiveIntensity: 0.9 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x0c2a1a, emissive: 0x2f9e5a, emissiveIntensity: 0.8 });
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+    // floor / lower dash
+    add(new THREE.BoxGeometry(3.6, 0.12, 2.7), dark, 5.3, 1.25, 0);
+    add(new THREE.BoxGeometry(0.75, 0.45, 2.6), mid, 4.32, 2.08, 0);
+    add(new THREE.BoxGeometry(1.0, 0.08, 2.7), dark, 4.22, 2.36, 0);
+    // three textured DMI screens on the desk
+    const texts = [['CR400AF-BS', 'G25'], ['ATP 350', '0 km/h'], ['下一站', '南京南']];
+    for (let i = -1; i <= 1; i++) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 144;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#041018'; ctx.fillRect(0, 0, 256, 144);
+      ctx.strokeStyle = '#2a6a86'; ctx.lineWidth = 4; ctx.strokeRect(4, 4, 248, 136);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = i === 0 ? '#8fd8ff' : '#8fe06a';
+      ctx.font = '700 26px ui-monospace,monospace';
+      ctx.fillText(texts[i + 1][0], 128, 58);
+      ctx.font = '700 40px ui-monospace,monospace';
+      ctx.fillText(texts[i + 1][1], 128, 112);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      const mat = new THREE.MeshBasicMaterial({ map: tex });
+      const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.30, 0.44), dark);
+      bezel.position.set(4.10, 2.47, i * 0.50); g.add(bezel);
+      const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.24), mat);
+      sc.position.set(4.145, 2.47, i * 0.50);
+      sc.rotation.y = Math.PI / 2;
+      sc.rotation.x = -0.12;
+      g.add(sc);
+    }
+    // A pillars + header + sill
+    add(new THREE.BoxGeometry(0.12, 1.5, 0.14), dark, 3.0, 3.15, -1.22);
+    add(new THREE.BoxGeometry(0.12, 1.5, 0.14), dark, 3.0, 3.15, 1.22);
+    add(new THREE.BoxGeometry(0.14, 0.16, 2.6), dark, 3.0, 3.92, 0);
+    add(new THREE.BoxGeometry(0.14, 0.12, 2.6), dark, 3.0, 1.98, 0);
+    // side consoles + walls
+    add(new THREE.BoxGeometry(1.8, 0.28, 0.42), mid, 5.2, 2.05, -1.05);
+    add(new THREE.BoxGeometry(1.8, 0.28, 0.42), mid, 5.2, 2.05, 1.05);
+    add(new THREE.BoxGeometry(4.0, 1.8, 0.10), dark, 5.4, 2.6, -1.32);
+    add(new THREE.BoxGeometry(4.0, 1.8, 0.10), dark, 5.4, 2.6, 1.32);
+    add(new THREE.BoxGeometry(4.0, 0.10, 2.6), dark, 5.4, 3.72, 0);
+    // seat behind driver
+    add(new THREE.BoxGeometry(0.55, 0.16, 0.55), dark, 6.55, 1.85, 0.55);
+    add(new THREE.BoxGeometry(0.18, 0.85, 0.55), dark, 6.85, 2.35, 0.55);
+    // levers
+    const lever = new THREE.CylinderGeometry(0.035, 0.035, 0.42, 10);
+    const l1 = add(lever, mid, 4.55, 2.45, -0.95); l1.rotation.z = 0.25;
+    const l2 = add(lever, mid, 4.55, 2.45, 0.95); l2.rotation.z = -0.25;
+    const knob = new THREE.SphereGeometry(0.075, 12, 8);
+    add(knob, mid, 4.62, 2.66, -0.95);
+    add(knob, mid, 4.62, 2.66, 0.95);
+    return g;
+  }
+
   async function buildTrain(scene) {
     const THREE = window.__HSR_THREE;
     const [headG, midG] = await Promise.all([
@@ -277,5 +337,5 @@
     buildHsrWorld(s);
     return s;
   }
-  window.HSR_MAIN = { buildHsrWorld, buildTrain, buildTrainScene, buildHsrScene, THREE };
+  window.HSR_MAIN = { buildHsrWorld, buildTrain, buildTrainScene, buildHsrScene, buildCab, THREE };
 })();

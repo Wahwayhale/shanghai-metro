@@ -381,6 +381,9 @@ async function buildHsrService() {
   camera.updateProjectionMatrix();
   document.getElementById('menu').classList.add('hidden');
   const train = s.getObjectByName('HSR-MAIN-TRAIN');
+  const cabGroup = window.HSR_MAIN.buildCab();
+  cabGroup.position.set(0, 0, 0);
+  s.add(cabGroup);
   const world = s.getObjectByName('HSR-MAIN-WORLD');
   G.hsr = {
     x: 0, v: 0, stopped: false, stopErr: null,
@@ -389,7 +392,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true,
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -547,11 +550,12 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
+  if (st.cabGroup) { st.cabGroup.position.x = -st.x; st.cabGroup.visible = st.cab; }
   const cabEl = document.getElementById('hsrMainCab');
-  if (cabEl) cabEl.classList.toggle('hidden', !st.cab);
+  if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
-    camera.position.set(-st.x + 2.0, 3.2, 0.0);
-    camera.lookAt(-st.x - 40, 2.8, 0);
+    camera.position.set(-st.x + 6.0, 2.9, 0.55);
+    camera.lookAt(-st.x + 2.0, 2.18, 0.55);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
