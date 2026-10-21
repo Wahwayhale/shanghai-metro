@@ -82141,6 +82141,7 @@ window.__sim = {
     try {
       parseB64(HSR_TRAIN_GLB_B64, (gltf) => {
         headModel = prep(gltf.scene);
+        addHeadDecals(headModel);
         model = headModel;
         fitModel(headModel);
         scene.add(headModel);
@@ -82160,6 +82161,35 @@ window.__sim = {
     } catch (err) {
       console.error('[hsr] GLB 初始化失败', err);
       setHint('GLB 初始化失败：' + (err && err.message ? err.message : err));
+    }
+  }
+
+  function headDecal() {
+    const c = document.createElement('canvas');
+    c.width = 1024; c.height = 256;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, 1024, 256);
+    g.fillStyle = '#15181a';
+    g.font = '700 92px system-ui, sans-serif';
+    g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.fillText('CR400AF-BS-2341', 34, 108);
+    g.font = '600 64px "Microsoft YaHei", sans-serif';
+    g.fillStyle = '#c8102e';
+    g.fillText('复兴号', 34, 196);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  }
+
+  function addHeadDecals(root) {
+    const mat = headDecal();
+    for (const side of [-1, 1]) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), mat);
+      mesh.position.set(7.4, 2.02, side * 1.712);
+      mesh.rotation.y = side > 0 ? 0 : Math.PI;
+      if (side < 0) mesh.scale.x = -1;
+      mesh.renderOrder = 2;
+      root.add(mesh);
     }
   }
 
