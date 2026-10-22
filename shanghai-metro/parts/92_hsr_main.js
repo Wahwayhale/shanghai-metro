@@ -64,6 +64,10 @@
         const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), lampMat);
         lamp.position.set(-st.x + l * 80, 5.12, -10.2); g.add(lamp);
       }
+      for (const bo of [-120, 0, 120]) {
+        const bench = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.38, 0.55), mat(0x4d575f, 0.8));
+        bench.position.set(-st.x + bo, 1.45, -5.8); g.add(bench);
+      }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
       const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
