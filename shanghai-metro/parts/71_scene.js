@@ -551,7 +551,7 @@ function updateHsrMain(dt) {
       if (!st.lastDmi || now - st.lastDmi > 220) {
         st.lastDmi = now;
         const kmhD = Math.round(st.v * 3.6);
-        const modeD = (!st.panto || !st.vcb) ? '无电' : (st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行'))));
+        const modeD = (keys['Space'] || st.touchEb) ? '紧急制动' : ((!st.panto || !st.vcb) ? '无电' : (st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行')))));
         const vals = [
           ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
           ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
