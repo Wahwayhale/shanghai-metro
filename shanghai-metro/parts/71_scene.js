@@ -634,3 +634,23 @@ window.__hsrMain = {
   setStop(i) { if (G.hsr) { G.hsr.stopIdx = i; G.hsr.stopped = false; G.hsr.stopErr = null; } },
   exit: exitHsrMain
 };
+
+
+// cab look-around (main HSR mode)
+(function () {
+  let lookDrag = false, lookX = 0, lookY = 0;
+  window.addEventListener('pointerdown', (e) => {
+    if (G.mode !== 'hsr' || !G.hsr || !G.hsr.cab) return;
+    if (e.target && e.target.closest && e.target.closest('button')) return;
+    lookDrag = true; lookX = e.clientX; lookY = e.clientY;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!lookDrag || G.mode !== 'hsr' || !G.hsr) return;
+    const dx = e.clientX - lookX, dy = e.clientY - lookY;
+    lookX = e.clientX; lookY = e.clientY;
+    G.hsr.yaw = (G.hsr.yaw || 0) - dx * 0.0045;
+    G.hsr.pitch = Math.max(-0.5, Math.min(0.5, (G.hsr.pitch || 0) + dy * 0.003));
+  });
+  window.addEventListener('pointerup', () => { lookDrag = false; });
+  window.addEventListener('pointercancel', () => { lookDrag = false; });
+})();
