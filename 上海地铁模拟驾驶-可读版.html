@@ -79710,7 +79710,7 @@ function updateHsrMain(dt) {
     for (const sg of st.signals) {
       const ahead = sg.x - st.x;
       let color = 0x1f8a4c;
-      if (sg === nearest && ahead < 2000) color = 0xc8102e;
+      if (sg === nearest && st.stopped && ahead < 2000) color = 0xc8102e;
       else if (sg === nearest && ahead < 10000) color = 0xd8a21f;
       sg.lamp.material.color.setHex(color);
       sg.lamp.material.emissive.setHex(color);
@@ -79793,8 +79793,9 @@ function updateHsrMain(dt) {
     for (const sg of (st.signals || [])) { if (sg.x > st.x && (!ns || sg.x < ns.x)) ns = sg; }
     if (ns) {
       const d = ns.x - st.x;
-      el('hmSignal').textContent = '前方信号机';
-      el('hmSignal').style.color = '#c7d6df';
+      const aspect = (st.stopped && d < 2000) ? '红灯' : (d < 10000 ? '黄灯' : '绿灯');
+      el('hmSignal').textContent = '信号 ' + aspect;
+      el('hmSignal').style.color = aspect === '红灯' ? '#ff6b6b' : (aspect === '黄灯' ? '#ffd479' : '#8fe06a');
       if (el('hmSigDist')) el('hmSigDist').textContent = (d / 1000).toFixed(1) + ' km';
     } else {
       el('hmSignal').textContent = '信号 --';
