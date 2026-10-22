@@ -630,6 +630,12 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
+  if (el('hmState')) {
+    const needV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
+    if (!st.stopped && st.v > needV + 2) { el('hmState').textContent = '制动'; el('hmState').style.color = '#ff6b6b'; }
+    else if (!st.stopped && stop - st.x < 300) { el('hmState').textContent = '进站'; el('hmState').style.color = '#ffd479'; }
+    else { el('hmState').textContent = ''; }
+  }
 }
 function exitHsrMain() {
   if (G.mode !== 'hsr') return;
