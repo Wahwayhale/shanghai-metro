@@ -260,10 +260,12 @@
     const dmi1 = screen('DMI-1', '0', 'ATP 350');
     const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
     const dmi3 = screen('G25', '待发', '车门关闭');
-    makeDmi(4.02, 2.60, -0.52, 0.52, 0.36, dmi1, -0.1);
-    makeDmi(4.02, 2.60, 0.52, 0.52, 0.36, dmi2, -0.1);
-    makeDmi(4.03, 2.47, 0.0, 0.28, 0.20, dmi3, -0.08);
-    g.userData.dmis = [dmi1, dmi2, dmi3];
+    const dmiG = screen('仪表', '25.0', 'kV · 正常');
+    makeDmi(4.02, 2.60, -0.90, 0.42, 0.30, dmi1, 0);
+    makeDmi(4.02, 2.60, -0.30, 0.42, 0.30, dmi2, 0);
+    makeDmi(4.02, 2.60, 0.30, 0.42, 0.30, dmi3, 0);
+    makeDmi(4.02, 2.60, 0.90, 0.42, 0.30, dmiG, 0);
+    g.userData.dmis = [dmi1, dmi2, dmi3, dmiG];
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, 1.05);
@@ -282,6 +284,11 @@
     // seat
     add(new THREE.BoxGeometry(0.55, 0.16, 0.55), seatMat, 6.55, 1.75, 0.55);
     add(new THREE.BoxGeometry(0.18, 0.9, 0.55), seatMat, 6.85, 2.3, 0.55);
+    // wrap-around side consoles
+    add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, -1.10, 0, 0.22, 0);
+    add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, 1.10, 0, -0.22, 0);
+    add(new THREE.BoxGeometry(0.9, 0.10, 2.3), wall, 3.55, 3.72, 0);
+    add(new THREE.BoxGeometry(1.4, 0.06, 0.9), new THREE.MeshStandardMaterial({ color: 0x2f6f9e, roughness: 0.9 }), 5.15, 1.33, 0);
     // interior light
     const lamp = new THREE.PointLight(0xcfe6f2, 0.9, 9, 2); lamp.position.set(5.2, 3.6, 0); g.add(lamp);
     return g;

@@ -562,7 +562,8 @@ function updateHsrMain(dt) {
         const vals = [
           ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
           ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
-          ['G25', modeD, st.stopped ? '车门开启' : '车门关闭']
+          ['G25', modeD, st.stopped ? '车门开启' : '车门关闭'],
+          ['仪表', '25.0', 'kV · 正常']
         ];
         const mats = st.cabGroup.userData.dmis || [];
         for (let i = 0; i < mats.length; i++) {
