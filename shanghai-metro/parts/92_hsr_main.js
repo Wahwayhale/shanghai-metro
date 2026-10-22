@@ -285,8 +285,8 @@
       add(new THREE.BoxGeometry(0.05, 0.04, 0.06), btnMat, 4.75, 2.2, -0.55 + i * 0.07);
     }
     // seat
-    add(new THREE.BoxGeometry(0.55, 0.16, 0.55), seatMat, 6.55, 1.75, 0.55);
-    add(new THREE.BoxGeometry(0.18, 0.9, 0.55), seatMat, 6.85, 2.3, 0.55);
+    add(new THREE.BoxGeometry(0.55, 0.16, 0.55), seatMat, 6.95, 1.75, 0.55);
+    add(new THREE.BoxGeometry(0.18, 0.9, 0.55), seatMat, 7.15, 2.3, 0.55);
     // wrap-around side consoles
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, -1.10, 0, 0.22, 0);
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, 1.10, 0, -0.22, 0);

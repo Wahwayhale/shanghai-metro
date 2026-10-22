@@ -18311,7 +18311,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true,
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true, yaw: 0, pitch: 0,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -18505,8 +18505,10 @@ function updateHsrMain(dt) {
   const cabEl = document.getElementById('hsrMainCab');
   if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
+    const yaw = st.yaw || 0, pitch = st.pitch || 0;
+    const dx = -Math.cos(yaw) * Math.cos(pitch), dy = Math.sin(pitch), dz = Math.sin(yaw) * Math.cos(pitch);
     camera.position.set(-st.x + 6.5, 3.05, 0.0);
-    camera.lookAt(-st.x + 2.0, 2.35, 0.0);
+    camera.lookAt(camera.position.x + dx * 40, camera.position.y + dy * 40, camera.position.z + dz * 40);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
@@ -22483,8 +22485,8 @@ window.__sim = {
       add(new THREE.BoxGeometry(0.05, 0.04, 0.06), btnMat, 4.75, 2.2, -0.55 + i * 0.07);
     }
     // seat
-    add(new THREE.BoxGeometry(0.55, 0.16, 0.55), seatMat, 6.55, 1.75, 0.55);
-    add(new THREE.BoxGeometry(0.18, 0.9, 0.55), seatMat, 6.85, 2.3, 0.55);
+    add(new THREE.BoxGeometry(0.55, 0.16, 0.55), seatMat, 6.95, 1.75, 0.55);
+    add(new THREE.BoxGeometry(0.18, 0.9, 0.55), seatMat, 7.15, 2.3, 0.55);
     // wrap-around side consoles
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, -1.10, 0, 0.22, 0);
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, 1.10, 0, -0.22, 0);

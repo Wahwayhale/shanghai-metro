@@ -392,7 +392,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true,
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true, yaw: 0, pitch: 0,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -586,8 +586,10 @@ function updateHsrMain(dt) {
   const cabEl = document.getElementById('hsrMainCab');
   if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
+    const yaw = st.yaw || 0, pitch = st.pitch || 0;
+    const dx = -Math.cos(yaw) * Math.cos(pitch), dy = Math.sin(pitch), dz = Math.sin(yaw) * Math.cos(pitch);
     camera.position.set(-st.x + 6.5, 3.05, 0.0);
-    camera.lookAt(-st.x + 2.0, 2.35, 0.0);
+    camera.lookAt(camera.position.x + dx * 40, camera.position.y + dy * 40, camera.position.z + dz * 40);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
