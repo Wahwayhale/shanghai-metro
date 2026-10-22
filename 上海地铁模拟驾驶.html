@@ -18432,18 +18432,6 @@ function updateHsrMain(dt) {
     }
   } else {
     st.v = 0;
-    if (!st.result && st.doorT > 0.4 && (keys['KeyW'] || keys['ArrowUp'])) {
-      if (st.stopIdx < st.stops.length - 1) {
-        st.stopIdx++;
-        st.stopped = false;
-        st.v = 0;
-        st.stopErr = null;
-        st.legStart = performance.now();
-        st.begin = performance.now();
-      } else {
-        showHsrMainResult();
-      }
-    }
   }
   const doorTarget = st.stopped ? 1 : 0;
   const dstep = Math.min(1, dt / 0.8);
