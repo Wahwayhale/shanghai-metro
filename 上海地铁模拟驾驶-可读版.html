@@ -83523,9 +83523,21 @@ window.__sim = {
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.1, 6.2), mat(0x6b737a, 0.9));
       platform.position.set(-st.x, 0.55, -6.8);
       g.add(platform);
-      const canopy = new THREE.Mesh(new THREE.BoxGeometry(450, 0.22, 10), mat(0xb9c1c7, 0.8));
-      canopy.position.set(-st.x, 5.4, -10.2);
-      g.add(canopy);
+      const roofL = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
+      roofL.position.set(-st.x, 5.65, -12.1); roofL.rotation.x = 0.14; g.add(roofL);
+      const roofR = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
+      roofR.position.set(-st.x, 5.65, -8.3); roofR.rotation.x = -0.14; g.add(roofR);
+      const ridge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.18, 0.45), mat(0x9aa4ab, 0.6));
+      ridge.position.set(-st.x, 5.92, -10.2); g.add(ridge);
+      const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
+      edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
+      const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
+      bldg.position.set(-st.x, 4.1, -18.5); g.add(bldg);
+      const winMat = new THREE.MeshStandardMaterial({ color: 0x2a3942, emissive: 0x1a2a33, emissiveIntensity: 0.35, roughness: 0.4 });
+      for (let w = -4; w <= 4; w++) {
+        const win = new THREE.Mesh(new THREE.BoxGeometry(7, 1.4, 0.12), winMat);
+        win.position.set(-st.x + w * 11, 5.2, -14.45); g.add(win);
+      }
       for (let j = -5; j <= 5; j++) {
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.8, 0.28), mat(0x8f979e, 0.6));
         col.position.set(-st.x + j * 40, 2.9, -10.2);
@@ -83545,7 +83557,7 @@ window.__sim = {
     g.userData.signals = [];
     for (const st of D.STATIONS) {
       const label = stationLabel(st.name);
-      label.position.set(-st.x + 220, 6.5, -5.6);
+      label.position.set(-st.x + 220, 4.75, -5.35);
       g.add(label);
       const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.2, 0.16), sigPost);
       post.position.set(-st.x + 180, 2.1, 5.9); g.add(post);
