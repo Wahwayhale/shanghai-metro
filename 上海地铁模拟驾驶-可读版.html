@@ -79753,6 +79753,13 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
         }
+        const lamp = st.cabGroup.userData.warnLamp;
+        const over = kmhD > hsrMainLimit(st.x) + 0.5;
+        if (lamp) {
+          const blink = (Math.floor(performance.now() / 250) % 2) === 0;
+          lamp.emissive.setHex(over && blink ? 0xff1a1a : 0x400000);
+          lamp.emissiveIntensity = over && blink ? 2.2 : 0.3;
+        }
         const doorOpen = !!(st.stopped && st.doorT > 0.2);
         for (const lm of (st.cabGroup.userData.doorLeds || [])) lm.emissive.setHex(doorOpen ? 0xc8102e : 0x2f9e5a);
         const wipers = st.cabGroup.userData.wipers || [];
@@ -83808,6 +83815,9 @@ window.__sim = {
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
     g.userData.levers = [l1, l2];
+    const warnMat = new THREE.MeshStandardMaterial({ color: 0x2a0a0a, emissive: 0x400000, emissiveIntensity: 0.3 });
+    add(new THREE.BoxGeometry(0.10, 0.04, 0.10), warnMat, 4.95, 2.22, 1.15);
+    g.userData.warnLamp = warnMat;
     g.userData.doorLeds = [];
     for (const zz of [-0.9, -0.3, 0.3, 0.9]) {
       const lm = new THREE.MeshStandardMaterial({ color: 0x0d2a18, emissive: 0x2f9e5a, emissiveIntensity: 1.0 });

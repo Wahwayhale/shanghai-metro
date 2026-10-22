@@ -323,6 +323,9 @@
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
     g.userData.levers = [l1, l2];
+    const warnMat = new THREE.MeshStandardMaterial({ color: 0x2a0a0a, emissive: 0x400000, emissiveIntensity: 0.3 });
+    add(new THREE.BoxGeometry(0.10, 0.04, 0.10), warnMat, 4.95, 2.22, 1.15);
+    g.userData.warnLamp = warnMat;
     g.userData.doorLeds = [];
     for (const zz of [-0.9, -0.3, 0.3, 0.9]) {
       const lm = new THREE.MeshStandardMaterial({ color: 0x0d2a18, emissive: 0x2f9e5a, emissiveIntensity: 1.0 });
