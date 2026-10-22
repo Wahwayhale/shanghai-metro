@@ -108,6 +108,19 @@
       g.userData.signals.push({ x: -st.x + 180, lamp });
     }
 
+    const speedLimits = [{ x: 1201000, v: 300 }, { x: 1270000, v: 250 }, { x: 1290000, v: 200 }, { x: 1298000, v: 160 }];
+    for (const sl of speedLimits) {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+      const g2 = c.getContext('2d'); g2.fillStyle = '#f2f4f5'; g2.fillRect(0, 0, 256, 256);
+      g2.strokeStyle = '#c8102e'; g2.lineWidth = 18; g2.strokeRect(9, 9, 238, 238);
+      g2.fillStyle = '#111416'; g2.font = '800 132px system-ui, sans-serif';
+      g2.textAlign = 'center'; g2.textBaseline = 'middle'; g2.fillText(String(sl.v), 128, 132);
+      const tt = new THREE.CanvasTexture(c); tt.colorSpace = THREE.SRGBColorSpace;
+      const bd = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), new THREE.MeshBasicMaterial({ map: tt, side: THREE.DoubleSide }));
+      bd.position.set(-sl.x, 4.3, 5.6); bd.rotation.y = -Math.PI / 2; g.add(bd);
+      const po = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.0, 0.16), new THREE.MeshStandardMaterial({ color: 0x8f979e, metalness: 0.6, roughness: 0.4 }));
+      po.position.set(-sl.x, 2.0, 5.6); g.add(po);
+    }
     scene.add(g);
     return g;
   }
