@@ -81,6 +81,10 @@
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.8, 0.28), mat(0x8f979e, 0.6));
         col.position.set(-st.x + j * 40, 2.9, -10.2);
         g.add(col);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.62), mat(0x9aa4ab, 0.6));
+        cap.position.set(-st.x + j * 40, 5.22, -10.2); g.add(cap);
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.28, 0.52), mat(0x9aa4ab, 0.6));
+        base.position.set(-st.x + j * 40, 1.30, -10.2); g.add(base);
       }
     }
 
