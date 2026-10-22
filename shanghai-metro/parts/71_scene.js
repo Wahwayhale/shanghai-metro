@@ -580,6 +580,12 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
         }
+        const wipers = st.cabGroup.userData.wipers || [];
+        const wt = performance.now() / 1000;
+        for (let wi = 0; wi < wipers.length; wi++) {
+          const wp = wipers[wi];
+          wp.m.rotation.z = wp.b + (st.v > 1 ? Math.sin(wt * 3.2 + wi * 1.3) * 0.32 : 0);
+        }
         const lev = st.cabGroup.userData.levers || [];
         if (lev[0]) lev[0].rotation.z = 0.2 + 0.35 * throttle;
         if (lev[1]) lev[1].rotation.z = -0.2 - 0.35 * ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0);

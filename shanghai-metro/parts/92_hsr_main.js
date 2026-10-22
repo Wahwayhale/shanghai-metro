@@ -286,6 +286,7 @@
     const wiper = new THREE.CylinderGeometry(0.018, 0.018, 0.85, 8);
     const w1 = add(wiper, black, 3.08, 2.42, -0.5); w1.rotation.z = 1.05;
     const w2 = add(wiper, black, 3.08, 2.42, 0.55); w2.rotation.z = 1.15;
+    g.userData.wipers = [{ m: w1, b: 1.05 }, { m: w2, b: 1.15 }];
     // curved wrap-around desk (arc segments around the driver)
     const DCX = 6.10, DR = 1.85, DN = 8;
     for (let i = 0; i < DN; i++) {
