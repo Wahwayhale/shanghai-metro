@@ -83787,6 +83787,26 @@ window.__sim = {
     add(knob, trim, 4.68, 2.58, 1.05);
     g.userData.levers = [l1, l2];
     // button clusters
+    const panelLabel = (text) => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 80;
+      const g = c.getContext('2d'); g.fillStyle = '#1a2228'; g.fillRect(0, 0, 256, 80);
+      g.strokeStyle = '#4b5b66'; g.lineWidth = 3; g.strokeRect(2, 2, 252, 76);
+      g.fillStyle = '#dceaf2'; g.font = '700 38px "Microsoft YaHei", sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 42);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({ map: t });
+    };
+    for (const side of [-1, 1]) {
+      add(new THREE.BoxGeometry(0.75, 0.06, 0.42), mid, 5.05, 2.16, side * 1.05);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.20), panelLabel(side < 0 ? '牵引' : '制动'));
+      lab.position.set(5.05, 2.20, side * 1.05); lab.rotation.x = -Math.PI / 2; g.add(lab);
+      const gaugeMat = new THREE.MeshStandardMaterial({ color: 0x0c1418, emissive: 0x1d5a70, emissiveIntensity: 0.7 });
+      for (let k = 0; k < 3; k++) {
+        const gg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.025, 16), gaugeMat);
+        gg.position.set(5.28, 2.20, side * 1.05 + (k - 1) * 0.12); g.add(gg);
+      }
+    }
+
     const btnMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x0e3b2a, emissiveIntensity: 0.4 });
     for (let i = 0; i < 6; i++) {
       add(new THREE.BoxGeometry(0.05, 0.04, 0.06), btnMat, 4.75, 2.2, -0.55 + i * 0.07);
