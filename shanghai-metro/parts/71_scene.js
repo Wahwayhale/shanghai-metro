@@ -648,8 +648,8 @@ window.__hsrMain = {
     if (!lookDrag || G.mode !== 'hsr' || !G.hsr) return;
     const dx = e.clientX - lookX, dy = e.clientY - lookY;
     lookX = e.clientX; lookY = e.clientY;
-    G.hsr.yaw = (G.hsr.yaw || 0) - dx * 0.0045;
-    G.hsr.pitch = Math.max(-0.5, Math.min(0.5, (G.hsr.pitch || 0) + dy * 0.003));
+    G.hsr.yaw = Math.max(-2.8, Math.min(2.8, (G.hsr.yaw || 0) - dx * 0.0030));
+    G.hsr.pitch = Math.max(-0.45, Math.min(0.45, (G.hsr.pitch || 0) + dy * 0.0022));
   });
   window.addEventListener('pointerup', () => { lookDrag = false; });
   window.addEventListener('pointercancel', () => { lookDrag = false; });

@@ -321,6 +321,19 @@
     // sun visors
     add(new THREE.BoxGeometry(0.30, 0.10, 0.86), black, 3.36, 3.72, -0.62, 0, 0, -0.14);
     add(new THREE.BoxGeometry(0.30, 0.10, 0.86), black, 3.36, 3.72, 0.62, 0, 0, -0.14);
+    // rear partition door behind the seat
+    add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
+    const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);
+    doorGlass.position.set(7.24, 2.95, 0.55); doorGlass.rotation.y = -Math.PI / 2; g.add(doorGlass);
+    add(new THREE.BoxGeometry(0.16, 0.05, 0.16), trim, 7.22, 2.35, 0.95);
+    add(new THREE.BoxGeometry(0.08, 0.22, 0.08), trim, 7.22, 2.2, 0.15);
+    // left/right raised switch panels
+    add(new THREE.BoxGeometry(0.08, 0.30, 0.72), mid, 4.98, 2.28, -1.05);
+    add(new THREE.BoxGeometry(0.08, 0.30, 0.72), mid, 4.98, 2.28, 1.05);
+    for (let i = 0; i < 4; i++) {
+      add(new THREE.BoxGeometry(0.04, 0.04, 0.05), conBtn, 4.94, 2.32, -1.28 + i * 0.14);
+      add(new THREE.BoxGeometry(0.04, 0.04, 0.05), conBtn, 4.94, 2.32, 0.78 + i * 0.14);
+    }
     // interior light
     const lamp = new THREE.PointLight(0xcfe6f2, 0.9, 9, 2); lamp.position.set(5.2, 3.6, 0); g.add(lamp);
     return g;

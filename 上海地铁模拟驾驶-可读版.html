@@ -79821,8 +79821,8 @@ window.__hsrMain = {
     if (!lookDrag || G.mode !== 'hsr' || !G.hsr) return;
     const dx = e.clientX - lookX, dy = e.clientY - lookY;
     lookX = e.clientX; lookY = e.clientY;
-    G.hsr.yaw = (G.hsr.yaw || 0) - dx * 0.0045;
-    G.hsr.pitch = Math.max(-0.5, Math.min(0.5, (G.hsr.pitch || 0) + dy * 0.003));
+    G.hsr.yaw = Math.max(-2.8, Math.min(2.8, (G.hsr.yaw || 0) - dx * 0.0030));
+    G.hsr.pitch = Math.max(-0.45, Math.min(0.45, (G.hsr.pitch || 0) + dy * 0.0022));
   });
   window.addEventListener('pointerup', () => { lookDrag = false; });
   window.addEventListener('pointercancel', () => { lookDrag = false; });
@@ -83795,6 +83795,19 @@ window.__sim = {
     // sun visors
     add(new THREE.BoxGeometry(0.30, 0.10, 0.86), black, 3.36, 3.72, -0.62, 0, 0, -0.14);
     add(new THREE.BoxGeometry(0.30, 0.10, 0.86), black, 3.36, 3.72, 0.62, 0, 0, -0.14);
+    // rear partition door behind the seat
+    add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
+    const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);
+    doorGlass.position.set(7.24, 2.95, 0.55); doorGlass.rotation.y = -Math.PI / 2; g.add(doorGlass);
+    add(new THREE.BoxGeometry(0.16, 0.05, 0.16), trim, 7.22, 2.35, 0.95);
+    add(new THREE.BoxGeometry(0.08, 0.22, 0.08), trim, 7.22, 2.2, 0.15);
+    // left/right raised switch panels
+    add(new THREE.BoxGeometry(0.08, 0.30, 0.72), mid, 4.98, 2.28, -1.05);
+    add(new THREE.BoxGeometry(0.08, 0.30, 0.72), mid, 4.98, 2.28, 1.05);
+    for (let i = 0; i < 4; i++) {
+      add(new THREE.BoxGeometry(0.04, 0.04, 0.05), conBtn, 4.94, 2.32, -1.28 + i * 0.14);
+      add(new THREE.BoxGeometry(0.04, 0.04, 0.05), conBtn, 4.94, 2.32, 0.78 + i * 0.14);
+    }
     // interior light
     const lamp = new THREE.PointLight(0xcfe6f2, 0.9, 9, 2); lamp.position.set(5.2, 3.6, 0); g.add(lamp);
     return g;
