@@ -386,6 +386,14 @@
       add(new THREE.BoxGeometry(0.06, 1.16, 0.08), dark, 4.02, 2.78, z);
       add(new THREE.BoxGeometry(0.06, 1.16, 0.08), dark, 6.18, 2.78, z);
     }
+    // lower side cabinets
+    for (const z of [-1.30, 1.30]) {
+      add(new THREE.BoxGeometry(2.2, 0.78, 0.16), mid, 5.4, 1.82, z);
+      for (let d = -1; d <= 1; d++) {
+        add(new THREE.BoxGeometry(0.60, 0.62, 0.03), trim, 5.4 + d * 0.68, 1.82, z + (z > 0 ? 0.09 : -0.09));
+        add(new THREE.BoxGeometry(0.12, 0.035, 0.035), dark, 5.4 + d * 0.68, 1.86, z + (z > 0 ? 0.12 : -0.12));
+      }
+    }
     // side window dividers / latches / handrails
     for (const z of [-1.355, 1.355]) {
       add(new THREE.BoxGeometry(0.05, 1.10, 0.06), dark, 5.10, 2.78, z);
