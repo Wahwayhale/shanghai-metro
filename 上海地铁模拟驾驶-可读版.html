@@ -83529,6 +83529,15 @@ window.__sim = {
       roofR.position.set(-st.x, 5.65, -8.3); roofR.rotation.x = -0.14; g.add(roofR);
       const ridge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.18, 0.45), mat(0x9aa4ab, 0.6));
       ridge.position.set(-st.x, 5.92, -10.2); g.add(ridge);
+      for (let r = -3; r <= 3; r++) {
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 9.6), mat(0x8f979e, 0.6));
+        rib.position.set(-st.x + r * 60, 5.36, -10.2); g.add(rib);
+      }
+      const lampMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, emissive: 0xeaf6ff, emissiveIntensity: 1.4 });
+      for (let l = -2; l <= 2; l++) {
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), lampMat);
+        lamp.position.set(-st.x + l * 80, 5.12, -10.2); g.add(lamp);
+      }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
       const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
