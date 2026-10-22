@@ -416,6 +416,8 @@ async function buildHsrService() {
   bind('hmDepart', hsrMainDepart);
   bind('hmReset', resetHsrMain);
   bind('hmView', () => { if (G.hsr) G.hsr.cab = !G.hsr.cab; });
+  bind('hmPanto', () => { if (G.hsr) G.hsr.panto = !G.hsr.panto; });
+  bind('hmVcb', () => { if (G.hsr) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
   if (again) again.addEventListener('click', () => resetHsrMain());
