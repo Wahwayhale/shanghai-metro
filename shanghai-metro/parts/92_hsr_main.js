@@ -258,10 +258,10 @@
     };
     // shell
     add(new THREE.BoxGeometry(4.4, 0.14, 2.75), floorMat, 5.2, 1.25, 0);
-    add(new THREE.BoxGeometry(4.0, 0.10, 2.75), ceilMat, 5.4, 4.12, 0);
+    add(new THREE.BoxGeometry(3.0, 0.10, 2.75), ceilMat, 5.8, 4.52, 0);
     for (const z of [-1.36, 1.36]) {
       add(new THREE.BoxGeometry(4.4, 0.9, 0.12), wall, 5.2, 1.7, z);
-      add(new THREE.BoxGeometry(4.0, 0.55, 0.12), wall, 5.4, 3.80, z);
+      add(new THREE.BoxGeometry(4.0, 1.0, 0.12), wall, 5.4, 3.95, z);
       add(new THREE.BoxGeometry(0.35, 2.7, 0.12), wall, 3.2, 2.65, z);
       add(new THREE.BoxGeometry(0.35, 2.7, 0.12), wall, 7.0, 2.65, z);
     }
@@ -372,13 +372,13 @@
     add(new THREE.BoxGeometry(1.4, 0.06, 0.9), new THREE.MeshStandardMaterial({ color: 0x2f6f9e, roughness: 0.9 }), 5.15, 1.33, 0);
     // ceiling panel seams / vents
     const seamMat = new THREE.MeshStandardMaterial({ color: 0x39434a, roughness: 0.8 });
-    for (const sx of [4.3, 5.2, 6.1]) add(new THREE.BoxGeometry(0.035, 0.012, 2.4), seamMat, sx, 4.055, 0);
-    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 4.04, -0.55);
-    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 4.04, 0.55);
+    for (const sx of [4.3, 5.2, 6.1]) add(new THREE.BoxGeometry(0.035, 0.012, 2.4), seamMat, sx, 4.46, 0);
+    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 4.44, -0.55);
+    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 4.44, 0.55);
     // ceiling light strips
     const litMat = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, emissive: 0xddefff, emissiveIntensity: 1.2 });
-    add(new THREE.BoxGeometry(1.8, 0.035, 0.10), litMat, 5.4, 4.05, -0.42);
-    add(new THREE.BoxGeometry(1.8, 0.035, 0.10), litMat, 5.4, 4.05, 0.42);
+    add(new THREE.BoxGeometry(1.8, 0.035, 0.10), litMat, 5.8, 4.45, -0.42);
+    add(new THREE.BoxGeometry(1.8, 0.035, 0.10), litMat, 5.8, 4.45, 0.42);
     // side window frames
     for (const z of [-1.36, 1.36]) {
       add(new THREE.BoxGeometry(2.2, 0.06, 0.08), dark, 5.1, 2.22, z);
