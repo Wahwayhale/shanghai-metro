@@ -83688,6 +83688,7 @@ window.__sim = {
     const wall = new THREE.MeshStandardMaterial({ color: 0xd5dade, roughness: 0.8, metalness: 0.04 });
     const floorMat = new THREE.MeshStandardMaterial({ color: 0x8d9398, roughness: 0.95 });
     const seatMat = new THREE.MeshStandardMaterial({ color: 0xa89a84, roughness: 0.9 });
+    const ceilMat = new THREE.MeshStandardMaterial({ color: 0xeef3f5, roughness: 0.75, emissive: 0x2a3034, emissiveIntensity: 0.6 });
     const add = (geo, mat, x, y, z, rx, ry, rz) => {
       const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z);
       if (rx) m.rotation.x = rx; if (ry) m.rotation.y = ry; if (rz) m.rotation.z = rz;
@@ -83718,7 +83719,7 @@ window.__sim = {
     };
     // shell
     add(new THREE.BoxGeometry(4.4, 0.14, 2.75), floorMat, 5.2, 1.25, 0);
-    add(new THREE.BoxGeometry(4.4, 0.12, 2.75), wall, 5.2, 3.95, 0);
+    add(new THREE.BoxGeometry(4.4, 0.12, 2.75), ceilMat, 5.2, 3.95, 0);
     for (const z of [-1.36, 1.36]) {
       add(new THREE.BoxGeometry(4.4, 0.9, 0.12), wall, 5.2, 1.7, z);
       add(new THREE.BoxGeometry(4.4, 0.55, 0.12), wall, 5.2, 3.62, z);
@@ -83806,6 +83807,11 @@ window.__sim = {
     const cirMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.18), cir);
     cirMesh.position.set(5.02, 2.36, -1.12); cirMesh.rotation.y = Math.PI / 2 + 0.35; g.add(cirMesh);
     add(new THREE.BoxGeometry(1.4, 0.06, 0.9), new THREE.MeshStandardMaterial({ color: 0x2f6f9e, roughness: 0.9 }), 5.15, 1.33, 0);
+    // ceiling panel seams / vents
+    const seamMat = new THREE.MeshStandardMaterial({ color: 0x39434a, roughness: 0.8 });
+    for (const sx of [4.3, 5.2, 6.1]) add(new THREE.BoxGeometry(0.035, 0.012, 2.4), seamMat, sx, 3.885, 0);
+    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 3.87, -0.55);
+    add(new THREE.BoxGeometry(0.8, 0.025, 0.18), seamMat, 4.9, 3.87, 0.55);
     // ceiling light strips
     const litMat = new THREE.MeshStandardMaterial({ color: 0xe8f4ff, emissive: 0xddefff, emissiveIntensity: 1.2 });
     add(new THREE.BoxGeometry(1.8, 0.035, 0.10), litMat, 5.2, 3.88, -0.42);
