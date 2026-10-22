@@ -281,7 +281,7 @@
     
     add(new THREE.BoxGeometry(0.18, 0.14, 2.55), dark, 3.0, 2.18, 0);
     // sun visor
-    add(new THREE.BoxGeometry(0.32, 0.16, 2.45), black, 3.45, 3.82, 0, 0, 0, -0.12);
+    
     // wipers
     const wiper = new THREE.CylinderGeometry(0.018, 0.018, 0.85, 8);
     const w1 = add(wiper, black, 3.08, 2.42, -0.5); w1.rotation.z = 1.05;
@@ -362,8 +362,6 @@
       add(new THREE.BoxGeometry(0.05, 0.035, 0.07), conBtn, 5.02, 2.20, -1.18 + i * 0.09);
       add(new THREE.BoxGeometry(0.05, 0.035, 0.07), conBtn, 5.02, 2.20, 0.82 + i * 0.09);
     }
-    const swMat = new THREE.MeshStandardMaterial({ color: 0x1a2228, emissive: 0x7a4a12, emissiveIntensity: 0.4 });
-    for (let i = 0; i < 11; i++) add(new THREE.BoxGeometry(0.05, 0.035, 0.07), swMat, 3.52, 3.64, -0.8 + i * 0.16);
     const redMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.45, metalness: 0.2 });
     add(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), redMat, 4.22, 2.40, 0.0);
     const cir = screen('CIR', '--', '无线');
