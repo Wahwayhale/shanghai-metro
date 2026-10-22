@@ -83752,9 +83752,9 @@ window.__sim = {
       const a = Math.PI - 0.85 + (i / (DN - 1)) * 1.70;
       const dx = DCX + DR * Math.cos(a);
       const dz = DR * Math.sin(a);
-      add(new THREE.BoxGeometry(0.62, 0.09, 0.48), trim, dx, 2.31, dz, 0, -a, 0);
-      add(new THREE.BoxGeometry(0.38, 0.64, 0.48), mid, dx + 0.10 * Math.cos(a), 1.98, dz + 0.10 * Math.sin(a), 0, -a, 0);
-      add(new THREE.BoxGeometry(0.40, 0.05, 0.44), trim, dx, 2.36, dz, 0, -a, 0);
+      add(new THREE.BoxGeometry(0.66, 0.09, 0.66), trim, dx, 2.31, dz, 0, -a, 0);
+      add(new THREE.BoxGeometry(0.40, 0.64, 0.66), mid, dx + 0.10 * Math.cos(a), 1.98, dz + 0.10 * Math.sin(a), 0, -a, 0);
+      add(new THREE.BoxGeometry(0.42, 0.05, 0.62), trim, dx, 2.36, dz, 0, -a, 0);
     }
     // dashboard face panel + cowl so screens are mounted, not floating
     add(new THREE.BoxGeometry(0.12, 0.54, 2.36), mid, 3.78, 2.48, 0);
