@@ -392,7 +392,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true, yaw: 0, pitch: 0,
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true,
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -488,7 +488,7 @@ function updateHsrMain(dt) {
   if (!st) return;
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
-  const throttle = (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? 1 : 0;
+  const throttle = (st.panto && st.vcb && (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle)) ? 1 : 0;
   if (!st.stopped) {
     const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     const perm = Math.min(limit / 3.6, stopV);
@@ -558,12 +558,12 @@ function updateHsrMain(dt) {
       if (!st.lastDmi || now - st.lastDmi > 220) {
         st.lastDmi = now;
         const kmhD = Math.round(st.v * 3.6);
-        const modeD = st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行')));
+        const modeD = (!st.panto || !st.vcb) ? '无电' : (st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行'))));
         const vals = [
           ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
           ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
           ['G25', modeD, st.stopped ? '车门开启' : '车门关闭'],
-          ['仪表', '25.0', 'kV · 正常']
+          ['仪表', st.panto && st.vcb ? '25.0' : '0.0', st.panto && st.vcb ? 'kV · 正常' : 'kV · 无电']
         ];
         const mats = st.cabGroup.userData.dmis || [];
         for (let i = 0; i < mats.length; i++) {
@@ -579,6 +579,13 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#2fa7d6'; ctx.fillRect(24, 156, 272 * Math.max(0.02, Math.min(1, st.v / (350 / 3.6))), 10);
           ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
+        }
+        const lamp = st.cabGroup.userData.warnLamp;
+        const over = kmhD > hsrMainLimit(st.x) + 0.5;
+        if (lamp) {
+          const blink = (Math.floor(performance.now() / 250) % 2) === 0;
+          lamp.emissive.setHex(over && blink ? 0xff1a1a : 0x400000);
+          lamp.emissiveIntensity = over && blink ? 2.2 : 0.3;
         }
         const doorOpen = !!(st.stopped && st.doorT > 0.2);
         for (const lm of (st.cabGroup.userData.doorLeds || [])) lm.emissive.setHex(doorOpen ? 0xc8102e : 0x2f9e5a);
@@ -613,6 +620,7 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+  if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分');
   if (el('hmTsr')) el('hmTsr').textContent = st.tsr ? 'TSR ' + st.tsr.v + ' · ' + (st.tsr.start / 1000).toFixed(0) + ' km' : '';
   if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
@@ -634,6 +642,10 @@ window.addEventListener('keydown', (e) => {
   if (G.mode !== 'hsr') return;
   if (e.code === 'KeyR') {
     resetHsrMain();
+  } else if (e.code === 'KeyP') {
+    if (G.hsr) G.hsr.panto = !G.hsr.panto;
+  } else if (e.code === 'KeyV') {
+    if (G.hsr) G.hsr.vcb = !G.hsr.vcb;
   } else if (e.code === 'Escape') {
     exitHsrMain();
   }
