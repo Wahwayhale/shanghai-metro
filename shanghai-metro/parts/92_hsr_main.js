@@ -214,7 +214,7 @@
     const makeDmi = (x, y, z, w, h, mat, tilt) => {
       add(new THREE.BoxGeometry(0.06, h + 0.06, w + 0.06), dark, x, y, z);
       const sc = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-      sc.position.set(x + 0.04, y, z); sc.rotation.y = Math.PI / 2; sc.rotation.x = 0;
+      sc.position.set(x + 0.04, y, z); sc.rotation.y = Math.PI / 2 - z * 0.22; sc.rotation.x = 0;
       g.add(sc);
     };
     // shell
@@ -288,6 +288,13 @@
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, -1.10, 0, 0.22, 0);
     add(new THREE.BoxGeometry(1.4, 0.20, 0.46), mid, 5.05, 2.05, 1.10, 0, -0.22, 0);
     add(new THREE.BoxGeometry(0.9, 0.10, 2.3), wall, 3.55, 3.72, 0);
+    const swMat = new THREE.MeshStandardMaterial({ color: 0x1a2228, emissive: 0x7a4a12, emissiveIntensity: 0.4 });
+    for (let i = 0; i < 11; i++) add(new THREE.BoxGeometry(0.05, 0.035, 0.07), swMat, 3.52, 3.64, -0.8 + i * 0.16);
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.45, metalness: 0.2 });
+    add(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), redMat, 4.22, 2.40, 0.0);
+    const cir = screen('CIR', '--', '无线');
+    const cirMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.18), cir);
+    cirMesh.position.set(5.02, 2.36, -1.12); cirMesh.rotation.y = Math.PI / 2 + 0.35; g.add(cirMesh);
     add(new THREE.BoxGeometry(1.4, 0.06, 0.9), new THREE.MeshStandardMaterial({ color: 0x2f6f9e, roughness: 0.9 }), 5.15, 1.33, 0);
     // interior light
     const lamp = new THREE.PointLight(0xcfe6f2, 0.9, 9, 2); lamp.position.set(5.2, 3.6, 0); g.add(lamp);
