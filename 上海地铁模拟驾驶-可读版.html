@@ -79748,6 +79748,9 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#86c6dd'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][0], 160, 38);
           ctx.fillStyle = '#e8f7ff'; ctx.font = '800 46px ui-monospace,monospace'; ctx.fillText(vals[i][1], 160, 100);
           ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][2], 160, 148);
+          ctx.fillStyle = '#102a35'; ctx.fillRect(24, 156, 272, 10);
+          ctx.fillStyle = '#2fa7d6'; ctx.fillRect(24, 156, 272 * Math.max(0.02, Math.min(1, st.v / (350 / 3.6))), 10);
+          ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
         }
         const lev = st.cabGroup.userData.levers || [];
@@ -83769,6 +83772,10 @@ window.__sim = {
     makeDmi(3.82, 2.60, 0.30, 0.42, 0.30, dmi3, 0);
     makeDmi(3.82, 2.60, 0.90, 0.42, 0.30, dmiG, 0);
     g.userData.dmis = [dmi1, dmi2, dmi3, dmiG];
+    const stripMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2a5a44, emissiveIntensity: 0.45 });
+    for (const zz of [-0.95, -0.75, -0.55, -0.35, 0.35, 0.55, 0.75, 0.95]) {
+      add(new THREE.BoxGeometry(0.05, 0.035, 0.07), stripMat, 4.18, 2.41, zz);
+    }
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, 1.05);

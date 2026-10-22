@@ -575,6 +575,9 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#86c6dd'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][0], 160, 38);
           ctx.fillStyle = '#e8f7ff'; ctx.font = '800 46px ui-monospace,monospace'; ctx.fillText(vals[i][1], 160, 100);
           ctx.fillStyle = '#8fe06a'; ctx.font = '600 22px ui-monospace,monospace'; ctx.fillText(vals[i][2], 160, 148);
+          ctx.fillStyle = '#102a35'; ctx.fillRect(24, 156, 272, 10);
+          ctx.fillStyle = '#2fa7d6'; ctx.fillRect(24, 156, 272 * Math.max(0.02, Math.min(1, st.v / (350 / 3.6))), 10);
+          ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
         }
         const lev = st.cabGroup.userData.levers || [];

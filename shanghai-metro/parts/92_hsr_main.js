@@ -295,6 +295,10 @@
     makeDmi(3.82, 2.60, 0.30, 0.42, 0.30, dmi3, 0);
     makeDmi(3.82, 2.60, 0.90, 0.42, 0.30, dmiG, 0);
     g.userData.dmis = [dmi1, dmi2, dmi3, dmiG];
+    const stripMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2a5a44, emissiveIntensity: 0.45 });
+    for (const zz of [-0.95, -0.75, -0.55, -0.35, 0.35, 0.55, 0.75, 0.95]) {
+      add(new THREE.BoxGeometry(0.05, 0.035, 0.07), stripMat, 4.18, 2.41, zz);
+    }
     // left/right consoles and levers
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, -1.05);
     add(new THREE.BoxGeometry(1.6, 0.28, 0.42), mid, 5.05, 2.02, 1.05);
