@@ -22412,7 +22412,7 @@ window.__sim = {
     const makeDmi = (x, y, z, w, h, mat, tilt) => {
       add(new THREE.BoxGeometry(0.06, h + 0.06, w + 0.06), dark, x, y, z);
       const sc = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-      sc.position.set(x + 0.04, y, z); sc.rotation.y = Math.PI / 2 - z * 0.22; sc.rotation.x = 0;
+      sc.position.set(x + 0.10, y, z); sc.rotation.y = Math.PI / 2 - z * 0.22; sc.rotation.x = 0;
       g.add(sc);
     };
     // shell
@@ -22456,7 +22456,7 @@ window.__sim = {
       add(new THREE.BoxGeometry(0.40, 0.05, 0.44), trim, dx, 2.36, dz, 0, -a, 0);
     }
     // dashboard face panel + cowl so screens are mounted, not floating
-    add(new THREE.BoxGeometry(0.12, 0.54, 2.20), mid, 3.78, 2.48, 0);
+    add(new THREE.BoxGeometry(0.12, 0.54, 2.36), mid, 3.78, 2.48, 0);
     // DMI screens
     const dmi1 = screen('DMI-1', '0', 'ATP 350');
     const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
