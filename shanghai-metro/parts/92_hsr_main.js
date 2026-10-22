@@ -49,12 +49,12 @@
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.1, 6.2), mat(0x6b737a, 0.9));
       platform.position.set(-st.x, 0.55, -6.8);
       g.add(platform);
-      const canopy = new THREE.Mesh(new THREE.BoxGeometry(450, 0.22, 14), mat(0xb9c1c7, 0.8));
-      canopy.position.set(-st.x, 5.4, -6.8);
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(450, 0.22, 10), mat(0xb9c1c7, 0.8));
+      canopy.position.set(-st.x, 5.4, -10.2);
       g.add(canopy);
       for (let j = -5; j <= 5; j++) {
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.8, 0.28), mat(0x8f979e, 0.6));
-        col.position.set(-st.x + j * 40, 2.9, -6.8);
+        col.position.set(-st.x + j * 40, 2.9, -10.2);
         g.add(col);
       }
     }

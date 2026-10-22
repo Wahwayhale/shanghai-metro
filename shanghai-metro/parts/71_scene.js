@@ -366,12 +366,12 @@ async function buildHsrService() {
   }
   G.mode = 'loading';
   const s = await window.HSR_MAIN.buildTrainScene();
-  s.background = new THREE.Color(0x0a1116);
-  s.fog = new THREE.Fog(0x0a1116, 350, 1600);
-  const hemi = new THREE.HemisphereLight(0xbfd7e8, 0x1a2228, 1.3);
+  s.background = new THREE.Color(0x8ab7d6);
+  s.fog = new THREE.Fog(0xa8c5d8, 450, 2600);
+  const hemi = new THREE.HemisphereLight(0xf2f8ff, 0x8a8f88, 1.6);
   s.add(hemi);
-  const dir = new THREE.DirectionalLight(0xfff2dd, 2.0);
-  dir.position.set(-60, 80, 40);
+  const dir = new THREE.DirectionalLight(0xfff6e8, 2.1);
+  dir.position.set(-120, 120, 70);
   s.add(dir);
   scene = s;
   camera.position.set(-24, 5.8, 13);
