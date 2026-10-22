@@ -580,6 +580,8 @@ function updateHsrMain(dt) {
           ctx.fillStyle = '#86c6dd'; ctx.font = '500 12px ui-monospace,monospace'; ctx.fillText('CR400AF', 160, 18);
           m.map.needsUpdate = true;
         }
+        const doorOpen = !!(st.stopped && st.doorT > 0.2);
+        for (const lm of (st.cabGroup.userData.doorLeds || [])) lm.emissive.setHex(doorOpen ? 0xc8102e : 0x2f9e5a);
         const wipers = st.cabGroup.userData.wipers || [];
         const wt = performance.now() / 1000;
         for (let wi = 0; wi < wipers.length; wi++) {

@@ -323,6 +323,12 @@
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
     g.userData.levers = [l1, l2];
+    g.userData.doorLeds = [];
+    for (const zz of [-0.9, -0.3, 0.3, 0.9]) {
+      const lm = new THREE.MeshStandardMaterial({ color: 0x0d2a18, emissive: 0x2f9e5a, emissiveIntensity: 1.0 });
+      add(new THREE.BoxGeometry(0.06, 0.035, 0.06), lm, 4.18, 2.38, zz);
+      g.userData.doorLeds.push(lm);
+    }
     // button clusters
     const panelLabel = (text) => {
       const c = document.createElement('canvas'); c.width = 256; c.height = 80;
