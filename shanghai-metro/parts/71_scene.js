@@ -585,8 +585,8 @@ function updateHsrMain(dt) {
   const cabEl = document.getElementById('hsrMainCab');
   if (cabEl) cabEl.classList.add('hidden');
   if (st.cab) {
-    camera.position.set(-st.x + 6.0, 2.9, 0.55);
-    camera.lookAt(-st.x + 2.0, 2.18, 0.55);
+    camera.position.set(-st.x + 6.0, 2.98, 0.0);
+    camera.lookAt(-st.x + 2.0, 2.38, 0.0);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
