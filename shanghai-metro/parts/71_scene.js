@@ -611,6 +611,19 @@ function updateHsrMain(dt) {
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
   if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分');
+  if (el('hmSignal')) {
+    let ns = null;
+    for (const sg of (st.signals || [])) { if (sg.x > st.x && (!ns || sg.x < ns.x)) ns = sg; }
+    if (ns) {
+      const d = ns.x - st.x;
+      el('hmSignal').textContent = '前方信号机';
+      el('hmSignal').style.color = '#c7d6df';
+      if (el('hmSigDist')) el('hmSigDist').textContent = (d / 1000).toFixed(1) + ' km';
+    } else {
+      el('hmSignal').textContent = '信号 --';
+      if (el('hmSigDist')) el('hmSigDist').textContent = '';
+    }
+  }
   if (el('hmTsr')) el('hmTsr').textContent = st.tsr ? 'TSR ' + st.tsr.v + ' · ' + (st.tsr.start / 1000).toFixed(0) + ' km' : '';
   if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
