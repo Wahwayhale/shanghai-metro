@@ -91,8 +91,6 @@
       }
       const roof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.45, 4.2), mat(0x9aa4ab, 0.7));
       roof.position.set(-st.x, 8.35, -16.0); g.add(roof);
-      const sign = stationLabel(st.name);
-      sign.position.set(-st.x, 7.3, -14.15); sign.rotation.y = 0; sign.scale.set(0.38, 0.38, 1); g.add(sign);
       const winMat = new THREE.MeshStandardMaterial({ color: 0x2a3942, emissive: 0x1a2a33, emissiveIntensity: 0.35, roughness: 0.4 });
       for (let w = -4; w <= 4; w++) {
         const win = new THREE.Mesh(new THREE.BoxGeometry(7, 1.4, 0.12), winMat);
