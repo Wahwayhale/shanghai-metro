@@ -26,3 +26,5 @@ _msg.txt
 # DLC 参考图：仅本地比对，不随仓库分发
 dlc/jinghu/refs/
 
+# 会议临时目录
+.roundtable/
