@@ -1116,3 +1116,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 校验 HUD 出现「ATP制动」，且 v 下降到 300km/h 以下。
 - 发现 350km/h 段会被速度硬上限瞬间压到 350，测不出 ATP，所以测试放在 250 段。
 - smoke/test:hsr 通过。
+# 声音静音状态持久化
+
+- 静音状态写入 localStorage.hsrAudioMuted；重进/刷新恢复。
+- 验证：静音后 reload + 重进，audio.muted=true、master.gain=0。
+- 正式版 3.04 MB、可读版 3.70 MB；smoke/test:hsr 通过。

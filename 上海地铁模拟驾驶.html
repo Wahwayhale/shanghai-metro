@@ -18363,7 +18363,7 @@ async function buildHsrService() {
   bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) G.hsr.cab = false; else G.hsr.camMode = ((G.hsr.camMode || 0) + 1) % 2; } });
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
-  bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
+  bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (e) {} } });
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
@@ -18433,13 +18433,15 @@ function createHsrAudio() {
   try {
     const ctx = new AC();
     const master = ctx.createGain(); master.gain.value = 0.10; master.connect(ctx.destination);
+    let muted = false; try { muted = localStorage.getItem('hsrAudioMuted') === '1'; } catch (e) {}
+    if (muted) master.gain.value = 0;
     const motor = ctx.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 40;
     const motorGain = ctx.createGain(); motorGain.gain.value = 0.02;
     motor.connect(motorGain); motorGain.connect(master); motor.start();
     const wind = ctx.createOscillator(); wind.type = 'triangle'; wind.frequency.value = 90;
     const windGain = ctx.createGain(); windGain.gain.value = 0.0;
     wind.connect(windGain); windGain.connect(master); wind.start();
-    return { ctx, master, motor, motorGain, wind, windGain, muted: false };
+    return { ctx, master, motor, motorGain, wind, windGain, muted };
   } catch (e) { return null; }
 }
 
