@@ -84061,6 +84061,13 @@ window.__sim = {
       const dl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(z < 0 ? '左门' : '右门'));
       dl.position.set(4.40, 2.37, z + (z < 0 ? -0.12 : 0.12)); dl.rotation.x = -Math.PI / 2; g.add(dl);
     }
+    // wiper / coupling switches on the desk
+    const swBase = new THREE.MeshStandardMaterial({ color: 0x1b2328, roughness: 0.7 });
+    for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂']]) {
+      add(new THREE.BoxGeometry(0.10, 0.03, 0.10), swBase, sx, 2.36, sz);
+      const sl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(txt));
+      sl.position.set(sx, 2.38, sz); sl.rotation.x = -Math.PI / 2; g.add(sl);
+    }
     // button clusters
     const panelLabel = (text) => {
       const c = document.createElement('canvas'); c.width = 256; c.height = 80;
