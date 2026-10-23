@@ -405,7 +405,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -857,7 +857,12 @@ function updateHsrMain(dt) {
     const px = (st.train && st.train.userData.passengerX) || 0;
     const yaw = st.yaw || 0, pitch = st.pitch || 0;
     const lx = Math.cos(yaw) * Math.cos(pitch), ly = Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
-    camera.position.set(-st.x + px - 8.0, 2.55, 0.55);
+    const walk = 2.2 * dt;
+    if (keys['KeyQ']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) + walk));
+    if (keys['KeyE']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) - walk));
+    if (keys['KeyA']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) - walk));
+    if (keys['KeyD']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) + walk));
+    camera.position.set(-st.x + px - 8.0 + (st.cabinWalkX || 0), 2.55, 0.55 + (st.cabinWalkZ || 0));
     camera.lookAt(camera.position.x + lx * 20, camera.position.y + ly * 20, camera.position.z + lz * 20);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
