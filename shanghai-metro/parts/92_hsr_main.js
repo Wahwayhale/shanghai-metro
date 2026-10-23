@@ -4,6 +4,13 @@
     THREE = THREE || window.__HSR_THREE;
     const D = window.HSR_DATA;
     if (!D) throw new Error('HSR_DATA 未就绪');
+    const skyC = document.createElement('canvas'); skyC.width = 64; skyC.height = 512;
+    const skg = skyC.getContext('2d'); const skgrad = skg.createLinearGradient(0, 0, 0, 512);
+    skgrad.addColorStop(0, '#4f8fc0'); skgrad.addColorStop(0.55, '#8fc0dc'); skgrad.addColorStop(1, '#e6f2f6');
+    skg.fillStyle = skgrad; skg.fillRect(0, 0, 64, 512);
+    const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace;
+    scene.userData.prevBg = scene.background;
+    scene.background = skyTex;
     const g = new THREE.Group();
     g.name = 'HSR-MAIN-WORLD';
     const RUN = D.RUN;

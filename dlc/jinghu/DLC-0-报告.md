@@ -1746,3 +1746,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 高架下地形加512程序化纹理：田块/道路/色块，repeat40x40。
 - 替换纯绿色地面；外部视角可见。
 - smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
+# 高铁场景渐变天空
+
+- buildHsrWorld把scene.background换成64x512竖向渐变（深蓝→浅蓝→近地白）。
+- 退出场景恢复原背景。
+- 截图 hsr-skygrad.png；smoke/test:hsr通过。

@@ -1007,6 +1007,7 @@ function exitHsrMain() {
   G.mode = 'menu';
   G.hsr = null;
   const mg = s.getObjectByName('main-ground'); if (mg) mg.visible = true;
+  if (s.userData.prevBg !== undefined) { s.background = s.userData.prevBg; s.userData.prevBg = undefined; }
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.add('hidden');
   const menu = document.getElementById('menu');
