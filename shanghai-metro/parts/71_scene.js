@@ -395,6 +395,7 @@ async function buildHsrService() {
   const cabGroup = window.HSR_MAIN.buildCab();
   cabGroup.position.set(0, 0, 0);
   s.add(cabGroup);
+  try { if (cabGroup.userData.cabLamp && localStorage.getItem('hsrCabLight') === '0') cabGroup.userData.cabLamp.intensity = 0; } catch (e) {}
   const world = s.getObjectByName('HSR-MAIN-WORLD');
   G.hsr = {
     x: 0, v: 0, stopped: false, stopErr: null,
@@ -823,7 +824,7 @@ window.__hsrMain = {
       const hs = G.hsr.cabGroup.userData.headlightSwitch;
       if (hs && ray.intersectObject(hs, false).length) { const hm = G.hsr.train && G.hsr.train.userData.headlightMat; if (hm) { hm.emissiveIntensity = hm.emissiveIntensity > 0.1 ? 0 : 2.2; try { localStorage.setItem('hsrHeadlight', hm.emissiveIntensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
       const ls = G.hsr.cabGroup.userData.lightSwitch;
-      if (ls && ray.intersectObject(ls, false).length) { const lamp = G.hsr.cabGroup.userData.cabLamp; if (lamp) lamp.intensity = lamp.intensity > 0.1 ? 0 : 0.9; lookDrag = false; return; }
+      if (ls && ray.intersectObject(ls, false).length) { const lamp = G.hsr.cabGroup.userData.cabLamp; if (lamp) { lamp.intensity = lamp.intensity > 0.1 ? 0 : 0.9; try { localStorage.setItem('hsrCabLight', lamp.intensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
       const ws = G.hsr.cabGroup.userData.wiperSwitch;
       if (ws && ray.intersectObject(ws, false).length) { G.hsr.wipersOn = !G.hsr.wipersOn; lookDrag = false; return; }
       const dk = G.hsr.cabGroup.userData.dirKnob;

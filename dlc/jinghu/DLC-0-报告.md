@@ -1408,3 +1408,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 头灯开/关写入 localStorage.hsrHeadlight；重进/刷新恢复。
 - 验证：关闭头灯 → reload → 重进，headlightMat.emissiveIntensity=0。
 - 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
+# 驾驶室灯状态持久化
+
+- 照明开关状态写入 localStorage.hsrCabLight；重进/刷新恢复。
+- 验证：关灯 → reload → 重进，cabLamp.intensity=0。
+- 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
