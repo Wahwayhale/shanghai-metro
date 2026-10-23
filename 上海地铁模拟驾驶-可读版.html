@@ -83845,9 +83845,47 @@ window.__sim = {
         const strip = new THREE.Mesh(new THREE.BoxGeometry(96, 0.06, 0.35), lightMat);
         strip.position.set(-st.x, 7.7, lz); g.add(strip);
       }
-      const board = new THREE.Mesh(new THREE.BoxGeometry(18, 3.2, 0.15), mat(0x101820, 0.5));
-      board.position.set(-st.x, 4.4, -21.9); g.add(board);
-      const facadeMat = new THREE.MeshStandardMaterial({ color: 0x6f98aa, transparent: true, opacity: 0.42, roughness: 0.12, metalness: 0.15, side: THREE.DoubleSide });
+      const boardC = document.createElement('canvas'); boardC.width = 1024; boardC.height = 320;
+      const bg = boardC.getContext('2d'); bg.fillStyle = '#071018'; bg.fillRect(0, 0, 1024, 320);
+      bg.fillStyle = '#e8f1f6'; bg.font = '700 42px "Microsoft YaHei", sans-serif'; bg.fillText('北京南站  B E I J I N G N A N', 30, 58);
+      bg.strokeStyle = '#2a7a96'; bg.lineWidth = 4; bg.beginPath(); bg.moveTo(30, 82); bg.lineTo(994, 82); bg.stroke();
+      const rows = [['G25', '上海虹桥', '17:00', '检票'], ['G1', '上海', '06:30', '正点'], ['G3', '上海', '06:52', '正点'], ['G5', '上海', '07:40', '正点'], ['G7', '上海', '08:00', '正点']];
+      bg.font = '600 34px ui-monospace, monospace';
+      rows.forEach((r, i) => { const y = 132 + i * 38; bg.fillStyle = i === 0 ? '#ffd479' : '#cfe0ea'; bg.fillText(r[0], 40, y); bg.fillText(r[1], 220, y); bg.fillText(r[2], 620, y); bg.fillStyle = i === 0 ? '#8fe06a' : '#8fa3b0'; bg.fillText(r[3], 840, y); });
+      const boardTex = new THREE.CanvasTexture(boardC); boardTex.colorSpace = THREE.SRGBColorSpace;
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(20, 6.25), new THREE.MeshBasicMaterial({ map: boardTex, side: THREE.DoubleSide }));
+      board.position.set(-st.x, 5.2, -15.4); g.add(board);
+      const gateMat = mat(0xb9c1c7, 0.55), gateDark = mat(0x2b353b, 0.7);
+      for (const gx of [-30, -20, 20, 30]) {
+        for (let k = 0; k < 2; k++) {
+          const gate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.05, 0.9), gateMat);
+          gate.position.set(-st.x + gx + k * 0.9, 1.78, -15.9); g.add(gate);
+          const top = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.7), gateDark);
+          top.position.set(-st.x + gx + k * 0.9, 2.33, -15.9); g.add(top);
+        }
+      }
+      for (const sx of [-32, 0, 32]) {
+        for (let i = 0; i < 6; i++) {
+          const seat = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.10, 0.50), gateDark);
+          seat.position.set(-st.x + sx + i * 0.58, 1.62, -17.2); g.add(seat);
+          const back = new THREE.Mesh(new THREE.BoxGeometry(0.50, 0.42, 0.08), gateDark);
+          back.position.set(-st.x + sx + i * 0.58, 1.85, -17.45); g.add(back);
+        }
+      }
+      const shopGlassMat = new THREE.MeshStandardMaterial({ color: 0x6f98aa, transparent: true, opacity: 0.35, roughness: 0.15, metalness: 0.15, side: THREE.DoubleSide });
+      for (const sx of [-42, 42]) {
+        const shop = new THREE.Mesh(new THREE.BoxGeometry(10, 3.0, 3.4), mat(0x33434c, 0.6));
+        shop.position.set(-st.x + sx, 2.85, -20.6); g.add(shop);
+        const shopGlass = new THREE.Mesh(new THREE.PlaneGeometry(9.4, 2.2), shopGlassMat);
+        shopGlass.position.set(-st.x + sx, 2.6, -18.88); g.add(shopGlass);
+      }
+      for (let bx = -4; bx <= 4; bx++) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.30, 7.5), interiorCol);
+        beam.position.set(-st.x + bx * 12, 7.85, -18.4); g.add(beam);
+      }
+      const inName = stationLabel(st.name);
+      inName.position.set(-st.x, 6.5, -22.15); inName.rotation.y = 0; inName.scale.set(0.36, 0.36, 1); g.add(inName);
+      const facadeMat = new THREE.MeshStandardMaterial({ color: 0x33434c, transparent: true, opacity: 0.82, emissive: 0x0a1418, emissiveIntensity: 0.4, roughness: 0.12, metalness: 0.15, side: THREE.DoubleSide });
       const facade = new THREE.Mesh(new THREE.BoxGeometry(100, 7, 0.16), facadeMat);
       facade.position.set(-st.x, 4.6, -14.38); g.add(facade);
       const entryMat = new THREE.MeshStandardMaterial({ color: 0x1c2d36, emissive: 0x0e1a20, emissiveIntensity: 0.5, roughness: 0.25, metalness: 0.3 });
@@ -83868,6 +83906,26 @@ window.__sim = {
         const band = new THREE.Mesh(new THREE.BoxGeometry(102, 0.16, 0.22), mat(0x9aa4ab, 0.6));
         band.position.set(-st.x, fy, -14.30); g.add(band);
       }
+      const roofName = stationLabel(st.name);
+      roofName.position.set(-st.x, 7.45, -14.05); roofName.rotation.y = 0; roofName.scale.set(0.27, 0.27, 1); g.add(roofName);
+      const upperGlass = new THREE.Mesh(new THREE.BoxGeometry(100, 5.4, 0.16), facadeMat);
+      upperGlass.position.set(-st.x, 11.0, -14.38); g.add(upperGlass);
+      for (const sx of [-54.85, 54.85]) {
+        const uw = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.6, 7.9), shellMat);
+        uw.position.set(-st.x + sx, 11.0, -18.45); g.add(uw);
+      }
+      const upperBack = new THREE.Mesh(new THREE.BoxGeometry(110, 5.6, 0.3), shellMat);
+      upperBack.position.set(-st.x, 11.0, -22.4); g.add(upperBack);
+      const upperRoof = new THREE.Mesh(new THREE.BoxGeometry(112, 0.4, 8.2), shellMat);
+      upperRoof.position.set(-st.x, 13.9, -18.45); g.add(upperRoof);
+      for (const fy of [9.6, 11.7, 13.2]) {
+        const ub = new THREE.Mesh(new THREE.BoxGeometry(102, 0.18, 0.22), mat(0x9aa4ab, 0.6));
+        ub.position.set(-st.x, fy, -14.30); g.add(ub);
+      }
+      const canopy = new THREE.Mesh(new THREE.BoxGeometry(122, 0.55, 12.5), mat(0x9aa4ab, 0.7));
+      canopy.position.set(-st.x, 14.25, -18.4); g.add(canopy);
+      const roofSign = stationLabel(st.name);
+      roofSign.position.set(-st.x, 13.0, -14.05); roofSign.rotation.y = 0; roofSign.scale.set(0.38, 0.38, 1); g.add(roofSign);
       const parapet = new THREE.Mesh(new THREE.BoxGeometry(104, 0.55, 0.35), mat(0x9aa4ab, 0.7));
       parapet.position.set(-st.x, 8.55, -14.30); g.add(parapet);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.45, 4.2), mat(0x9aa4ab, 0.7));
