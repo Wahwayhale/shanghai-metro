@@ -147,6 +147,14 @@
         const rib = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 12.0), mat(0x8f979e, 0.6));
         rib.position.set(-st.x + r * 60, 7.91, -7.5); g.add(rib);
       }
+      for (let r = -3; r <= 3; r++) {
+        const chord = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.20, 12.0), mat(0x7d858c, 0.65));
+        chord.position.set(-st.x + r * 60, 7.32, -7.5); g.add(chord);
+        for (const dz of [-3.2, 3.2]) {
+          const diag = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 0.12), mat(0x7d858c, 0.65));
+          diag.position.set(-st.x + r * 60, 7.58, -7.5 + dz); diag.rotation.x = dz < 0 ? 0.7 : -0.7; g.add(diag);
+        }
+      }
       const lampMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, emissive: 0xeaf6ff, emissiveIntensity: 1.4 });
       for (let l = -2; l <= 2; l++) {
         const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), lampMat);
