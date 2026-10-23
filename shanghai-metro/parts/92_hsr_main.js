@@ -49,6 +49,8 @@
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.1, 6.2), mat(0x6b737a, 0.9));
       platform.position.set(-st.x, 0.55, -6.8);
       g.add(platform);
+      const fascia = stationLabel(st.name);
+      fascia.position.set(-st.x, 4.70, -10.15); fascia.rotation.y = 0; fascia.scale.set(0.20, 0.20, 1); g.add(fascia);
       const roofL = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
       roofL.position.set(-st.x, 5.65, -12.1); roofL.rotation.x = 0.14; g.add(roofL);
       const roofR = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
