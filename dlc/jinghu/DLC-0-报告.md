@@ -1620,3 +1620,10 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - EB自动解除恒速。
 - 验证点击恒速：cruise=true,target=20；T键关闭。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# 制动级位 1B–7B
+
+- S 每次+1级（1B–7B），A 每次-1级；HUD显示「制动 x/7」。
+- 制动力=0.8*(level/7)；HUD制动按钮仍为满级。
+- 停车后自动回0。
+- 验证：S×2→level2，A→1。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
