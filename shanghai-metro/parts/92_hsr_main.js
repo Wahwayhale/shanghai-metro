@@ -745,6 +745,9 @@
         add(new THREE.BoxGeometry(0.03, 0.06, 0.08), swm, px - 0.05, py - 0.05 + si * 0.09, pz);
       }
     }
+    const pedal = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.24), new THREE.MeshStandardMaterial({ color: 0x3a3f44, roughness: 0.8 }));
+    pedal.position.set(4.45, 1.34, 0.55); g.add(pedal);
+    g.userData.deadman = pedal;
     // rear partition door behind the seat
     add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
     const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);

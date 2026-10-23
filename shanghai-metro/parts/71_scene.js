@@ -405,7 +405,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
@@ -739,7 +739,9 @@ function updateHsrMain(dt) {
     const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     const perm = Math.min(limit / 3.6, stopV);
     const brake = (keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0;
-    const eb = (keys['Space'] || st.touchEb) ? 1 : 0;
+    st.deadmanT = (st.v > 1 && !st.stopped) ? (st.deadmanT || 0) + dt : 0;
+    if (st.deadmanT > 37) st.deadmanEb = true;
+    const eb = (keys['Space'] || st.touchEb || st.deadmanEb) ? 1 : 0;
     const vnow = st.v;
     const Ftract = throttle ? Math.min(220000, 8800000 / Math.max(vnow, 1)) : 0;
     const dragN = 5000 + 60 * vnow + 1.1 * vnow * vnow;
@@ -931,6 +933,7 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmPark')) el('hmPark').textContent = st.parked ? '停放制动 施加' : '停放制动 缓解';
+  if (el('hmDeadman')) { const left = Math.max(0, 37 - (st.deadmanT || 0)); el('hmDeadman').textContent = st.deadmanEb ? '警惕 EB' : (left < 8 ? '警惕 ' + left.toFixed(0) + 's' : '警惕 正常'); el('hmDeadman').style.color = st.deadmanEb ? '#ff4d4d' : (left < 8 ? '#ffd479' : ''); }
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + '）' : '车门关闭') : '车门关闭';
   if (el('hmDwell')) {
     if (st.stopped) {
@@ -974,6 +977,8 @@ window.addEventListener('keydown', (e) => {
     resetHsrMain();
   } else if (e.code === 'KeyH') {
     if (G.hsr) playHsrHorn(G.hsr.audio);
+  } else if (e.code === 'KeyF') {
+    if (G.hsr) { G.hsr.deadmanT = 0; G.hsr.deadmanEb = false; }
   } else if (e.code === 'KeyP') {
     if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; }
   } else if (e.code === 'KeyV') {
@@ -1007,6 +1012,8 @@ window.__hsrMain = {
       if (hs && ray.intersectObject(hs, false).length) { const hm = G.hsr.train && G.hsr.train.userData.headlightMat; if (hm) { hm.emissiveIntensity = hm.emissiveIntensity > 0.1 ? 0 : 2.2; try { localStorage.setItem('hsrHeadlight', hm.emissiveIntensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
       const ls = G.hsr.cabGroup.userData.lightSwitch;
       if (ls && ray.intersectObject(ls, false).length) { const lamp = G.hsr.cabGroup.userData.cabLamp; if (lamp) { lamp.intensity = lamp.intensity > 0.1 ? 0 : 0.9; try { localStorage.setItem('hsrCabLight', lamp.intensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
+      const dm = G.hsr.cabGroup.userData.deadman;
+      if (dm && ray.intersectObject(dm, false).length) { G.hsr.deadmanT = 0; G.hsr.deadmanEb = false; lookDrag = false; return; }
       const ws = G.hsr.cabGroup.userData.wiperSwitch;
       if (ws && ray.intersectObject(ws, false).length) { G.hsr.wipersOn = !G.hsr.wipersOn; lookDrag = false; return; }
       const dk = G.hsr.cabGroup.userData.dirKnob;

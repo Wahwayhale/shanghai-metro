@@ -1606,3 +1606,10 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
   - ATP超5km/h常用、超12km/h EB。
 - 软件渲染帧率低，5s实测速度仍小（dt被限幅）；公式已正确。
 - smoke/test:hsr通过。
+# 无人警惕踏板
+
+- 驾驶室地板加警惕踏板（可点），F 键复位。
+- 运行中 v>1 累计 37s 未踩 → deadmanEb=true，触发 EB；HUD 最后8s倒计时，EB显示「警惕 EB」。
+- 停车/低速自动复位计时。
+- 验证：deadmanT=100 → EB；按F复位。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
