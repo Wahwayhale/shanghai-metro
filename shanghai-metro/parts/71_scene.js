@@ -785,6 +785,7 @@ function exitHsrMain() {
 window.addEventListener('keydown', (e) => {
   if (G.mode !== 'hsr') return;
   if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'F1') { e.preventDefault(); const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); }
   if (e.code === 'KeyR') {
     resetHsrMain();
   } else if (e.code === 'KeyH') {
