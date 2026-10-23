@@ -79596,7 +79596,7 @@ async function buildHsrService() {
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
-    doorT: 0, dwellStart: 0, doorSide: -1, parked: false, legs: [], result: false,
+    doorT: 0, dwellStart: 0, doorSide: -1, parked: false, doorWasOpen: false, legs: [], result: false,
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
@@ -79714,6 +79714,18 @@ function playHsrHorn(audio) {
   }
 }
 
+function playDoorChime(audio) {
+  if (!audio) return;
+  const ctx = audio.ctx, now = ctx.currentTime;
+  [0, 0.18].forEach((delay, i) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = i ? 660 : 880;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now + delay);
+    g.gain.exponentialRampToValueAtTime(0.05, now + delay + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.16);
+    o.connect(g); g.connect(audio.master); o.start(now + delay); o.stop(now + delay + 0.18);
+  });
+}
+
 function hsrMainLimit(x) {
   const t = G.hsr && G.hsr.tsr;
   if (t && x >= t.start && x < t.end) return t.v;
@@ -79766,6 +79778,7 @@ function updateHsrMain(dt) {
   } else {
     st.v = 0;
   }
+  if (st.stopped !== st.doorWasOpen) { st.doorWasOpen = st.stopped; playDoorChime(st.audio); }
   const doorTarget = st.stopped ? 1 : 0;
   const dstep = Math.min(1, dt / 0.8);
   if (st.doorT < doorTarget) st.doorT = Math.min(doorTarget, st.doorT + dstep);
