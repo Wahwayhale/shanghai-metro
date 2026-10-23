@@ -414,6 +414,7 @@ async function buildHsrService() {
     sky: (s.userData && s.userData.sky) || null,
     lights: (s.userData && s.userData.lights) || null,
     stationLight: stopLight,
+    megaHide: (world && world.userData && world.userData.megaHide) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -438,7 +439,7 @@ async function buildHsrService() {
   hold('hmEb', 'touchEb');
   bind('hmDepart', hsrMainDepart);
   bind('hmReset', resetHsrMain);
-  bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) { G.hsr.cab = false; G.hsr.camMode = 0; } else if ((G.hsr.camMode || 0) >= 2) { G.hsr.cab = true; G.hsr.camMode = 0; } else G.hsr.camMode = (G.hsr.camMode || 0) + 1; } });
+  bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) { G.hsr.cab = false; G.hsr.camMode = 0; } else if ((G.hsr.camMode || 0) >= 3) { G.hsr.cab = true; G.hsr.camMode = 0; } else G.hsr.camMode = (G.hsr.camMode || 0) + 1; } });
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (e) {} } });
@@ -904,6 +905,7 @@ function updateHsrMain(dt) {
   if (cabHud) cabHud.classList.toggle('hidden', passengerView);
   if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
   if (st.stationLabels) for (const l of st.stationLabels) l.visible = !passengerView;
+  if (st.megaHide) for (const h of st.megaHide) h.visible = !((st.camMode === 3) && !st.cab);
   if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'), cc = document.getElementById('cabinCarNo'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; if (cc) cc.textContent = (5 + Math.round((st.cabinWalkX || 0) / 25.65)) + '车'; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
@@ -963,6 +965,9 @@ function updateHsrMain(dt) {
   } else if (st.camMode === 1) {
     camera.position.set(-st.x + 458, 7.5, 18);
     camera.lookAt(-st.x + 425, 2.4, 0);
+  } else if (st.camMode === 3) {
+    camera.position.set(-st.x + 6.5, 46.0, 35);
+    camera.lookAt(-st.x, 2.0, -150);
   } else if (st.camMode === 2) {
     const px = (st.train && st.train.userData.passengerX) || 0;
     const yaw = st.yaw || 0, pitch = st.pitch || 0;
@@ -984,7 +989,7 @@ function updateHsrMain(dt) {
   }
   const kmh = st.v * 3.6;
   const el = (id) => document.getElementById(id);
-  if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾', '车厢'][st.camMode || 0];
+  if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾', '车厢', '站场'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('hmMode')) { let md = '惰行'; if (st.ebLatched || keys['Space'] || st.touchEb || st.deadmanEb) md = '紧急制动'; else if (st.stopped) md = '停车'; else if (st.v * 3.6 < 1) md = '待发'; else if (st.cruise) md = '恒速'; else if ((st.brakeLevel || 0) > 0) md = '制动 ' + st.brakeLevel + 'B'; else if (throttle) md = '牵引'; el('hmMode').textContent = md; }

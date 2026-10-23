@@ -100,6 +100,7 @@
       const platMat = new THREE.MeshStandardMaterial({ color: 0xd9dde0, roughness: 0.25, metalness: 0.1 });
       const steel = new THREE.MeshStandardMaterial({ color: 0xe8ecef, roughness: 0.35, metalness: 0.6 });
       const glass = new THREE.MeshStandardMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide });
+      g.userData.megaHide = g.userData.megaHide || [];
       const deck = new THREE.Mesh(new THREE.BoxGeometry(470, 10, 310), mat(0x8f969b, 0.9));
       deck.position.set(x, -5, -144); g.add(deck);
       for (let i = 0; i < 12; i++) {
@@ -116,7 +117,7 @@
         line.position.set(x, 1.27, pz + 4.4); g.add(line);
       }
       const roof = new THREE.Mesh(new THREE.BoxGeometry(460, 0.5, 310), steel);
-      roof.position.set(x, 21, -144); g.add(roof);
+      roof.position.set(x, 21, -144); g.add(roof); g.userData.megaHide.push(roof);
       if (detailed) {
         for (let bx = -4; bx <= 4; bx++) {
           for (const bz of [-40, -144, -248]) {
@@ -143,11 +144,11 @@
         }
       }
       const hall = new THREE.Mesh(new THREE.BoxGeometry(180, 23.5, 260), glass);
-      hall.position.set(x, 24.25, -144); g.add(hall);
+      hall.position.set(x, 24.25, -144); g.add(hall); g.userData.megaHide.push(hall);
       const hallFloor = new THREE.Mesh(new THREE.BoxGeometry(180, 0.6, 260), steel);
-      hallFloor.position.set(x, 12.5, -144); g.add(hallFloor);
+      hallFloor.position.set(x, 12.5, -144); g.add(hallFloor); g.userData.megaHide.push(hallFloor);
       const hallRoof = new THREE.Mesh(new THREE.BoxGeometry(190, 0.8, 270), steel);
-      hallRoof.position.set(x, 36, -144); g.add(hallRoof);
+      hallRoof.position.set(x, 36, -144); g.add(hallRoof); g.userData.megaHide.push(hallRoof);
       for (let i = 0; i < 6; i++) {
         const bz = -13.5 - i * 48;
         const body = new THREE.Mesh(new THREE.BoxGeometry(200, 3.2, 3.0), mat(0xf2f4f4, 0.4));
