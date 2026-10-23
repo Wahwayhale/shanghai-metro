@@ -23005,6 +23005,17 @@ window.__sim = {
       }
     }
     add(new THREE.BoxGeometry(0.34, 0.52, 0.34), trim, 6.95, 1.50, 0.55);
+    // distribution panels 1/2/3 on the rear partition
+    for (let pi = 0; pi < 3; pi++) {
+      const px = 7.27, pz = (pi - 1) * 0.85, py = 2.15;
+      add(new THREE.BoxGeometry(0.06, 0.55, 0.55), mid, px, py, pz);
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.40, 0.10), dirLabel('配电盘' + (pi + 1)));
+      pl.position.set(px - 0.04, py + 0.20, pz); pl.rotation.y = -Math.PI / 2; g.add(pl);
+      for (let si = 0; si < 4; si++) {
+        const swm = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2a4a2a, emissiveIntensity: 0.4 });
+        add(new THREE.BoxGeometry(0.03, 0.06, 0.08), swm, px - 0.05, py - 0.05 + si * 0.09, pz);
+      }
+    }
     // rear partition door behind the seat
     add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
     const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);
