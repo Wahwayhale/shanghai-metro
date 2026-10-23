@@ -22,6 +22,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
     hsr: !!window.__hsrMain,
     stations: (window.HSR_DATA && window.HSR_DATA.STATIONS && window.HSR_DATA.STATIONS.length) || 0,
     run: (window.HSR_DATA && window.HSR_DATA.RUN) || 0,
+    segments: (window.HSR_DATA && window.HSR_DATA.SEGMENTS && window.HSR_DATA.SEGMENTS.length) || 0,
+    limits: (window.HSR_DATA && window.HSR_DATA.BASE_LIMITS && window.HSR_DATA.BASE_LIMITS.length) || 0,
     sys: (document.getElementById('hmSys') || {}).textContent || '',
     door: (document.getElementById('hmDoor') || {}).textContent || '',
     speed: (document.getElementById('hmSpeed') || {}).textContent || '',
@@ -33,6 +35,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!info.hsr) fail.push('__hsrMain missing');
   if (info.stations !== 23) fail.push('station count ' + info.stations);
   if (info.run !== 1302000) fail.push('RUN ' + info.run);
+  if (info.segments < 6) fail.push('segments ' + info.segments);
+  if (info.limits < 4) fail.push('limits ' + info.limits);
   if (!/受电弓/.test(info.sys)) fail.push('panto HUD missing');
   if (!/车门/.test(info.door)) fail.push('door HUD missing');
   if (info.speed !== '0') fail.push('initial speed ' + info.speed);
