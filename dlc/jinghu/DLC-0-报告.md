@@ -1144,3 +1144,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 将驾驶室红蘑菇按钮投影到屏幕坐标，按住校验 touchEb=1。
 - 将左手柄投影，按住校验 touchThrottle=1。
 - 松开不残留；全量 test:hsr 通过。
+# v013 fairing 变形试验：无效
+
+- 对 fairing 鼻端顶点做 y+0.38/横向+22% 变形，导出 v013。
+- 正交渲染与 v011 几乎完全一致（文件大小/像素都无差异）。
+- 结论：可见鼻锥主要由 `GEO-headcar-lod` 决定，`GEO-nose_fairing` 被包在内部/重叠，改 fairing 不影响外观。
+- 后续车头必须直接改 headcar-lod，而不是 fairing；v013 已删除，继续用 v011。
