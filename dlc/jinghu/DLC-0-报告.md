@@ -1816,3 +1816,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 中文播报后追加英文：Next station, XX. Please prepare to get off.
 - 仍受audio.muted控制；无语音时回退提示音。
 - smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
+# 英文站名表
+
+- 增加23站英文名映射，英文广播使用Beijing South/Nanjing South/Shanghai Hongqiao等。
+- 未收录站名回退中文。
+- smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
