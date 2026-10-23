@@ -419,7 +419,8 @@
       add(new THREE.BoxGeometry(0.05, 0.035, 0.07), conBtn, 5.02, 2.20, 0.82 + i * 0.09);
     }
     const redMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.45, metalness: 0.2 });
-    add(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), redMat, 4.22, 2.40, 0.0);
+    const ebBtn = add(new THREE.CylinderGeometry(0.075, 0.075, 0.05, 16), redMat, 4.22, 2.40, 0.0);
+    g.userData.ebButton = ebBtn;
     const cir = screen('CIR', '--', '无线');
     const cirMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.18), cir);
     cirMesh.position.set(5.02, 2.36, -1.12); cirMesh.rotation.y = Math.PI / 2 + 0.35; g.add(cirMesh);

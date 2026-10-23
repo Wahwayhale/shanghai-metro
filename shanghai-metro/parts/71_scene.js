@@ -538,6 +538,7 @@ function hsrMainLimit(x) {
 function updateHsrMain(dt) {
   const st = G.hsr;
   if (!st) return;
+  window.__hsrMainCamera = camera;
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
   const throttle = (st.panto && st.vcb && (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle)) ? 1 : 0;
@@ -781,6 +782,12 @@ window.__hsrMain = {
   window.addEventListener('pointerdown', (e) => {
     if (G.mode !== 'hsr' || !G.hsr || !G.hsr.cab) return;
     if (e.target && e.target.closest && e.target.closest('button')) return;
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, btn = G.hsr.cabGroup && G.hsr.cabGroup.userData.ebButton;
+    if (T && cam && btn) {
+      const ray = new T.Raycaster();
+      ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
+      if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
+    }
     lookDrag = true; lookX = e.clientX; lookY = e.clientY;
   });
   window.addEventListener('pointermove', (e) => {
@@ -790,6 +797,6 @@ window.__hsrMain = {
     G.hsr.yaw = Math.max(-1.6, Math.min(1.6, (G.hsr.yaw || 0) - dx * 0.0028));
     G.hsr.pitch = Math.max(-0.45, Math.min(0.45, (G.hsr.pitch || 0) + dy * 0.0022));
   });
-  window.addEventListener('pointerup', () => { lookDrag = false; });
+  window.addEventListener('pointerup', () => { lookDrag = false; if (G.hsr) G.hsr.touchEb = 0; });
   window.addEventListener('pointercancel', () => { lookDrag = false; });
 })();
