@@ -79620,7 +79620,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, announced: false, cruise: false, cruiseV: 0, brakeLevel: 0, pantoT: 1, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, announced: false, spoken: false, cruise: false, cruiseV: 0, brakeLevel: 0, pantoT: 1, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
@@ -79686,6 +79686,7 @@ function hsrMainDepart() {
     st.stopped = false;
     st.parked = false;
     st.announced = false;
+    st.spoken = false;
     st.v = 0;
     st.stopErr = null;
     st.legStart = performance.now();
@@ -79772,6 +79773,17 @@ function playStationChime(audio) {
     g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.20);
     o.connect(g); g.connect(audio.master); o.start(now + delay); o.stop(now + delay + 0.22);
   });
+}
+
+function speakStation(st, name) {
+  try {
+    if (!st.audio || st.audio.muted || !window.speechSynthesis) return false;
+    const u = new SpeechSynthesisUtterance('下一站，' + name + '，请做好下车准备');
+    u.lang = 'zh-CN'; u.rate = 0.92; u.pitch = 1.0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+    return true;
+  } catch (e) { return false; }
 }
 
 function hsrMainLimit(x) {
