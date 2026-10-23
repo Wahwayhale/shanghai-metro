@@ -1280,3 +1280,7 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - wipersOn=false 时雨刷停止摆动；true 且 v>1 时继续摆。
 - 验证：点击投影开关后 wipersOn=false。
 - 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。
+# HSR 回归校验雨刷开关
+
+- 投影 3D 雨刷开关，点击后 wipersOn=false，再点恢复 true。
+- 方向/3D EB/手柄/门/停车回归保留；npm run test:hsr 通过。

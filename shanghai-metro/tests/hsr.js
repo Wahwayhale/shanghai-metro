@@ -43,6 +43,20 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/计划 20:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
   if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
+  const wiperPos = await page.evaluate(() => {
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, sw = window.__sim.G.hsr.cabGroup.userData.wiperSwitch;
+    const v = new T.Vector3(); sw.getWorldPosition(v); v.project(cam);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  });
+  await page.mouse.click(wiperPos.x, wiperPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const wiperOff = await page.evaluate(() => window.__sim.G.hsr.wipersOn);
+  if (wiperOff !== false) fail.push('wiper switch off failed: ' + wiperOff);
+  await page.mouse.click(wiperPos.x, wiperPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const wiperOn = await page.evaluate(() => window.__sim.G.hsr.wipersOn);
+  if (wiperOn !== true) fail.push('wiper switch on failed: ' + wiperOn);
+
   const dirPos = await page.evaluate(() => {
     const T = window.__HSR_THREE, cam = window.__hsrMainCamera, kn = window.__sim.G.hsr.cabGroup.userData.dirKnob;
     const v = new T.Vector3(); kn.getWorldPosition(v); v.project(cam);
