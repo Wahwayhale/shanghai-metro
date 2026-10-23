@@ -386,6 +386,7 @@ async function buildHsrService() {
   const dir = new THREE.DirectionalLight(0xfff6e8, 2.1);
   dir.position.set(-120, 120, 70);
   s.add(dir);
+  s.userData.lights = { hemi, dir };
   scene = s;
   camera.position.set(-24, 5.8, 13);
   camera.lookAt(3, 2.4, 0);
@@ -409,6 +410,7 @@ async function buildHsrService() {
     train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, announced: false, spoken: false, cruise: false, cruiseV: 0, brakeLevel: 0, pantoT: 1, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     sky: (s.userData && s.userData.sky) || null,
+    lights: (s.userData && s.userData.lights) || null,
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -885,6 +887,7 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train && st.train.userData.cabinDoors) { for (const d of st.train.userData.cabinDoors) d.m.position.z = d.dz + Math.sign(d.dz) * 0.72 * st.doorT; }
+  if (st.lights && st.sky) { const nf = Math.max(0, Math.min(1, (st.x / 1301900 - 0.62) / 0.25)); if (st.lights.hemi) st.lights.hemi.intensity = 1.6 * (1 - 0.75 * nf); if (st.lights.dir) st.lights.dir.intensity = 2.1 * (1 - 0.82 * nf); }
   if (st.sky && Math.abs(st.x / 1301900 - (st.sky.last || 0)) > 0.004) { const nt = paintServiceSky(st.sky, Math.max(0, Math.min(1, st.x / 1301900))); const sc = window.__hsrMainScene; if (nt && sc) { if (sc.background && sc.background.dispose) sc.background.dispose(); sc.background = nt; } st.sky.last = st.x / 1301900; }
   if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
   if (st.train && st.train.userData.scenic && (Math.abs(st.x - st.train.userData.scenic.last) > 400 || st.train.userData.scenic.lastStopped !== st.stopped)) { paintCabinScenery(st.train.userData.scenic, st.x, st.stopped); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; st.train.userData.scenic.lastStopped = st.stopped; }
