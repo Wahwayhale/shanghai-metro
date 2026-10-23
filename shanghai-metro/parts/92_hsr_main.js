@@ -980,11 +980,13 @@
     const panto = new THREE.Group();
     const pantoMat = new THREE.MeshStandardMaterial({ color: 0x4a5359, metalness: 0.7, roughness: 0.35 });
     const pBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 1.2), pantoMat); panto.add(pBase);
+    panto.userData.arms = [];
     for (const pz of [-0.4, 0.4]) {
       const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 8), pantoMat);
-      arm.position.set(0, 0.45, pz); arm.rotation.z = 0.35; panto.add(arm);
+      arm.position.set(0, 0.45, pz); arm.rotation.z = 0.35; panto.add(arm); panto.userData.arms.push(arm);
     }
     const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 0.92; panto.add(pBar);
+    panto.userData.bar = pBar;
     panto.position.set(HEAD / 2, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
     if (cabinG && cabinG.scene) {
       const scenic = document.createElement('canvas'); scenic.width = 512; scenic.height = 256;
