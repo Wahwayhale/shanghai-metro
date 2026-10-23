@@ -194,6 +194,16 @@
             }
           }
         }
+        for (let i = 0; i < 12; i++) {
+          for (const tz of [-1.5 - i * 24, -13.5 - i * 24]) {
+            for (const dir of [-1, 1]) {
+              const machine = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.45, 0.6), new THREE.MeshStandardMaterial({ color: 0xd8b53a, roughness: 0.6 }));
+              machine.position.set(x + dir * 226, 0.35, tz); g.add(machine);
+              const blade = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.08, 0.075), railMat);
+              blade.position.set(x + dir * 228, 0.14, tz * 0.98); blade.rotation.y = -Math.atan2(tz, 1200) * 0.1; g.add(blade);
+            }
+          }
+        }
         for (const dir of [-1, 1]) {
           for (let si = 0; si < 18; si++) {
             const sx2 = x + dir * (300 + si * 60), sz2 = -6 - (si % 6) * 24;
