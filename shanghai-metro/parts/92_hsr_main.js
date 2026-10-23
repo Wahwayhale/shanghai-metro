@@ -4,22 +4,6 @@
     THREE = THREE || window.__HSR_THREE;
     const D = window.HSR_DATA;
     if (!D) throw new Error('HSR_DATA 未就绪');
-    const skyC = document.createElement('canvas'); skyC.width = 1024; skyC.height = 512;
-    const skg = skyC.getContext('2d'); const skgrad = skg.createLinearGradient(0, 0, 0, 512);
-    skgrad.addColorStop(0, '#3f7fb0'); skgrad.addColorStop(0.5, '#8fc0dc'); skgrad.addColorStop(1, '#e6f2f6');
-    skg.fillStyle = skgrad; skg.fillRect(0, 0, 1024, 512);
-    skg.fillStyle = 'rgba(255,255,255,0.45)';
-    for (let i = 0; i < 14; i++) {
-      const cx = (i * 173) % 1024, cy = 90 + (i * 47) % 180, r = 35 + (i % 4) * 18;
-      skg.beginPath(); skg.ellipse(cx, cy, r * 1.8, r * 0.45, 0, 0, Math.PI * 2); skg.fill();
-      skg.beginPath(); skg.ellipse(cx + r * 0.6, cy - r * 0.25, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); skg.fill();
-    }
-    const sunGrad = skg.createRadialGradient(760, 120, 4, 760, 120, 70);
-    sunGrad.addColorStop(0, 'rgba(255,250,225,0.95)'); sunGrad.addColorStop(0.25, 'rgba(255,245,200,0.55)'); sunGrad.addColorStop(1, 'rgba(255,245,200,0)');
-    skg.fillStyle = sunGrad; skg.fillRect(680, 40, 160, 160);
-    const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace; skyTex.mapping = THREE.EquirectangularReflectionMapping;
-    scene.userData.prevBg = scene.background;
-    scene.background = skyTex;
     const g = new THREE.Group();
     g.name = 'HSR-MAIN-WORLD';
     const RUN = D.RUN;

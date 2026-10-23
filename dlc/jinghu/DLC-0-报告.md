@@ -1838,3 +1838,10 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - 天空贴图加太阳径向光晕。
 - smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
+# 动态天空：白天→黄昏→夜
+
+- 删除92重复天空，只保留buildHsrService天空。
+- 按里程frac重绘天空：白天蓝→黄昏橙紫→夜间深蓝+星点；太阳下沉。
+- 替换scene.background纹理并释放旧纹理。
+- 修复st.sky未挂到状态对象（之前一直false）。
+- 截图1000km夜景 hsr-sunset6.png；smoke/test:hsr通过。

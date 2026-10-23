@@ -18340,6 +18340,7 @@ async function buildHsrService() {
   }
   const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace;
   s.background = skyTex;
+  s.userData.sky = { canvas: skyC, ctx: skyG, last: -1 };
   s.fog = new THREE.Fog(0xa8c5d8, 450, 2600);
   const hemi = new THREE.HemisphereLight(0xf2f8ff, 0x8a8f88, 1.6);
   s.add(hemi);
@@ -18368,6 +18369,7 @@ async function buildHsrService() {
     ],
     train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, announced: false, spoken: false, cruise: false, cruiseV: 0, brakeLevel: 0, pantoT: 1, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
+    sky: (s.userData && s.userData.sky) || null,
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -18738,6 +18740,25 @@ function paintCabinLed(led, st) {
   ctx.fillText('下一站 ' + nxt, 256, 50);
 }
 
+function paintServiceSky(sky, frac) {
+  const ctx = sky.ctx; if (!ctx) return null;
+  const W = 512, H = 256;
+  const night = Math.max(0, Math.min(1, (frac - 0.62) / 0.25));
+  const dusk = Math.max(0, Math.min(1, (frac - 0.35) / 0.3));
+  const top = night > 0 ? '#050a18' : (dusk > 0 ? '#304066' : '#4f8fc6');
+  const mid = night > 0 ? '#0a1428' : (dusk > 0 ? '#b46a6a' : '#8db9d8');
+  const bot = night > 0 ? '#101a30' : (dusk > 0 ? '#f0a070' : '#d6e9f5');
+  const grd = ctx.createLinearGradient(0,0,0,H); grd.addColorStop(0,top); grd.addColorStop(0.55,mid); grd.addColorStop(1,bot);
+  ctx.fillStyle = grd; ctx.fillRect(0,0,W,H);
+  if (night > 0.2) { ctx.fillStyle='rgba(255,255,255,'+(0.75*night)+')'; for(let i=0;i<60;i++) ctx.fillRect((i*83)%W,(i*37)%140,1.4,1.4); }
+  const sunA = Math.max(0, 1 - frac*1.5);
+  if (sunA > 0.03) { const sy=80+frac*120; const rg=ctx.createRadialGradient(380,sy,2,380,sy,42); rg.addColorStop(0,'rgba(255,250,225,'+(0.95*sunA)+')'); rg.addColorStop(1,'rgba(255,240,190,0)'); ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(380,sy,42,0,Math.PI*2); ctx.fill(); }
+  ctx.fillStyle='rgba(255,255,255,'+(0.35*(1-night))+')';
+  for (const [cx,cy,rx,ry] of [[90,95,55,18],[180,120,70,20],[300,85,60,16],[410,115,75,22],[240,150,90,18]]) { ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); ctx.fill(); }
+  const t = new THREE.CanvasTexture(sky.canvas); t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function updateHsrMain(dt) {
   const st = G.hsr;
   if (!st) return;
@@ -18825,6 +18846,7 @@ function updateHsrMain(dt) {
     }
   }
   if (st.train && st.train.userData.cabinDoors) { for (const d of st.train.userData.cabinDoors) d.m.position.z = d.dz + Math.sign(d.dz) * 0.72 * st.doorT; }
+  if (st.sky && Math.abs(st.x / 1301900 - (st.sky.last || 0)) > 0.004) { const nt = paintServiceSky(st.sky, Math.max(0, Math.min(1, st.x / 1301900))); const sc = window.__hsrMainScene; if (nt && sc) { if (sc.background && sc.background.dispose) sc.background.dispose(); sc.background = nt; } st.sky.last = st.x / 1301900; }
   if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
   if (st.train && st.train.userData.scenic && (Math.abs(st.x - st.train.userData.scenic.last) > 400 || st.train.userData.scenic.lastStopped !== st.stopped)) { paintCabinScenery(st.train.userData.scenic, st.x, st.stopped); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; st.train.userData.scenic.lastStopped = st.stopped; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) { const pt = st.panto ? 1 : 0; st.pantoT = (st.pantoT || 1) + (pt - (st.pantoT || 1)) * Math.min(1, dt * 2.5); const pg = st.train.userData.pantograph; pg.scale.y = 1; const fold = 1 - st.pantoT; for (const a of (pg.userData.lower || [])) a.rotation.z = 0.15 + 0.95 * fold; for (const a of (pg.userData.upper || [])) a.rotation.z = -0.35 - 0.80 * fold; if (pg.userData.bar) pg.userData.bar.position.y = 0.62 + 0.54 * st.pantoT; } if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
@@ -22742,22 +22764,6 @@ window.__sim = {
     THREE = THREE || window.__HSR_THREE;
     const D = window.HSR_DATA;
     if (!D) throw new Error('HSR_DATA 未就绪');
-    const skyC = document.createElement('canvas'); skyC.width = 1024; skyC.height = 512;
-    const skg = skyC.getContext('2d'); const skgrad = skg.createLinearGradient(0, 0, 0, 512);
-    skgrad.addColorStop(0, '#3f7fb0'); skgrad.addColorStop(0.5, '#8fc0dc'); skgrad.addColorStop(1, '#e6f2f6');
-    skg.fillStyle = skgrad; skg.fillRect(0, 0, 1024, 512);
-    skg.fillStyle = 'rgba(255,255,255,0.45)';
-    for (let i = 0; i < 14; i++) {
-      const cx = (i * 173) % 1024, cy = 90 + (i * 47) % 180, r = 35 + (i % 4) * 18;
-      skg.beginPath(); skg.ellipse(cx, cy, r * 1.8, r * 0.45, 0, 0, Math.PI * 2); skg.fill();
-      skg.beginPath(); skg.ellipse(cx + r * 0.6, cy - r * 0.25, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); skg.fill();
-    }
-    const sunGrad = skg.createRadialGradient(760, 120, 4, 760, 120, 70);
-    sunGrad.addColorStop(0, 'rgba(255,250,225,0.95)'); sunGrad.addColorStop(0.25, 'rgba(255,245,200,0.55)'); sunGrad.addColorStop(1, 'rgba(255,245,200,0)');
-    skg.fillStyle = sunGrad; skg.fillRect(680, 40, 160, 160);
-    const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace; skyTex.mapping = THREE.EquirectangularReflectionMapping;
-    scene.userData.prevBg = scene.background;
-    scene.background = skyTex;
     const g = new THREE.Group();
     g.name = 'HSR-MAIN-WORLD';
     const RUN = D.RUN;
