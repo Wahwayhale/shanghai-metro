@@ -1121,3 +1121,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 静音状态写入 localStorage.hsrAudioMuted；重进/刷新恢复。
 - 验证：静音后 reload + 重进，audio.muted=true、master.gain=0。
 - 正式版 3.04 MB、可读版 3.70 MB；smoke/test:hsr 通过。
+# v011 车头剖面检查（2026-10-23）
+
+- 渲染：`dlc/jinghu/renders/head-v011-front.png`（Blender orthographic，实际呈侧面剖面）。
+- 已确认：黑风挡、红/金腰线、司机门、转向架、受电弓座位置基本连续。
+- 差距：鼻锥仍偏尖、偏低，车头上缘过渡不如 CR400AF-BS 圆润；前脸黑区比例偏大。
+- 结论：v011 是“倒角+平滑”的改良版，不是重新放样；要 1:1 必须按参考图重做鼻锥截面，而不是继续加 modifier。
