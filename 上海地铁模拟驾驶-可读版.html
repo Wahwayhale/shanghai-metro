@@ -79630,6 +79630,7 @@ async function buildHsrService() {
     lights: (s.userData && s.userData.lights) || null,
     stationLight: stopLight,
     megaHide: (world && world.userData && world.userData.megaHide) || [],
+    megaSignals: (world && world.userData && world.userData.megaSignals) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -80121,6 +80122,7 @@ function updateHsrMain(dt) {
   if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
   if (st.stationLabels) for (const l of st.stationLabels) l.visible = !passengerView;
   if (st.megaHide) for (const h of st.megaHide) h.visible = !((st.camMode === 3) && !st.cab);
+  if (st.megaSignals) for (const s of st.megaSignals) { const m = s.material; if (m && m.emissive) { m.emissive.setHex(st.stopped ? 0x2f6fd0 : 0x8fe06a); m.emissiveIntensity = st.stopped ? 0.7 : 1.8; } }
   if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'), cc = document.getElementById('cabinCarNo'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; if (cc) cc.textContent = (5 + Math.round((st.cabinWalkX || 0) / 25.65)) + '车'; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
