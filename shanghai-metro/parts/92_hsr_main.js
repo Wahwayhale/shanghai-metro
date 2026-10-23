@@ -619,6 +619,9 @@
     const dirKnob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8), trim);
     dirKnob.position.set(4.50, 2.41, 0.72); g.add(dirKnob);
     g.userData.dirKnob = dirKnob;
+    const dirRing = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.014, 20), new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2f9e5a, emissiveIntensity: 0.8 }));
+    dirRing.position.set(4.50, 2.385, 0.72); g.add(dirRing);
+    g.userData.dirRing = dirRing;
     const dirLab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), dirLabel('方向'));
     dirLab.position.set(4.50, 2.38, 0.72); dirLab.rotation.x = -Math.PI / 2; g.add(dirLab);
     const doorBtnMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2f9e5a, emissiveIntensity: 0.8 });

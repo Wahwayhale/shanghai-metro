@@ -933,6 +933,7 @@ function updateHsrMain(dt) {
   }
   if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分') + ' · 方向 ' + (st.dir ? '前' : '0');
   if (st.cabGroup && st.cabGroup.userData.dirKnob) st.cabGroup.userData.dirKnob.rotation.z = st.dir ? 0 : 0.7;
+  if (st.cabGroup && st.cabGroup.userData.dirRing) { const dr = st.cabGroup.userData.dirRing.material; dr.emissive.setHex(st.dir ? 0x2f9e5a : 0xffb340); dr.emissiveIntensity = st.dir ? 0.9 : 1.3; }
   if (el('hmSignal')) {
     let ns = null;
     for (const sg of (st.signals || [])) { if (sg.x > st.x && (!ns || sg.x < ns.x)) ns = sg; }
