@@ -1572,3 +1572,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 修复参考 passengerX 在车门块之前未定义的问题（改为 carXs[3]）。
 - 单文件9.69MB、可读版10.35MB；smoke/test:hsr通过。
 - 截图 hsr-cabin-soliddoor.png。
+# 车厢视角支持拖拽环视
+
+- 车厢模式下拖拽画面可左右/上下环视；用 st.yaw/pitch 计算视线。
+- 驾驶室模式原有射线按钮/手柄逻辑不变；外部模式仍不可拖拽。
+- HUD「回正」可复位。
+- 截图 hsr-cabin-look.png；smoke/test:hsr通过。

@@ -80051,8 +80051,10 @@ function updateHsrMain(dt) {
     camera.lookAt(-st.x + 425, 2.4, 0);
   } else if (st.camMode === 2) {
     const px = (st.train && st.train.userData.passengerX) || 0;
+    const yaw = st.yaw || 0, pitch = st.pitch || 0;
+    const lx = Math.cos(yaw) * Math.cos(pitch), ly = Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
     camera.position.set(-st.x + px - 8.0, 2.55, 0.55);
-    camera.lookAt(-st.x + px + 8, 2.30, 0.25);
+    camera.lookAt(camera.position.x + lx * 20, camera.position.y + ly * 20, camera.position.z + lz * 20);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
@@ -80179,7 +80181,8 @@ window.__hsrMain = {
 (function () {
   let lookDrag = false, lookX = 0, lookY = 0;
   window.addEventListener('pointerdown', (e) => {
-    if (G.mode !== 'hsr' || !G.hsr || !G.hsr.cab) return;
+    if (G.mode !== 'hsr' || !G.hsr || (!G.hsr.cab && G.hsr.camMode !== 2)) return;
+    if (!G.hsr.cab) { lookDrag = true; lookX = e.clientX; lookY = e.clientY; return; }
     if (e.target && e.target.closest && e.target.closest('button')) return;
     const T = window.__HSR_THREE, cam = window.__hsrMainCamera, btn = G.hsr.cabGroup && G.hsr.cabGroup.userData.ebButton;
     if (T && cam && btn) {
