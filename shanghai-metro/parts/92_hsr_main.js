@@ -964,6 +964,9 @@
           if (m.name && m.name.indexOf('window_sky') >= 0) {
             m.map = stex; m.color.setHex(0xffffff); m.emissive.setHex(0x000000); m.needsUpdate = true;
           }
+          if (m.name === 'glass') {
+            m.transparent = false; m.opacity = 1; m.color.setHex(0x6f8fa6); m.roughness = 0.25; m.needsUpdate = true;
+          }
         }
       });
     }

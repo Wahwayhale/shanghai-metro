@@ -1561,3 +1561,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 每 400m 根据 st.x 重绘车窗 CanvasTexture：天空/远山/田野，部分区段出现建筑群/河流。
 - 不再是一张固定贴图；截图 hsr-cabin-scenery2.png（50km）。
 - 单文件 9.69MB、可读版 10.35MB；smoke/test:hsr 通过。
+# 客室端门玻璃不再透出站名牌
+
+- GLB 的 glass 材质在 Three 中改为不透明蓝灰，端门不再透出「北京南」站名牌。
+- 行李架也变为半实心蓝灰；视觉上更干净。
+- 单文件9.69MB、可读版10.35MB；smoke/test:hsr通过。
