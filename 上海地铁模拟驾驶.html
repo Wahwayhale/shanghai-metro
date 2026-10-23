@@ -22955,8 +22955,11 @@ window.__sim = {
       const ck = clockC.getContext('2d'); ck.fillStyle = '#f4f6f7'; ck.beginPath(); ck.arc(64, 64, 60, 0, Math.PI * 2); ck.fill();
       ck.strokeStyle = '#1a2328'; ck.lineWidth = 4; ck.stroke();
       for (let h = 0; h < 12; h++) { const a = h * Math.PI / 6; ck.beginPath(); ck.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); ck.lineTo(64 + Math.cos(a) * 54, 64 + Math.sin(a) * 54); ck.stroke(); }
-      ck.lineWidth = 5; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64 + Math.cos(-Math.PI / 3) * 30, 64 + Math.sin(-Math.PI / 3) * 30); ck.stroke();
-      ck.lineWidth = 3; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64, 64 - 40); ck.stroke();
+      const hfrac = (D.STATIONS.indexOf(st) / (D.STATIONS.length - 1)) * (21 + 18 / 60 - 17);
+      const hour = 17 + hfrac, hAng = ((hour % 12) / 12) * Math.PI * 2 - Math.PI / 2;
+      const mAng = ((hour % 1) * Math.PI * 2) - Math.PI / 2;
+      ck.lineWidth = 5; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64 + Math.cos(hAng) * 30, 64 + Math.sin(hAng) * 30); ck.stroke();
+      ck.lineWidth = 3; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64 + Math.cos(mAng) * 42, 64 + Math.sin(mAng) * 42); ck.stroke();
       const clockTex = new THREE.CanvasTexture(clockC); clockTex.colorSpace = THREE.SRGBColorSpace;
       for (const cx of [-120, 120]) {
         const cm = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: clockTex, side: THREE.DoubleSide }));
