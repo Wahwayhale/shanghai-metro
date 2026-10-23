@@ -882,3 +882,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 检查受电弓/VCB 顺序：降弓→VCB 分；升弓后 VCB 仍分；手动合 VCB→升/合。
 - 捕获 pageerror/console error，要求零错误。
 - npm run test:hsr；已加入 npm test 链。
+# HSR 回归补牵引/紧急制动
+
+- tests/hsr.js 增加：W 1.6s 后 v>0.05，确认牵引生效。
+- 空格 1.2s 后 v<=0.05，确认紧急制动停车。
+- 受电弓/VCB 顺序、零错误校验保留。
+- npm run test:hsr 通过。

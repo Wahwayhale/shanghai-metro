@@ -46,6 +46,18 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const closed = await page.evaluate(() => document.getElementById('hmSys').textContent);
   if (!/升/.test(closed) || !/合/.test(closed)) fail.push('VCB close after panto up: ' + closed);
 
+  await page.keyboard.down('w');
+  await new Promise(r => setTimeout(r, 1600));
+  await page.keyboard.up('w');
+  const moving = await page.evaluate(() => window.__sim.G.hsr.v);
+  if (!(moving > 0.05)) fail.push('traction did not move train: v=' + moving);
+
+  await page.keyboard.down('Space');
+  await new Promise(r => setTimeout(r, 1200));
+  await page.keyboard.up('Space');
+  const stopped = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, state: document.getElementById('hmState').textContent }));
+  if (stopped.v > 0.05) fail.push('emergency brake did not stop: v=' + stopped.v);
+
   await page.screenshot({ path: 'shots/hsr-regression.png' }).catch(() => {});
   console.log(JSON.stringify({ ok: fail.length === 0 && errors.length === 0, info, pantoDown: down, pantoUp: up, fail, errors: errors.slice(0, 4) }, null, 1));
   await browser.close();
