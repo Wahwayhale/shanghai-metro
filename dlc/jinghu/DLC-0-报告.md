@@ -876,3 +876,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 站名牌放到站房立面 y7.3、z-14.15，不再挡驾驶室视线。
 - 雨棚/站台/驾驶室状态保留。
 - 正式版 2.99 MB、可读版 3.65 MB；smoke 通过。
+# 京沪高铁主场景回归测试
+
+- 新增 tests/hsr.js：进入 HSR 主场景、检查 mode=hsr、3 个停站、初始 0km/h、HUD 车门/受电弓状态。
+- 检查受电弓/VCB 顺序：降弓→VCB 分；升弓后 VCB 仍分；手动合 VCB→升/合。
+- 捕获 pageerror/console error，要求零错误。
+- npm run test:hsr；已加入 npm test 链。
