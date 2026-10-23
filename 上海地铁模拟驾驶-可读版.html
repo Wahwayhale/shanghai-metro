@@ -79846,6 +79846,7 @@ function updateHsrMain(dt) {
   }
   const kmh = st.v * 3.6;
   const el = (id) => document.getElementById(id);
+  if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '侧面', '车尾'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (throttle ? '牵引' : '惰行'));
