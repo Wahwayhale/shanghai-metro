@@ -80,6 +80,12 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const look = await page.evaluate(() => ({ yaw: window.__sim.G.hsr.yaw, pitch: window.__sim.G.hsr.pitch }));
   if (Math.abs(look.yaw) > 0.001 || Math.abs(look.pitch) > 0.001) fail.push('look reset failed: ' + JSON.stringify(look));
 
+  await page.evaluate(() => { const st = window.__sim.G.hsr; st.stopped = false; st.x = 1275000; st.v = 300 / 3.6; });
+  await new Promise(r => setTimeout(r, 600));
+  const atp = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, stopped: window.__sim.G.hsr.stopped, state: document.getElementById('hmState').textContent }));
+  if (!/ATP制动/.test(atp.state)) fail.push('ATP state: ' + JSON.stringify(atp));
+  if (atp.v >= 300 / 3.6) fail.push('ATP did not brake: v=' + atp.v);
+
   await page.evaluate(() => {
     const st = window.__sim.G.hsr;
     st.stopped = true; st.v = 0; st.stopErr = 0; st.doorT = 1;
