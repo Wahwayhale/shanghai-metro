@@ -18812,7 +18812,7 @@ function updateHsrMain(dt) {
         }
         const lev = st.cabGroup.userData.levers || [];
         if (lev[0]) lev[0].rotation.z = 0.2 + 0.35 * throttle;
-        if (lev[1]) lev[1].rotation.z = -0.2 - 0.35 * ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? 1 : 0);
+        if (lev[1]) lev[1].rotation.z = -0.2 - 0.35 * (st.touchBrake ? 1 : (st.brakeLevel || 0) / 7);
       }
     }
   }
