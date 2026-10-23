@@ -67,6 +67,20 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const wiperOn = await page.evaluate(() => window.__sim.G.hsr.wipersOn);
   if (wiperOn !== true) fail.push('wiper switch on failed: ' + wiperOn);
 
+  const lightPos = await page.evaluate(() => {
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, sw = window.__sim.G.hsr.cabGroup.userData.lightSwitch;
+    const v = new T.Vector3(); sw.getWorldPosition(v); v.project(cam);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  });
+  await page.mouse.click(lightPos.x, lightPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const lightOff = await page.evaluate(() => window.__sim.G.hsr.cabGroup.userData.cabLamp.intensity);
+  if (lightOff !== 0) fail.push('light switch off failed: ' + lightOff);
+  await page.mouse.click(lightPos.x, lightPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const lightOn = await page.evaluate(() => window.__sim.G.hsr.cabGroup.userData.cabLamp.intensity);
+  if (lightOn < 0.5) fail.push('light switch on failed: ' + lightOn);
+
   const dirPos = await page.evaluate(() => {
     const T = window.__HSR_THREE, cam = window.__hsrMainCamera, kn = window.__sim.G.hsr.cabGroup.userData.dirKnob;
     const v = new T.Vector3(); kn.getWorldPosition(v); v.project(cam);
