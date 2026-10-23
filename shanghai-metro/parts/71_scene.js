@@ -788,6 +788,9 @@ function exitHsrMain() {
 window.addEventListener('keydown', (e) => {
   if (G.mode !== 'hsr') return;
   if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'KeyM') { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (err) {} } }
+  if (e.code === 'KeyL') { if (G.hsr && G.hsr.cabGroup && G.hsr.cabGroup.userData.cabLamp) { const l = G.hsr.cabGroup.userData.cabLamp; l.intensity = l.intensity > 0.1 ? 0 : 0.9; try { localStorage.setItem('hsrCabLight', l.intensity > 0.1 ? '1' : '0'); } catch (err) {} } }
+  if (e.code === 'KeyK') { if (G.hsr && G.hsr.train && G.hsr.train.userData.headlightMat) { const h = G.hsr.train.userData.headlightMat; h.emissiveIntensity = h.emissiveIntensity > 0.1 ? 0 : 2.2; try { localStorage.setItem('hsrHeadlight', h.emissiveIntensity > 0.1 ? '1' : '0'); } catch (err) {} } }
   if (e.code === 'F1') { e.preventDefault(); const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); }
   if (e.code === 'Escape') { const h = document.getElementById('hsrHelp'); if (h && !h.classList.contains('hidden')) { h.classList.add('hidden'); return; } }
   if (e.code === 'KeyR') {

@@ -1424,3 +1424,11 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 前风挡加两根黑色雨刷臂（外置近似）。
 - 外部视角可见，不挡驾驶室。
 - 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
+# M/L/K 快捷键
+
+- M 静音切换（写 localStorage.hsrAudioMuted）。
+- L 驾驶室灯切换（写 hsrCabLight）。
+- K 头灯切换（写 hsrHeadlight）。
+- 帮助面板同步列出。
+- 验证：按 M/L/K 后 mute=true/light=0/head=0。
+- 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
