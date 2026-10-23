@@ -997,6 +997,15 @@
         }
       }
 
+      const gangMat = new THREE.MeshStandardMaterial({ color: 0x5a646b, roughness: 0.8 });
+      for (const dx of [-13.15, 13.15]) {
+        const gfloor = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 1.5), gangMat); gfloor.position.set((carXs[3] || 0) + dx, 1.28, 0); root.add(gfloor);
+        const gceil = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.08, 1.5), gangMat); gceil.position.set((carXs[3] || 0) + dx, 3.55, 0); root.add(gceil);
+        for (const gz of [-0.72, 0.72]) {
+          const gw = new THREE.Mesh(new THREE.BoxGeometry(1.7, 2.25, 0.06), gangMat); gw.position.set((carXs[3] || 0) + dx, 2.42, gz); root.add(gw);
+        }
+        const gend = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.25, 1.4), doorMat); gend.position.set((carXs[3] || 0) + dx + Math.sign(dx) * 0.85, 2.42, 0); root.add(gend);
+      }
       cabinG.scene.traverse(o => {
         if (!o.isMesh || !o.material) return;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
