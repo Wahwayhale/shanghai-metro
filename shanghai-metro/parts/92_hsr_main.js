@@ -583,6 +583,13 @@
       lab.position.set(4.55, 2.365, side * 1.05); lab.rotation.x = -Math.PI / 2; g.add(lab);
     }
     g.userData.levers = [l1, l2];
+    const gateC = document.createElement('canvas'); gateC.width = 512; gateC.height = 64;
+    const gg = gateC.getContext('2d'); gg.fillStyle = '#0d151b'; gg.fillRect(0, 0, 512, 64);
+    gg.fillStyle = '#9fc4d4'; gg.font = '700 26px ui-monospace, monospace'; gg.textAlign = 'center'; gg.textBaseline = 'middle';
+    for (let i = 0; i <= 7; i++) gg.fillText(i === 7 ? '7B' : String(i), 40 + i * 62, 32);
+    const gateTex = new THREE.CanvasTexture(gateC); gateTex.colorSpace = THREE.SRGBColorSpace;
+    const gate = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.08), new THREE.MeshBasicMaterial({ map: gateTex, side: THREE.DoubleSide }));
+    gate.position.set(4.35, 2.07, 1.05); gate.rotation.x = -Math.PI / 2; g.add(gate);
     const warnMat = new THREE.MeshStandardMaterial({ color: 0x2a0a0a, emissive: 0x400000, emissiveIntensity: 0.3 });
     add(new THREE.BoxGeometry(0.10, 0.04, 0.10), warnMat, 4.95, 2.22, 1.15);
     g.userData.warnLamp = warnMat;

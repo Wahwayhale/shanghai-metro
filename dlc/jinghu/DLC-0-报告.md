@@ -1654,3 +1654,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - DMI C区下方加7格制动条（0–7B），超过5级橙色。
 - 显示「B x/7」；恒速开启显示「恒速 xxx km/h」。
 - 截图 hsr-dmi-brake.png；smoke/test:hsr通过。
+# 制动手柄级位刻度板
+
+- 制动手柄下方加0–7B刻度板，标出7个级位。
+- 与制动级位/HUD/DMI联动显示。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
