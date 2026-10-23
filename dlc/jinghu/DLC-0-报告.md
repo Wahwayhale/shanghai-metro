@@ -1701,3 +1701,5 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - HUD/DMI显示紧急制动；停车自动解锁。
 - 验证：v=20按/松空格，latched=true。
 - smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
+- 修复 hmMode 三元表达式括号错误（上轮提交曾导致SMOKE/HSR脚本语法失败）。
+- 改为显式 if/else 生成模式文本；smoke/test:hsr通过。

@@ -18874,7 +18874,7 @@ function updateHsrMain(dt) {
   if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾', '车厢'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
-  if (el('hmMode')) el('hmMode').textContent = (st.ebLatched || keys['Space'] || st.touchEb || st.deadmanEb) ? '紧急制动' : (st.stopped ? '停车' : (kmh < 1 ? '待发' : (st.cruise ? '恒速' : ((st.brakeLevel || 0) > 0 ? '制动 ' + st.brakeLevel + 'B' : (throttle ? '牵引' : '惰行'))));
+  if (el('hmMode')) { let md = '惰行'; if (st.ebLatched || keys['Space'] || st.touchEb || st.deadmanEb) md = '紧急制动'; else if (st.stopped) md = '停车'; else if (st.v * 3.6 < 1) md = '待发'; else if (st.cruise) md = '恒速'; else if ((st.brakeLevel || 0) > 0) md = '制动 ' + st.brakeLevel + 'B'; else if (throttle) md = '牵引'; el('hmMode').textContent = md; }
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
