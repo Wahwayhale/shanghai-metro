@@ -9,28 +9,29 @@
     const RUN = D.RUN;
     const mat = (color, rough) => new THREE.MeshStandardMaterial({ color, roughness: rough == null ? 0.85 : rough, metalness: 0.05 });
 
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 0.6, 18), mat(0x2a3138, 0.95));
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 0.6, 18), mat(0x8f969b, 0.95));
     deck.position.set(600 - (RUN + 600) / 2, -0.3, 0);
     g.add(deck);
 
     for (const z of [-0.7175, 0.7175]) {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 0.08, 0.075), mat(0x9aa3aa, 0.35));
-      rail.position.set(deck.position.x, 0.08, z);
+      rail.position.set(deck.position.x, 0.12, z);
       g.add(rail);
     }
 
-    const sleeperGeo = new THREE.BoxGeometry(0.26, 0.08, 2.6);
-    const sleeperMat = mat(0x4a5056, 0.95);
-    const nSleep = Math.floor((RUN + 600) / 10);
-    const sleepers = new THREE.InstancedMesh(sleeperGeo, sleeperMat, nSleep);
     const m4 = new THREE.Matrix4();
-    for (let i = 0; i < nSleep; i++) {
-      m4.makeTranslation(600 - i * 10, 0.01, 0);
-      sleepers.setMatrixAt(i, m4);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 0.10, 3.4), mat(0xc6cacc, 0.9));
+    slab.position.set(deck.position.x, 0.01, 0); g.add(slab);
+    const nBal = Math.floor((RUN + 600) / 1000);
+    const balises = new THREE.InstancedMesh(new THREE.BoxGeometry(0.38, 0.06, 0.38), new THREE.MeshStandardMaterial({ color: 0xe8c84a, emissive: 0x3a2a00, emissiveIntensity: 0.3, roughness: 0.6 }), nBal);
+    const mBal = new THREE.Matrix4();
+    for (let i = 0; i < nBal; i++) { mBal.makeTranslation(600 - i * 1000, 0.09, 0); balises.setMatrixAt(i, mBal); }
+    balises.instanceMatrix.needsUpdate = true; g.add(balises);
+    const contactWireMat = new THREE.MeshStandardMaterial({ color: 0x30363a, metalness: 0.8, roughness: 0.4 });
+    for (const wy of [5.35, 5.95]) {
+      const wire = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 0.025, 0.025), contactWireMat);
+      wire.position.set(deck.position.x, wy, 0); g.add(wire);
     }
-    sleepers.instanceMatrix.needsUpdate = true;
-    g.add(sleepers);
-
     const mastGeo = new THREE.BoxGeometry(0.18, 5.8, 0.18);
     const mastMat = mat(0x7d858c, 0.5);
     const nMast = Math.floor((RUN + 600) / 100) * 2;
@@ -45,7 +46,19 @@
     masts.instanceMatrix.needsUpdate = true;
     g.add(masts);
 
+    const mg = scene.getObjectByName('main-ground'); if (mg) mg.visible = false;
+    const terrain = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), mat(0x6f7c66, 0.95));
+    terrain.rotation.x = -Math.PI / 2; terrain.position.set(600, -12, 0); g.add(terrain);
+    const girder = new THREE.Mesh(new THREE.BoxGeometry(RUN + 600, 1.4, 12), mat(0xa8adb0, 0.9));
+    girder.position.set(deck.position.x, -1.3, 0); g.add(girder);
+    const nPier = Math.floor((RUN + 600) / 64);
+    const piers = new THREE.InstancedMesh(new THREE.BoxGeometry(2.6, 9.8, 4.4), mat(0x9aa0a4, 0.9), nPier);
+    const mPier = new THREE.Matrix4();
+    for (let i = 0; i < nPier; i++) { mPier.makeTranslation(600 - i * 64, -5.5, 0); piers.setMatrixAt(i, mPier); }
+    piers.instanceMatrix.needsUpdate = true; g.add(piers);
     for (const st of D.STATIONS) {
+      const stBase = new THREE.Mesh(new THREE.BoxGeometry(450, 11.8, 30), mat(0x9aa0a4, 0.9));
+      stBase.position.set(-st.x, -5.9, -14); g.add(stBase);
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.1, 6.2), mat(0x6b737a, 0.9));
       platform.position.set(-st.x, 0.55, -6.8);
       g.add(platform);
@@ -271,6 +284,26 @@
       bd.position.set(-sl.x, 4.3, 5.6); bd.rotation.y = -Math.PI / 2; g.add(bd);
       const po = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4.0, 0.16), new THREE.MeshStandardMaterial({ color: 0x8f979e, metalness: 0.6, roughness: 0.4 }));
       po.position.set(-sl.x, 2.0, 5.6); g.add(po);
+    }
+    const stationXs = D.STATIONS.map(x => x.x).sort((a, b) => a - b);
+    const zones = [];
+    let cur = 0;
+    for (const sx of stationXs) {
+      const a = Math.max(cur, sx - 230), b = Math.max(a, sx + 230);
+      if (a > cur) zones.push([cur, a]);
+      cur = b;
+    }
+    if (cur < RUN) zones.push([cur, RUN]);
+    const barrierMat = mat(0x9aa4ab, 0.8);
+    const barrierGlass = new THREE.MeshStandardMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.3, roughness: 0.2, metalness: 0.1 });
+    for (const [x0, x1] of zones) {
+      const len = x1 - x0; if (len < 20) continue;
+      for (const bz of [-6.2, 6.2]) {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(len, 2.3, 0.12), barrierMat);
+        wall.position.set(-(x0 + x1) / 2, 2.05, bz); g.add(wall);
+        const glass = new THREE.Mesh(new THREE.BoxGeometry(len, 0.7, 0.08), barrierGlass);
+        glass.position.set(-(x0 + x1) / 2, 3.05, bz); g.add(glass);
+      }
     }
     scene.add(g);
     return g;

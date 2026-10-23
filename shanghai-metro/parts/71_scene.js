@@ -46,6 +46,7 @@ function buildHero() {
 
   // 地面
   const g = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshStandardMaterial({ color: 0x3a3e3f, roughness: 0.92 }));
+  g.name = 'main-ground';
   g.rotation.x = -PI / 2; g.position.y = -0.1; s.add(g);
 
   // 轨道
@@ -903,6 +904,7 @@ function exitHsrMain() {
   if (G.hsr && G.hsr.audio) { try { G.hsr.audio.ctx.close(); } catch (e) {} G.hsr.audio = null; }
   G.mode = 'menu';
   G.hsr = null;
+  const mg = s.getObjectByName('main-ground'); if (mg) mg.visible = true;
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.add('hidden');
   const menu = document.getElementById('menu');
