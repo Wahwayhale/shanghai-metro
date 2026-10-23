@@ -432,6 +432,8 @@ async function buildHsrService() {
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (e) {} } });
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
+  bind('hmHelp', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); });
+  bind('hsrHelpClose', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.add('hidden'); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
     const h0 = document.getElementById('hsrMainHud');
