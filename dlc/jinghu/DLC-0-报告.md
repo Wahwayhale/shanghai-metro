@@ -1781,3 +1781,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 第5车顶部加暖白点光(0.55,14m)，补充客室照明。
 - 视觉变化较轻微；smoke/test:hsr通过。
 - 单文件9.70MB、可读版10.36MB。
+# 客室材质降亮度
+
+- wall颜色乘0.68；light emissive 0.55；seat_light乘0.85。
+- 降低客室白色过曝，增加层次。
+- 截图 hsr-cabin-dark.png；smoke/test:hsr通过。

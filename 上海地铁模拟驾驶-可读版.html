@@ -85015,6 +85015,9 @@ window.__sim = {
           if (m.name === 'glass') {
             m.transparent = false; m.opacity = 1; m.color.setHex(0x6f8fa6); m.roughness = 0.25; m.needsUpdate = true;
           }
+          if (m.name === 'wall') { m.color.multiplyScalar(0.68); m.roughness = 0.85; m.needsUpdate = true; }
+          if (m.name === 'light') { m.emissiveIntensity = 0.55; m.needsUpdate = true; }
+          if (m.name === 'seat_light') { m.color.multiplyScalar(0.85); m.needsUpdate = true; }
         }
       });
     }
