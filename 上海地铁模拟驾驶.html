@@ -22331,6 +22331,15 @@ window.__sim = {
         const bench = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.38, 0.55), mat(0x4d575f, 0.8));
         bench.position.set(-st.x + bo, 1.45, -5.8); g.add(bench);
       }
+      for (const px of [-120, 0, 120]) {
+        const nc = document.createElement('canvas'); nc.width = 128; nc.height = 128;
+        const ng = nc.getContext('2d'); ng.fillStyle = '#f4f6f7'; ng.fillRect(0, 0, 128, 128);
+        ng.strokeStyle = '#c8102e'; ng.lineWidth = 10; ng.strokeRect(5, 5, 118, 118);
+        ng.fillStyle = '#111416'; ng.font = '800 78px system-ui, sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillText('1', 64, 68);
+        const nt = new THREE.CanvasTexture(nc); nt.colorSpace = THREE.SRGBColorSpace;
+        const np = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: nt, side: THREE.DoubleSide }));
+        np.position.set(-st.x + px, 3.15, -9.78); g.add(np);
+      }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
       const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
