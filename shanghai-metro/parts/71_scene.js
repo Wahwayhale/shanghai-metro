@@ -731,7 +731,7 @@ function updateHsrMain(dt) {
   if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
-  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（左）' : '车门关闭') : '车门关闭';
+  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + '）' : '车门关闭') : '车门关闭';
   if (el('hmDwell')) {
     if (st.stopped) {
       const left = Math.max(0, 120 - (performance.now() - (st.dwellStart || performance.now())) / 1000);
@@ -796,6 +796,10 @@ window.__hsrMain = {
       const ray = new T.Raycaster();
       ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
       if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
+      const dbs = G.hsr.cabGroup.userData.doorButtons || [];
+      for (const b of dbs) {
+        if (ray.intersectObject(b.m, false).length) { G.hsr.doorSide = b.side; lookDrag = false; return; }
+      }
       const levs = G.hsr.cabGroup.userData.levers || [];
       for (let li = 0; li < levs.length; li++) {
         if (ray.intersectObject(levs[li], false).length) {

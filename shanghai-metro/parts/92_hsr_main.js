@@ -394,9 +394,11 @@
     const dirLab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), dirLabel('方向'));
     dirLab.position.set(4.50, 2.38, 0.72); dirLab.rotation.x = -Math.PI / 2; g.add(dirLab);
     const doorBtnMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2f9e5a, emissiveIntensity: 0.8 });
+    g.userData.doorButtons = [];
     for (const z of [-1.18, 1.18]) {
       const db = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 0.08), doorBtnMat);
       db.position.set(4.40, 2.37, z); g.add(db);
+      g.userData.doorButtons.push({ m: db, side: z < 0 ? -1 : 1 });
       const dl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(z < 0 ? '左门' : '右门'));
       dl.position.set(4.40, 2.37, z + (z < 0 ? -0.12 : 0.12)); dl.rotation.x = -Math.PI / 2; g.add(dl);
     }
