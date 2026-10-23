@@ -1550,3 +1550,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 58k 顶点，GLB 3.4MB，单文件 7.5MB（上限100MB内）。
 - 截图 hsr-cabin-seats2.png。
 - 窗材质仍为 window_sky + Three 外景贴图。
+# 座椅功能件：折叠桌板/网兜/插座/衣帽钩
+
+- 每个座椅背面加折叠桌板、网兜、衣帽钩；座下加电源插座。
+- 客室 66k 顶点，GLB 5.07MB，单文件 9.68MB（100MB内）。
+- 截图 hsr-cabin-seatparts.png。
+- smoke/test:hsr 通过。
