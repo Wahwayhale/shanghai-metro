@@ -601,6 +601,14 @@ function drawHsrDmi(ctx, st, limit, stop, kmh, modeD) {
   ctx.fillStyle = '#dff2fb'; ctx.font = '800 58px ui-monospace, monospace'; ctx.fillText(String(Math.round(kmh)), cx, cy - 4);
   ctx.font = '600 16px ui-monospace, monospace'; ctx.fillStyle = '#8fa3b0'; ctx.fillText('km/h', cx, cy + 36);
   ctx.fillStyle = '#8fe06a'; ctx.font = '700 14px ui-monospace, monospace'; ctx.fillText('CTCS-3  ' + modeD, cx, cy + 72);
+  const bl = st.brakeLevel || 0;
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = i < bl ? (i >= 5 ? '#d85a2a' : '#e8c84a') : '#173542';
+    ctx.fillRect(112 + i * 12, 278, 9, 10);
+  }
+  ctx.fillStyle = '#8fa3b0'; ctx.font = '600 11px ui-monospace, monospace'; ctx.textAlign = 'left';
+  ctx.fillText('B ' + bl + '/7', 112, 300);
+  if (st.cruise) { ctx.fillStyle = '#8fe06a'; ctx.fillText('恒速 ' + Math.round((st.cruiseV || 0) * 3.6) + ' km/h', 210, 300); }
 
   ctx.fillStyle = '#071a24'; ctx.fillRect(8, 28, 46, 260);
   ctx.strokeStyle = '#2a5a73'; ctx.strokeRect(8, 28, 46, 260);

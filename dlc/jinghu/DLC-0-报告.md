@@ -1649,3 +1649,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - HUD hmMode 同步。
 - EB 判定加入 deadmanEb。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# DMI制动级位条/恒速标识
+
+- DMI C区下方加7格制动条（0–7B），超过5级橙色。
+- 显示「B x/7」；恒速开启显示「恒速 xxx km/h」。
+- 截图 hsr-dmi-brake.png；smoke/test:hsr通过。
