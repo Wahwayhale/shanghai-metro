@@ -22887,11 +22887,29 @@ window.__sim = {
       }
       const roof = new THREE.Mesh(new THREE.BoxGeometry(460, 0.5, 310), steel);
       roof.position.set(x, 21, -144); g.add(roof);
+      if (detailed) {
+        for (let bx = -4; bx <= 4; bx++) {
+          for (const bz of [-40, -144, -248]) {
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 220), steel);
+            beam.position.set(x + bx * 48, 20.5, bz); g.add(beam);
+          }
+        }
+        for (let i = 0; i < 8; i++) {
+          const diag = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 150), steel);
+          diag.position.set(x - 180 + i * 52, 20.7, -144); diag.rotation.x = 0.35; g.add(diag);
+        }
+      }
       for (let sx = -4; sx <= 4; sx++) {
         for (let sz = 0; sz < 5; sz++) {
           const cz = -20 - sz * 58;
           const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 19.5, 10), steel);
           base.position.set(x + sx * 48, 11, cz); g.add(base);
+          if (detailed) {
+            for (const [bx, bz] of [[-4, -2], [4, -2], [-4, 2], [4, 2]]) {
+              const br = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.38, 9.5, 8), steel);
+              br.position.set(x + sx * 48 + bx, 20.2, cz + bz); br.rotation.z = bx > 0 ? -0.45 : 0.45; g.add(br);
+            }
+          }
         }
       }
       const hall = new THREE.Mesh(new THREE.BoxGeometry(180, 23.5, 260), glass);
@@ -22930,16 +22948,26 @@ window.__sim = {
             core.position.set(x + ex, 6.85, pz); g.add(core);
             const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.3, 3.2), steel);
             frame.position.set(x + ex, 12.5, pz); g.add(frame);
+            const ramp = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.25, 12.0), steel);
+            ramp.position.set(x + ex + (ex > 0 ? 2.2 : -2.2), 6.8, pz); ramp.rotation.x = 0.7; g.add(ramp);
           }
         }
-        const lineMat = new THREE.LineBasicMaterial({ color: 0x8f9aa0 });
         for (let i = 0; i < 12; i++) {
           for (const tz of [-1.5 - i * 24, -13.5 - i * 24]) {
             for (const dir of [-1, 1]) {
-              const pts = [new THREE.Vector3(x + dir * 225, 0.12, tz), new THREE.Vector3(x + dir * 1425, 0.12, 0)];
-              const geo = new THREE.BufferGeometry().setFromPoints(pts);
-              g.add(new THREE.Line(geo, lineMat));
+              const len = Math.sqrt(1200 * 1200 + tz * tz);
+              const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.075), railMat);
+              rail.position.set(x + dir * 825, 0.12, tz / 2);
+              rail.rotation.y = -Math.atan2(tz, 1200);
+              g.add(rail);
             }
+          }
+        }
+        for (const dir of [-1, 1]) {
+          for (let si = 0; si < 18; si++) {
+            const sx2 = x + dir * (300 + si * 60), sz2 = -6 - (si % 6) * 24;
+            const sig = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), new THREE.MeshStandardMaterial({ color: 0x0a1420, emissive: si % 3 === 0 ? 0x2f6fd0 : 0x8fe06a, emissiveIntensity: 1.8 }));
+            sig.position.set(sx2, 0.6, sz2); g.add(sig);
           }
         }
         for (const dir of [-1, 1]) {
