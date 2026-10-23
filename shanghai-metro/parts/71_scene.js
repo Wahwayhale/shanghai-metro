@@ -403,7 +403,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, camMode: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -653,7 +653,7 @@ function updateHsrMain(dt) {
         const wt = performance.now() / 1000;
         for (let wi = 0; wi < wipers.length; wi++) {
           const wp = wipers[wi];
-          wp.m.rotation.z = wp.b + (st.v > 1 ? Math.sin(wt * 3.2 + wi * 1.3) * 0.32 : 0);
+          wp.m.rotation.z = wp.b + (st.wipersOn && st.v > 1 ? Math.sin(wt * 3.2 + wi * 1.3) * 0.32 : 0);
         }
         const lev = st.cabGroup.userData.levers || [];
         if (lev[0]) lev[0].rotation.z = 0.2 + 0.35 * throttle;
@@ -797,6 +797,8 @@ window.__hsrMain = {
       const ray = new T.Raycaster();
       ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
       if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
+      const ws = G.hsr.cabGroup.userData.wiperSwitch;
+      if (ws && ray.intersectObject(ws, false).length) { G.hsr.wipersOn = !G.hsr.wipersOn; lookDrag = false; return; }
       const dk = G.hsr.cabGroup.userData.dirKnob;
       if (dk && ray.intersectObject(dk, false).length) { G.hsr.dir = G.hsr.dir ? 0 : 1; lookDrag = false; return; }
       const dbs = G.hsr.cabGroup.userData.doorButtons || [];

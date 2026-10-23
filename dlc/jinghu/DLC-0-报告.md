@@ -1274,3 +1274,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 台面上「雨刷」「连挂」两个小开关 + 标签。
 - 修复标签 helper 在声明前调用导致的 TDZ 错误（HSR 初始化失败）；test:hsr 捕获。
 - 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。
+# 雨刷开关接真实开关
+
+- 3D「雨刷」开关接入射线：点击切换 wipersOn。
+- wipersOn=false 时雨刷停止摆动；true 且 v>1 时继续摆。
+- 验证：点击投影开关后 wipersOn=false。
+- 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。

@@ -406,7 +406,8 @@
     // wiper / coupling switches on the desk
     const swBase = new THREE.MeshStandardMaterial({ color: 0x1b2328, roughness: 0.7 });
     for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂']]) {
-      add(new THREE.BoxGeometry(0.10, 0.03, 0.10), swBase, sx, 2.36, sz);
+      const sw = add(new THREE.BoxGeometry(0.10, 0.03, 0.10), swBase, sx, 2.36, sz);
+      if (txt === '雨刷') g.userData.wiperSwitch = sw;
       const sl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(txt));
       sl.position.set(sx, 2.38, sz); sl.rotation.x = -Math.PI / 2; g.add(sl);
     }
