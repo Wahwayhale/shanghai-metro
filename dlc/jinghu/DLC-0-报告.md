@@ -967,3 +967,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 新增 hmPunc：实际 vs 计划，显示正点/晚点 +N 分/早点 N 分。
 - 颜色：正点绿、晚点红、早点黄；无实际时间显示 --。
 - 正式版 2.99 MB、可读版 3.65 MB；smoke/test:hsr 通过。
+# HSR 回归校验时刻/正晚点 HUD
+
+- tests/hsr.js 校验 hmSched 初始为「计划 10:14」。
+- 校验 hmPunc 初始为「正晚点 --」。
+- 受电弓/门/停车/EB/回正回归保留；npm run test:hsr 通过。

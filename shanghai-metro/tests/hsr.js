@@ -24,7 +24,9 @@ const { PAGE_URL, CHROME } = require('./testenv');
     run: (window.HSR_DATA && window.HSR_DATA.RUN) || 0,
     sys: (document.getElementById('hmSys') || {}).textContent || '',
     door: (document.getElementById('hmDoor') || {}).textContent || '',
-    speed: (document.getElementById('hmSpeed') || {}).textContent || ''
+    speed: (document.getElementById('hmSpeed') || {}).textContent || '',
+    sched: (document.getElementById('hmSched') || {}).textContent || '',
+    punc: (document.getElementById('hmPunc') || {}).textContent || ''
   }));
   const fail = [];
   if (info.mode !== 'hsr') fail.push('mode != hsr: ' + info.mode);
@@ -34,6 +36,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/受电弓/.test(info.sys)) fail.push('panto HUD missing');
   if (!/车门/.test(info.door)) fail.push('door HUD missing');
   if (info.speed !== '0') fail.push('initial speed ' + info.speed);
+  if (!/计划 10:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
+  if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
   await page.click('#hmPanto');
   await new Promise(r => setTimeout(r, 1000));
