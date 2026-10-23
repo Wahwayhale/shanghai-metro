@@ -903,6 +903,10 @@ function updateHsrMain(dt) {
     if (keys['KeyE']) st.cabinWalkX = Math.max(-30, Math.min(30, (st.cabinWalkX || 0) - walk));
     if (keys['KeyA']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) - walk));
     if (keys['KeyD']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) + walk));
+    const ci = Math.max(-1, Math.min(1, Math.round((st.cabinWalkX || 0) / 25.65)));
+    let localX = (st.cabinWalkX || 0) - ci * 25.65;
+    if (st.doorT < 0.2) localX = Math.max(-10.2, Math.min(10.2, localX));
+    st.cabinWalkX = Math.max(-30, Math.min(30, ci * 25.65 + localX));
     camera.position.set(-st.x + px - 8.0 + (st.cabinWalkX || 0), 2.55, 0.55 + (st.cabinWalkZ || 0));
     camera.lookAt(camera.position.x + lx * 20, camera.position.y + ly * 20, camera.position.z + lz * 20);
   } else {
