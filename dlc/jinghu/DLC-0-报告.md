@@ -1741,3 +1741,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - paintCabinScenery增加stopped参数：停车时画站台帽石/黄线/柱列；运行时画田野。
 - 站台状态变化强制重绘，不依赖400m阈值。
 - 截图 hsr-cabin-station.png；smoke/test:hsr通过。
+# 沿线地形纹理
+
+- 高架下地形加512程序化纹理：田块/道路/色块，repeat40x40。
+- 替换纯绿色地面；外部视角可见。
+- smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
