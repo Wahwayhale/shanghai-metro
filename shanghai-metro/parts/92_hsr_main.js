@@ -101,6 +101,7 @@
       const steel = new THREE.MeshStandardMaterial({ color: 0xe8ecef, roughness: 0.35, metalness: 0.6 });
       const glass = new THREE.MeshStandardMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide });
       g.userData.megaHide = g.userData.megaHide || [];
+      g.userData.megaSignals = g.userData.megaSignals || [];
       const deck = new THREE.Mesh(new THREE.BoxGeometry(470, 10, 310), mat(0x8f969b, 0.9));
       deck.position.set(x, -5, -144); g.add(deck);
       for (let i = 0; i < 12; i++) {
@@ -209,7 +210,7 @@
           for (let si = 0; si < 18; si++) {
             const sx2 = x + dir * (300 + si * 60), sz2 = -6 - (si % 6) * 24;
             const sig = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), new THREE.MeshStandardMaterial({ color: 0x0a1420, emissive: si % 3 === 0 ? 0x2f6fd0 : 0x8fe06a, emissiveIntensity: 1.8 }));
-            sig.position.set(sx2, 0.6, sz2); g.add(sig);
+            sig.position.set(sx2, 0.6, sz2); g.add(sig); g.userData.megaSignals.push(sig);
           }
         }
         for (const dir of [-1, 1]) {
