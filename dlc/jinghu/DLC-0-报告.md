@@ -972,3 +972,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - tests/hsr.js 校验 hmSched 初始为「计划 10:14」。
 - 校验 hmPunc 初始为「正晚点 --」。
 - 受电弓/门/停车/EB/回正回归保留；npm run test:hsr 通过。
+# HUD 按钮紧凑化
+
+- 控制按钮 min-width 54→46、padding 8/6→7/4、字号 10→9，10 个按钮从 4 排压到 2 排。
+- HUD 面板更短，减少对驾驶室视野遮挡。
+- 移除未显示出来的车门贴片（避免无效 draw call）。
+- 正式版 2.99 MB、可读版 3.65 MB；smoke/test:hsr 通过。
