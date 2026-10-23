@@ -1811,3 +1811,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 无语音/静音时回退三音提示。
 - 发车复位。
 - smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
+# 中英双语进站广播
+
+- 中文播报后追加英文：Next station, XX. Please prepare to get off.
+- 仍受audio.muted控制；无语音时回退提示音。
+- smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。

@@ -565,8 +565,11 @@ function speakStation(st, name) {
     if (!st.audio || st.audio.muted || !window.speechSynthesis) return false;
     const u = new SpeechSynthesisUtterance('下一站，' + name + '，请做好下车准备');
     u.lang = 'zh-CN'; u.rate = 0.92; u.pitch = 1.0;
+    const u2 = new SpeechSynthesisUtterance('Next station, ' + name + '. Please prepare to get off.');
+    u2.lang = 'en-US'; u2.rate = 0.9; u2.pitch = 1.0;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
+    window.speechSynthesis.speak(u2);
     return true;
   } catch (e) { return false; }
 }
