@@ -401,6 +401,14 @@
       m.userData = { canvas: c, ctx };
       return m;
     };
+    const blankScreen = (kind) => {
+      const c = document.createElement('canvas'); c.width = 512; c.height = 320;
+      const g2 = c.getContext('2d'); g2.fillStyle = '#04121a'; g2.fillRect(0, 0, 512, 320);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      const m = new THREE.MeshBasicMaterial({ map: t });
+      m.userData = { canvas: c, ctx: g2, kind };
+      return m;
+    };
     const makeDmi = (x, y, z, w, h, mat, tilt) => {
       add(new THREE.BoxGeometry(0.06, h + 0.06, w + 0.06), dark, x, y, z);
       const sc = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
@@ -451,15 +459,14 @@
     // dashboard face panel + cowl so screens are mounted, not floating
     add(new THREE.BoxGeometry(0.12, 0.54, 2.36), mid, 3.78, 2.48, 0);
     // DMI screens
-    const dmi1 = screen('DMI-1', '0', 'ATP 350');
-    const dmi2 = screen('DMI-2', '南京南', '1017.9 km');
-    const dmi3 = screen('G25', '待发', '车门关闭');
-    const dmiG = screen('仪表', '25.0', 'kV · 正常');
-    makeDmi(3.82, 2.60, -0.90, 0.42, 0.30, dmi1, 0);
-    makeDmi(3.82, 2.60, -0.30, 0.42, 0.30, dmi2, 0);
-    makeDmi(3.82, 2.60, 0.30, 0.42, 0.30, dmi3, 0);
-    makeDmi(3.82, 2.60, 0.90, 0.42, 0.30, dmiG, 0);
-    g.userData.dmis = [dmi1, dmi2, dmi3, dmiG];
+    const tcmsM = blankScreen('tcms');
+    const dmiM = blankScreen('dmi');
+    const brakeM = blankScreen('brake');
+    makeDmi(3.82, 2.60, 0.62, 0.56, 0.38, tcmsM, 0);
+    makeDmi(3.82, 2.60, 0.00, 0.56, 0.38, dmiM, 0);
+    makeDmi(3.82, 2.60, -0.62, 0.56, 0.38, brakeM, 0);
+    g.userData.screens = [{ m: tcmsM, kind: 'tcms' }, { m: dmiM, kind: 'dmi' }, { m: brakeM, kind: 'brake' }];
+    g.userData.dmis = [tcmsM, dmiM, brakeM];
     const stripMat = new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2a5a44, emissiveIntensity: 0.45 });
     for (const zz of [-0.95, -0.75, -0.55, -0.35, 0.35, 0.55, 0.75, 0.95]) {
       add(new THREE.BoxGeometry(0.05, 0.035, 0.07), stripMat, 4.18, 2.41, zz);
