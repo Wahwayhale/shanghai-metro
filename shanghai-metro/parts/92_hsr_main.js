@@ -1071,6 +1071,24 @@
 
       root.userData.passengerX = carXs[3];
     }
+    const carSignMats = [];
+    for (let n = 1; n <= 17; n++) {
+      const sc = document.createElement('canvas'); sc.width = 256; sc.height = 64;
+      const sg2 = sc.getContext('2d'); sg2.fillStyle = '#0a1116'; sg2.fillRect(0, 0, 256, 64);
+      sg2.fillStyle = '#ffb340'; sg2.font = '700 28px "Microsoft YaHei", monospace'; sg2.textAlign = 'center'; sg2.textBaseline = 'middle';
+      sg2.fillText('G25  ' + String(n).padStart(2, '0') + '车', 128, 34);
+      const stx = new THREE.CanvasTexture(sc); stx.colorSpace = THREE.SRGBColorSpace;
+      carSignMats.push(new THREE.MeshBasicMaterial({ map: stx, side: THREE.DoubleSide }));
+    }
+    const signCars = [{ x: HEAD / 2, n: 1 }, ...carXs.map((x, i) => ({ x, n: i + 2 })), { x: carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, n: 17 }];
+    for (const c of signCars) {
+      for (const dx of [-8.2, 8.2]) {
+        for (const sz of [-1.46, 1.46]) {
+          const sp = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.29), carSignMats[c.n - 1]);
+          sp.position.set(c.x + dx, 3.05, sz); if (sz < 0) sp.rotation.y = Math.PI; root.add(sp);
+        }
+      }
+    }
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
