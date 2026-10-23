@@ -43,6 +43,16 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/计划 20:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
   if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
+  await page.keyboard.press('F1');
+  await new Promise(r => setTimeout(r, 300));
+  const helpOpen = await page.evaluate(() => !document.getElementById('hsrHelp').classList.contains('hidden'));
+  if (!helpOpen) fail.push('F1 help did not open');
+  await page.keyboard.press('Escape');
+  await new Promise(r => setTimeout(r, 300));
+  const helpClosed = await page.evaluate(() => ({ hidden: document.getElementById('hsrHelp').classList.contains('hidden'), mode: window.__sim.G.mode }));
+  if (!helpClosed.hidden) fail.push('Esc did not close help');
+  if (helpClosed.mode !== 'hsr') fail.push('Esc exited HSR while closing help: ' + helpClosed.mode);
+
   const wiperPos = await page.evaluate(() => {
     const T = window.__HSR_THREE, cam = window.__hsrMainCamera, sw = window.__sim.G.hsr.cabGroup.userData.wiperSwitch;
     const v = new T.Vector3(); sw.getWorldPosition(v); v.project(cam);

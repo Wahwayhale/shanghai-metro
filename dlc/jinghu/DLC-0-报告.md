@@ -1343,3 +1343,7 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 帮助面板打开时，Esc 只关闭帮助，不会直接退出 HSR。
 - 帮助已关闭时，Esc 仍退出主场景。
 - 正式版 3.06 MB、可读版 3.71 MB；smoke/test:hsr 通过。
+# HSR 回归校验帮助 F1/Esc
+
+- F1 打开帮助；Esc 只关闭帮助，不退出 HSR。
+- 雨刷/方向/3D EB/手柄/门/停车回归保留；npm run test:hsr 通过。
