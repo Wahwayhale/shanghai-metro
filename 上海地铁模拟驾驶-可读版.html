@@ -79632,7 +79632,7 @@ async function buildHsrService() {
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
-    doorT: 0, dwellStart: 0, doorSide: -1, parked: false, doorWasOpen: false, legs: [], result: false,
+    doorT: 0, dwellStart: 0, doorSide: -1, parked: false, wrongDoor: false, doorWasOpen: false, legs: [], result: false,
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
@@ -79716,14 +79716,15 @@ function showHsrMainResult() {
   const rows = document.getElementById('hmResultRows');
   const legs = st.legs.length ? st.legs : [{ name: st.stops[st.stopIdx].name, err: st.stopErr }];
   const avgErr = legs.reduce((a, b) => a + Math.abs(b.err || 0), 0) / legs.length;
-  const score = Math.max(0, Math.round(100 - avgErr * 20));
+  const wrongPenalty = st.wrongDoor ? 20 : 0;
+  const score = Math.max(0, Math.round(100 - avgErr * 20 - wrongPenalty));
   const grade = score >= 90 ? 'S' : score >= 75 ? 'A' : score >= 60 ? 'B' : 'C';
   if (rows) rows.innerHTML =
     '<span>区段　京沪高铁 G25 全程</span>' +
     '<span>停站 ' + legs.length + ' 段 · 末段 ' + legs[legs.length - 1].name + '</span>' +
     '<span>平均停站误差　' + avgErr.toFixed(2) + ' m</span>' +
     '<span>正晚点　' + (legs[legs.length - 1].punc >= 0 ? '早点' : '晚点') + ' ' + Math.abs(Math.round(legs[legs.length - 1].punc || 0)) + ' s</span>' +
-    '<span>得分　<b>' + score + ' · ' + grade + '</b></span>';
+    '<span>得分　<b>' + score + ' · ' + grade + '</b>' + (wrongPenalty ? '（开错侧 -20）' : '') + '</span>';
   const r = document.getElementById('hsrMainResult');
   if (r) r.classList.remove('hidden');
 }
@@ -80148,6 +80149,7 @@ function updateHsrMain(dt) {
           lamp.emissiveIntensity = over && blink ? 2.2 : 0.3;
         }
         const doorOpen = !!(st.stopped && st.doorT > 0.2);
+        st.wrongDoor = !!(doorOpen && st.doorSide !== -1);
         for (const b of (st.cabGroup.userData.doorButtons || [])) { if (b.mat) { const on = b.side === st.doorSide; b.mat.emissive.setHex(on ? (doorOpen ? 0xffb340 : 0x2f9e5a) : 0x142028); b.mat.emissiveIntensity = on ? 1.1 : 0.25; } }
         for (const lm of (st.cabGroup.userData.doorLeds || [])) lm.emissive.setHex(doorOpen ? 0xc8102e : 0x2f9e5a);
         const wipers = st.cabGroup.userData.wipers || [];
@@ -80256,7 +80258,7 @@ function updateHsrMain(dt) {
   if (el('hmCruise')) { el('hmCruise').textContent = st.cruise ? ('恒速 ' + Math.round((st.cruiseV || 0) * 3.6)) : '恒速'; el('hmCruise').style.color = st.cruise ? '#8fe06a' : ''; }
   if (el('hmBrakeLv')) el('hmBrakeLv').textContent = '制动 ' + (st.brakeLevel || 0) + '/7';
   if (el('hmDeadman')) { const left = Math.max(0, 37 - (st.deadmanT || 0)); el('hmDeadman').textContent = st.deadmanEb ? '警惕 EB' : (left < 8 ? '警惕 ' + left.toFixed(0) + 's' : '警惕 正常'); el('hmDeadman').style.color = st.deadmanEb ? '#ff4d4d' : (left < 8 ? '#ffd479' : ''); }
-  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + '）' : '车门关闭') : '车门关闭';
+  if (el('hmDoor')) { el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + (st.wrongDoor ? '·错误侧' : '') + '）' : '车门关闭') : '车门关闭'; el('hmDoor').style.color = st.wrongDoor ? '#ff4d4d' : ''; }
   if (el('hmDwell')) {
     if (st.stopped) {
       const left = Math.max(0, 120 - (performance.now() - (st.dwellStart || performance.now())) / 1000);
