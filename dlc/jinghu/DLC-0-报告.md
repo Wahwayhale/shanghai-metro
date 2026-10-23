@@ -1736,3 +1736,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - 走动横向限制收窄到±0.20m，相机中心z=0.42，保持在过道内，不穿座椅。
 - smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
+# 停车时车窗外景切站台
+
+- paintCabinScenery增加stopped参数：停车时画站台帽石/黄线/柱列；运行时画田野。
+- 站台状态变化强制重绘，不依赖400m阈值。
+- 截图 hsr-cabin-station.png；smoke/test:hsr通过。

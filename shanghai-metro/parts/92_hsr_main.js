@@ -976,7 +976,7 @@
       sg.fillStyle = '#8fae76'; sg.fillRect(0, 154, 512, 102);
       sg.fillStyle = '#6f8c5c'; for (let i = 0; i < 16; i++) sg.fillRect(i * 34, 176 + (i % 3) * 10, 18, 4);
       const stex = new THREE.CanvasTexture(scenic); stex.colorSpace = THREE.SRGBColorSpace;
-      root.userData.scenic = { ctx: sg, tex: stex, last: -1e9 };
+      root.userData.scenic = { ctx: sg, tex: stex, last: -1e9, lastStopped: null };
       const ledC = document.createElement('canvas'); ledC.width = 512; ledC.height = 64;
       const lg2 = ledC.getContext('2d'); lg2.fillStyle = '#071018'; lg2.fillRect(0, 0, 512, 64);
       lg2.fillStyle = '#ffb340'; lg2.font = '700 26px "Microsoft YaHei", monospace'; lg2.textAlign = 'center'; lg2.textBaseline = 'middle';

@@ -704,7 +704,7 @@ function drawHsrBrake(ctx, st, kmh) {
   ctx.fillText('停车制动  ' + (st.parked ? '施加' : '缓解') + '   ·   速度 ' + Math.round(kmh) + ' km/h', 20, 302);
 }
 
-function paintCabinScenery(scenic, x) {
+function paintCabinScenery(scenic, x, stopped) {
   const ctx = scenic.ctx; if (!ctx) return;
   const seed = Math.floor(x / 500);
   const rnd = n => { const v = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return v - Math.floor(v); };
@@ -715,7 +715,14 @@ function paintCabinScenery(scenic, x) {
   ctx.fillStyle = '#7d9a6a'; ctx.beginPath(); ctx.moveTo(0, horizon);
   for (let i = 0; i <= 8; i++) ctx.lineTo(i * 64, horizon - 15 - rnd(i + 2) * 30);
   ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#8fae76'; ctx.fillRect(0, horizon + 4, W, H - horizon);
+  if (stopped) {
+    ctx.fillStyle = '#9aa0a4'; ctx.fillRect(0, horizon + 4, W, H - horizon);
+    ctx.fillStyle = '#c6cacc'; ctx.fillRect(0, horizon + 8, W, 36);
+    ctx.fillStyle = '#d8b53a'; ctx.fillRect(0, horizon + 48, W, 10);
+    ctx.fillStyle = '#8f979e'; for (let i = 0; i < 6; i++) ctx.fillRect(i * 92 + 20, horizon - 20, 12, 70);
+  } else {
+    ctx.fillStyle = '#8fae76'; ctx.fillRect(0, horizon + 4, W, H - horizon);
+  }
   if (seed % 5 === 0) {
     ctx.fillStyle = '#aeb6ba';
     for (let i = 0; i < 7; i++) {
@@ -828,7 +835,7 @@ function updateHsrMain(dt) {
   }
   if (st.train && st.train.userData.cabinDoors) { for (const d of st.train.userData.cabinDoors) d.m.position.z = d.dz + Math.sign(d.dz) * 0.72 * st.doorT; }
   if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
-  if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
+  if (st.train && st.train.userData.scenic && (Math.abs(st.x - st.train.userData.scenic.last) > 400 || st.train.userData.scenic.lastStopped !== st.stopped)) { paintCabinScenery(st.train.userData.scenic, st.x, st.stopped); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; st.train.userData.scenic.lastStopped = st.stopped; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
   const cabHud = document.getElementById('hsrMainHud');
   const cabinHud = document.getElementById('hsrCabinHud');
