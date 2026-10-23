@@ -40,7 +40,7 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/受电弓/.test(info.sys)) fail.push('panto HUD missing');
   if (!/车门/.test(info.door)) fail.push('door HUD missing');
   if (info.speed !== '0') fail.push('initial speed ' + info.speed);
-  if (!/计划 10:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
+  if (!/计划 20:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
   if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
   const dirPos = await page.evaluate(() => {

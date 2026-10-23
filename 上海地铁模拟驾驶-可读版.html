@@ -79875,7 +79875,7 @@ function updateHsrMain(dt) {
   if (el('hmSched')) {
     let cum = 0;
     for (let i = 0; i <= st.stopIdx && i < st.legSched.length; i++) cum += st.legSched[i];
-    const plan = new Date(); plan.setHours(7, 0, 0, 0); plan.setMinutes(plan.getMinutes() + cum / 60);
+    const plan = new Date(); plan.setHours(17, 0, 0, 0); plan.setMinutes(plan.getMinutes() + cum / 60);
     const fmt = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     let actual = '--:--';
     let actualDate = null;
