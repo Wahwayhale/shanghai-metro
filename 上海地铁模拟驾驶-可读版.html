@@ -84209,7 +84209,10 @@ window.__sim = {
       const fracT = D.STATIONS.indexOf(st) / (D.STATIONS.length - 1);
       const minsT = 17 * 60 + fracT * (4 * 60 + 18);
       const hhT = Math.floor(minsT / 60), mmT = Math.floor(minsT % 60);
-      db.fillText('G25  ' + st.name + ' → 上海虹桥  ' + hhT + ':' + String(mmT).padStart(2, '0'), 256, 66);
+      db.font = '700 36px "Microsoft YaHei", sans-serif';
+      db.fillText('G25  ' + st.name + ' → 上海虹桥  ' + hhT + ':' + String(mmT).padStart(2, '0'), 256, 52);
+      db.font = '500 20px system-ui, sans-serif'; db.fillStyle = '#b9d4e2';
+      db.fillText('G25  ' + (STATION_EN2[st.name] || st.name) + ' to Shanghai Hongqiao  ' + hhT + ':' + String(mmT).padStart(2, '0'), 256, 94);
       const dbTex = new THREE.CanvasTexture(dbC); dbTex.colorSpace = THREE.SRGBColorSpace;
       const dbMesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: dbTex, transparent: true, side: THREE.DoubleSide }));
       dbMesh.position.set(-st.x + 160, 4.2, -5.4); dbMesh.rotation.y = Math.PI / 2; g.add(dbMesh);
