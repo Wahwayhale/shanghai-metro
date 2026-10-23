@@ -1028,6 +1028,8 @@ window.__hsrMain = {
       if (hs && ray.intersectObject(hs, false).length) { const hm = G.hsr.train && G.hsr.train.userData.headlightMat; if (hm) { hm.emissiveIntensity = hm.emissiveIntensity > 0.1 ? 0 : 2.2; try { localStorage.setItem('hsrHeadlight', hm.emissiveIntensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
       const ls = G.hsr.cabGroup.userData.lightSwitch;
       if (ls && ray.intersectObject(ls, false).length) { const lamp = G.hsr.cabGroup.userData.cabLamp; if (lamp) { lamp.intensity = lamp.intensity > 0.1 ? 0 : 0.9; try { localStorage.setItem('hsrCabLight', lamp.intensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
+      const cb = G.hsr.cabGroup.userData.cruiseButton;
+      if (cb && ray.intersectObject(cb, false).length) { G.hsr.cruise = !G.hsr.cruise; G.hsr.cruiseV = G.hsr.cruise ? Math.max(10, G.hsr.v) : 0; lookDrag = false; return; }
       const dm = G.hsr.cabGroup.userData.deadman;
       if (dm && ray.intersectObject(dm, false).length) { G.hsr.deadmanT = 0; G.hsr.deadmanEb = false; lookDrag = false; return; }
       const ws = G.hsr.cabGroup.userData.wiperSwitch;

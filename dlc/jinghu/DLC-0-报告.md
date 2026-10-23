@@ -1638,3 +1638,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - HUD「恒速 185」显示目标。
 - 验证 50m/s + ] →185km/h。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# 3D恒速按钮
+
+- 台面加深蓝「恒速」按钮，点击切换cruise，目标为当前速度（最低10m/s）。
+- 验证点击投影按钮：cruise=true,target=10。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。

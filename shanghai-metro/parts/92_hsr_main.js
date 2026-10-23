@@ -600,6 +600,11 @@
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
       return new THREE.MeshBasicMaterial({ map: t });
     };
+    const cruiseBtn = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.12), new THREE.MeshStandardMaterial({ color: 0x1b2328, emissive: 0x2f6fd0, emissiveIntensity: 0.7 }));
+    cruiseBtn.position.set(4.46, 2.36, 0.20); g.add(cruiseBtn);
+    const cruiseLab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), dirLabel('恒速'));
+    cruiseLab.position.set(4.46, 2.38, 0.20); cruiseLab.rotation.x = -Math.PI / 2; g.add(cruiseLab);
+    g.userData.cruiseButton = cruiseBtn;
     // direction selector + left/right door buttons
     const dirBase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.035, 16), mid);
     dirBase.position.set(4.50, 2.36, 0.72); g.add(dirBase);
