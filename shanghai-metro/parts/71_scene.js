@@ -407,7 +407,7 @@ async function buildHsrService() {
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
-    doorT: 0, legs: [], result: false,
+    doorT: 0, dwellStart: 0, legs: [], result: false,
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
@@ -565,6 +565,7 @@ function updateHsrMain(dt) {
     st.x = Math.min(1301900, st.x + st.v * dt);
     if (st.v < 0.3 && Math.abs(st.x - stop) < 500) {
       st.stopped = true;
+      st.dwellStart = performance.now();
       st.stopErr = st.x - stop;
       st.v = 0;
       const punc = st.legSched[st.stopIdx] - (performance.now() - st.legStart) / 1000;
@@ -731,6 +732,14 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
+  if (el('hmDwell')) {
+    if (st.stopped) {
+      const left = Math.max(0, 120 - (performance.now() - (st.dwellStart || performance.now())) / 1000);
+      const mm = Math.floor(left / 60), ss = Math.floor(left % 60);
+      el('hmDwell').textContent = left > 0 ? '停站 ' + mm + ':' + String(ss).padStart(2, '0') : '可发车';
+      el('hmDwell').style.color = left > 0 ? '#ffd479' : '#8fe06a';
+    } else el('hmDwell').textContent = '';
+  }
   if (el('hmState')) {
     const needV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     if ((keys['Space'] || st.touchEb)) { el('hmState').textContent = '紧急制动'; el('hmState').style.color = '#ff4d4d'; }
