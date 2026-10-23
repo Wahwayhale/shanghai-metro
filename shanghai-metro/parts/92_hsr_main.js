@@ -612,6 +612,7 @@
     const cruiseLab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), dirLabel('恒速'));
     cruiseLab.position.set(4.46, 2.38, 0.20); cruiseLab.rotation.x = -Math.PI / 2; g.add(cruiseLab);
     g.userData.cruiseButton = cruiseBtn;
+    g.userData.cruiseMat = cruiseBtn.material;
     // direction selector + left/right door buttons
     const dirBase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.035, 16), mid);
     dirBase.position.set(4.50, 2.36, 0.72); g.add(dirBase);

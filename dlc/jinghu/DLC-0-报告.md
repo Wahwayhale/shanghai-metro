@@ -1669,3 +1669,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - S加制动级位时 cruise=false，避免恒速与人工制动打架。
 - 验证：恒速状态按S → cruise=false, level=1。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# 恒速按钮状态灯
+
+- 3D恒速按钮巡航开启时绿色高亮，关闭时暗蓝。
+- 与HUD/T键状态同步。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。

@@ -18912,6 +18912,7 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmPark')) el('hmPark').textContent = st.parked ? '停放制动 施加' : '停放制动 缓解';
+  if (st.cabGroup && st.cabGroup.userData.cruiseMat) { const cm = st.cabGroup.userData.cruiseMat; cm.emissive.setHex(st.cruise ? 0x2f9e5a : 0x1a2a3a); cm.emissiveIntensity = st.cruise ? 1.4 : 0.4; }
   if (el('hmCruise')) { el('hmCruise').textContent = st.cruise ? ('恒速 ' + Math.round((st.cruiseV || 0) * 3.6)) : '恒速'; el('hmCruise').style.color = st.cruise ? '#8fe06a' : ''; }
   if (el('hmBrakeLv')) el('hmBrakeLv').textContent = '制动 ' + (st.brakeLevel || 0) + '/7';
   if (el('hmDeadman')) { const left = Math.max(0, 37 - (st.deadmanT || 0)); el('hmDeadman').textContent = st.deadmanEb ? '警惕 EB' : (left < 8 ? '警惕 ' + left.toFixed(0) + 's' : '警惕 正常'); el('hmDeadman').style.color = st.deadmanEb ? '#ff4d4d' : (left < 8 ? '#ffd479' : ''); }
@@ -23290,6 +23291,7 @@ window.__sim = {
     const cruiseLab = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.08), dirLabel('恒速'));
     cruiseLab.position.set(4.46, 2.38, 0.20); cruiseLab.rotation.x = -Math.PI / 2; g.add(cruiseLab);
     g.userData.cruiseButton = cruiseBtn;
+    g.userData.cruiseMat = cruiseBtn.material;
     // direction selector + left/right door buttons
     const dirBase = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.035, 16), mid);
     dirBase.position.set(4.50, 2.36, 0.72); g.add(dirBase);

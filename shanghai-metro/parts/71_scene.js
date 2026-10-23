@@ -951,6 +951,7 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmPark')) el('hmPark').textContent = st.parked ? '停放制动 施加' : '停放制动 缓解';
+  if (st.cabGroup && st.cabGroup.userData.cruiseMat) { const cm = st.cabGroup.userData.cruiseMat; cm.emissive.setHex(st.cruise ? 0x2f9e5a : 0x1a2a3a); cm.emissiveIntensity = st.cruise ? 1.4 : 0.4; }
   if (el('hmCruise')) { el('hmCruise').textContent = st.cruise ? ('恒速 ' + Math.round((st.cruiseV || 0) * 3.6)) : '恒速'; el('hmCruise').style.color = st.cruise ? '#8fe06a' : ''; }
   if (el('hmBrakeLv')) el('hmBrakeLv').textContent = '制动 ' + (st.brakeLevel || 0) + '/7';
   if (el('hmDeadman')) { const left = Math.max(0, 37 - (st.deadmanT || 0)); el('hmDeadman').textContent = st.deadmanEb ? '警惕 EB' : (left < 8 ? '警惕 ' + left.toFixed(0) + 's' : '警惕 正常'); el('hmDeadman').style.color = st.deadmanEb ? '#ff4d4d' : (left < 8 ? '#ffd479' : ''); }
