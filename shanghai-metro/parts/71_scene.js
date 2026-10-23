@@ -852,6 +852,8 @@ function updateHsrMain(dt) {
       st.dwellStart = performance.now();
       st.parked = true;
       st.brakeLevel = 0;
+      st.doorSide = -1;
+      st.wrongDoor = false;
       st.stopErr = st.x - stop;
       st.v = 0;
       const punc = st.legSched[st.stopIdx] - (performance.now() - st.legStart) / 1000;
