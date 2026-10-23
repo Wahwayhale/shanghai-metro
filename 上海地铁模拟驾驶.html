@@ -22758,6 +22758,11 @@ window.__sim = {
     headLivery.position.x = HEAD / 2;
     headLivery.renderOrder = 2;
     root.add(headLivery);
+    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2cc, emissiveIntensity: 2.2, roughness: 0.2 });
+    for (const hz of [-0.78, 0.78]) {
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.24), hlMat);
+      hl.position.set(0.10, 1.35, hz); root.add(hl);
+    }
     root.userData.doorNodes = [];
     root.userData.midDoors = [];
     head.traverse((o) => {
