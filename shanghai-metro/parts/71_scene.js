@@ -432,6 +432,7 @@ async function buildHsrService() {
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
+  bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; });
   bind('hmVcb', () => { if (G.hsr && G.hsr.panto) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');

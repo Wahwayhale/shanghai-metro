@@ -528,6 +528,8 @@
     background:rgba(7,12,16,.84);border:1px solid rgba(200,16,46,.32);backdrop-filter:blur(10px);color:#e8f1f6;
     font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
   #hsrMainHud .hm-k{font-size:9px;color:#8fa3b0;letter-spacing:.14em}
+  #hsrMainHud .hm-collapse{position:absolute;right:9px;top:9px;pointer-events:auto;padding:4px 7px;border-radius:6px;border:1px solid rgba(160,190,210,.28);background:rgba(20,30,38,.9);color:#dceaf2;font:700 9px/1 ui-monospace,monospace;cursor:pointer}
+  #hsrMainHud.collapsed .hm-row,#hsrMainHud.collapsed .hm-hint{display:none}
   #hsrMainHud .hm-speed{font-size:40px;font-weight:800;line-height:1;color:#fff}
   #hsrMainHud .hm-speed small{font-size:12px;font-weight:500;color:#9fb2bf}
   #hsrMainHud .hm-row{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:11px;color:#c7d6df}
@@ -711,6 +713,7 @@
     </div>
 
     <div id="hsrMainHud" class="hidden">
+      <button id="hmCollapse" class="hm-collapse">收起</button>
       <div class="hm-k">CR400AF-BS · 京沪高铁 G25 全程</div>
       <div class="hm-speed"><b id="hmSpeed">350</b><small> km/h</small></div>
       <div class="hm-row"><span id="hmAtp">ATP 350</span><b id="hmMode">牵引</b></div>
@@ -18362,6 +18365,7 @@ async function buildHsrService() {
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
+  bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; });
   bind('hmVcb', () => { if (G.hsr && G.hsr.panto) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
