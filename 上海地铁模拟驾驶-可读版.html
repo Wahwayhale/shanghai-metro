@@ -83933,6 +83933,9 @@ window.__sim = {
       const stopTex = new THREE.CanvasTexture(stopC); stopTex.colorSpace = THREE.SRGBColorSpace;
       const stopBoard = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.0), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
       stopBoard.position.set(-st.x + 12, 2.3, -1.95); stopBoard.rotation.y = -Math.PI / 2; g.add(stopBoard);
+      const gantry = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.8), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
+      gantry.position.set(-st.x + 14, 4.55, 0); gantry.rotation.y = -Math.PI / 2; g.add(gantry);
+
       for (let ii = -4; ii <= 4; ii++) {
         const info = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.64), infoMat);
         info.position.set(-st.x + ii * 50, 6.4, -7.5); g.add(info);
