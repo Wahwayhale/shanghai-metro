@@ -836,7 +836,7 @@ function updateHsrMain(dt) {
   if (cabHud) cabHud.classList.toggle('hidden', passengerView);
   if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
   if (st.stationLabels) for (const l of st.stationLabels) l.visible = !passengerView;
-  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; }
+  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'), cc = document.getElementById('cabinCarNo'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; if (cc) cc.textContent = (5 + Math.round((st.cabinWalkX || 0) / 25.65)) + '车'; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;
@@ -899,8 +899,8 @@ function updateHsrMain(dt) {
     const yaw = st.yaw || 0, pitch = st.pitch || 0;
     const lx = Math.cos(yaw) * Math.cos(pitch), ly = Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
     const walk = 2.2 * dt;
-    if (keys['KeyQ']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) + walk));
-    if (keys['KeyE']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) - walk));
+    if (keys['KeyQ']) st.cabinWalkX = Math.max(-30, Math.min(30, (st.cabinWalkX || 0) + walk));
+    if (keys['KeyE']) st.cabinWalkX = Math.max(-30, Math.min(30, (st.cabinWalkX || 0) - walk));
     if (keys['KeyA']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) - walk));
     if (keys['KeyD']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) + walk));
     camera.position.set(-st.x + px - 8.0 + (st.cabinWalkX || 0), 2.55, 0.55 + (st.cabinWalkZ || 0));

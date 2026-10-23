@@ -1033,6 +1033,14 @@
       cabin.position.set(carXs[3], 1.25, 0);
       cabin.name = 'HSR-PASSENGER-CABIN';
       root.add(cabin);
+      for (const ci of [2, 4]) {
+        if (!carXs[ci]) continue;
+        const clone = cabin.clone(true);
+        clone.position.set(carXs[ci], 1.25, 0);
+        clone.name = 'HSR-PASSENGER-CABIN-' + (ci + 2);
+        root.add(clone);
+      }
+
       root.userData.passengerX = carXs[3];
     }
     root.scale.set(1, 0.837, 0.977);

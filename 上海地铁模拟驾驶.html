@@ -752,7 +752,7 @@
 
 
     <div id="hsrCabinHud" class="hidden" style="position:fixed;right:18px;top:18px;z-index:70;width:230px;padding:12px 14px;border-radius:12px;background:rgba(6,12,16,.9);border:1px solid rgba(160,190,210,.25);color:#e8f1f6;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7">
-      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">G25 · 5车</b><button id="cabinBack" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">返回驾驶室</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">G25 · <span id="cabinCarNo">5车</span></b><button id="cabinBack" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">返回驾驶室</button></div>
       <div style="font-size:26px;font-weight:800;margin-top:4px"><span id="cabinSpeed">0</span><span style="font-size:11px;color:#8fa3b0"> km/h</span></div>
       <div style="color:#8fa3b0">下一站 <span id="cabinNext">南京南</span></div>
       <div style="color:#8fa3b0">拖拽画面环视 · 5车二等座</div>
@@ -18797,7 +18797,7 @@ function updateHsrMain(dt) {
   if (cabHud) cabHud.classList.toggle('hidden', passengerView);
   if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
   if (st.stationLabels) for (const l of st.stationLabels) l.visible = !passengerView;
-  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; }
+  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'), cc = document.getElementById('cabinCarNo'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; if (cc) cc.textContent = (5 + Math.round((st.cabinWalkX || 0) / 25.65)) + '车'; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;
@@ -18860,8 +18860,8 @@ function updateHsrMain(dt) {
     const yaw = st.yaw || 0, pitch = st.pitch || 0;
     const lx = Math.cos(yaw) * Math.cos(pitch), ly = Math.sin(pitch), lz = Math.sin(yaw) * Math.cos(pitch);
     const walk = 2.2 * dt;
-    if (keys['KeyQ']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) + walk));
-    if (keys['KeyE']) st.cabinWalkX = Math.max(-9.5, Math.min(9.5, (st.cabinWalkX || 0) - walk));
+    if (keys['KeyQ']) st.cabinWalkX = Math.max(-30, Math.min(30, (st.cabinWalkX || 0) + walk));
+    if (keys['KeyE']) st.cabinWalkX = Math.max(-30, Math.min(30, (st.cabinWalkX || 0) - walk));
     if (keys['KeyA']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) - walk));
     if (keys['KeyD']) st.cabinWalkZ = Math.max(-0.75, Math.min(0.75, (st.cabinWalkZ || 0) + walk));
     camera.position.set(-st.x + px - 8.0 + (st.cabinWalkX || 0), 2.55, 0.55 + (st.cabinWalkZ || 0));
@@ -23729,6 +23729,14 @@ window.__sim = {
       cabin.position.set(carXs[3], 1.25, 0);
       cabin.name = 'HSR-PASSENGER-CABIN';
       root.add(cabin);
+      for (const ci of [2, 4]) {
+        if (!carXs[ci]) continue;
+        const clone = cabin.clone(true);
+        clone.position.set(carXs[ci], 1.25, 0);
+        clone.name = 'HSR-PASSENGER-CABIN-' + (ci + 2);
+        root.add(clone);
+      }
+
       root.userData.passengerX = carXs[3];
     }
     root.scale.set(1, 0.837, 0.977);
