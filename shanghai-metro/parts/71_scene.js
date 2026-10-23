@@ -411,6 +411,7 @@ async function buildHsrService() {
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
+  try { if (train && train.userData.headlightMat && localStorage.getItem('hsrHeadlight') === '0') train.userData.headlightMat.emissiveIntensity = 0; } catch (e) {}
   const hud = document.getElementById('hsrMainHud');
   if (hud) hud.classList.remove('hidden');
   const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
@@ -820,7 +821,7 @@ window.__hsrMain = {
       ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
       if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
       const hs = G.hsr.cabGroup.userData.headlightSwitch;
-      if (hs && ray.intersectObject(hs, false).length) { const hm = G.hsr.train && G.hsr.train.userData.headlightMat; if (hm) hm.emissiveIntensity = hm.emissiveIntensity > 0.1 ? 0 : 2.2; lookDrag = false; return; }
+      if (hs && ray.intersectObject(hs, false).length) { const hm = G.hsr.train && G.hsr.train.userData.headlightMat; if (hm) { hm.emissiveIntensity = hm.emissiveIntensity > 0.1 ? 0 : 2.2; try { localStorage.setItem('hsrHeadlight', hm.emissiveIntensity > 0.1 ? '1' : '0'); } catch (e) {} } lookDrag = false; return; }
       const ls = G.hsr.cabGroup.userData.lightSwitch;
       if (ls && ray.intersectObject(ls, false).length) { const lamp = G.hsr.cabGroup.userData.cabLamp; if (lamp) lamp.intensity = lamp.intensity > 0.1 ? 0 : 0.9; lookDrag = false; return; }
       const ws = G.hsr.cabGroup.userData.wiperSwitch;

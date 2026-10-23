@@ -1403,3 +1403,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - 投影台面头灯开关，点击后前照灯 emissiveIntensity=0，再点恢复 2.2。
 - 照明/雨刷/方向/3D EB/手柄/门/停车回归保留；test:hsr 通过。
+# 头灯开关状态持久化
+
+- 头灯开/关写入 localStorage.hsrHeadlight；重进/刷新恢复。
+- 验证：关闭头灯 → reload → 重进，headlightMat.emissiveIntensity=0。
+- 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
