@@ -163,6 +163,10 @@
           winBand.position.set(cx, 2.25, bz); g.add(winBand);
           const roofBand = new THREE.Mesh(new THREE.BoxGeometry(24.5, 0.25, 2.4), mat(0xb9c0c4, 0.7));
           roofBand.position.set(cx, 3.45, bz); g.add(roofBand);
+          if (ci < 7) {
+            const gang = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.4, 2.2), mat(0x2b2f33, 0.9));
+            gang.position.set(cx + 12.55, 2.0, bz); g.add(gang);
+          }
         }
       }
       for (let i = -4; i <= 4; i++) {
