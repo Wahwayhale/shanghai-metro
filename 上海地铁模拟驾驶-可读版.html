@@ -84232,6 +84232,18 @@ window.__sim = {
         root.add(dp);
       }
     }
+    const depotC = document.createElement('canvas'); depotC.width = 512; depotC.height = 64;
+    const depg = depotC.getContext('2d'); depg.clearRect(0, 0, 512, 64);
+    depg.fillStyle = '#ffffff'; depg.font = '700 34px "Microsoft YaHei", sans-serif'; depg.textBaseline = 'middle';
+    depg.fillText('京局北京动车段', 18, 34);
+    const depotTex = new THREE.CanvasTexture(depotC); depotTex.colorSpace = THREE.SRGBColorSpace;
+    const depotMat = new THREE.MeshBasicMaterial({ map: depotTex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    for (const dx of [4, 56, 110, 164, 218, 272, 326, 380]) {
+      for (const dz of [-1.44, 1.44]) {
+        const dp = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.40), depotMat);
+        dp.position.set(dx, 1.98, dz); if (dz < 0) dp.rotation.y = Math.PI; root.add(dp);
+      }
+    }
     root.userData.doorNodes = [];
     root.userData.midDoors = [];
     head.traverse((o) => {
