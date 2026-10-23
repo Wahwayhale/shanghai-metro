@@ -22925,6 +22925,11 @@ window.__sim = {
           diag.position.set(-st.x + r * 60, 7.58, -7.5 + dz); diag.rotation.x = dz < 0 ? 0.7 : -0.7; g.add(diag);
         }
       }
+      const skyMat = new THREE.MeshStandardMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.22, roughness: 0.15, metalness: 0.1 });
+      for (const sz of [-4.0, -11.0]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(450, 0.04, 1.2), skyMat);
+        strip.position.set(-st.x, 8.24, sz); g.add(strip);
+      }
       const lampMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, emissive: 0xeaf6ff, emissiveIntensity: 1.4 });
       for (let l = -2; l <= 2; l++) {
         const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), lampMat);
