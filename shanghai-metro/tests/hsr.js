@@ -43,6 +43,20 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/计划 10:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
   if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
+  const dirPos = await page.evaluate(() => {
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, kn = window.__sim.G.hsr.cabGroup.userData.dirKnob;
+    const v = new T.Vector3(); kn.getWorldPosition(v); v.project(cam);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  });
+  await page.mouse.click(dirPos.x, dirPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const dir0 = await page.evaluate(() => window.__sim.G.hsr.dir);
+  if (dir0 !== 0) fail.push('direction not 0: ' + dir0);
+  await page.mouse.click(dirPos.x, dirPos.y);
+  await new Promise(r => setTimeout(r, 300));
+  const dir1 = await page.evaluate(() => window.__sim.G.hsr.dir);
+  if (dir1 !== 1) fail.push('direction not restored: ' + dir1);
+
   const ebPos = await page.evaluate(() => {
     const T = window.__HSR_THREE, cam = window.__hsrMainCamera, btn = window.__sim.G.hsr.cabGroup.userData.ebButton;
     const v = new T.Vector3(); btn.getWorldPosition(v); v.project(cam);
