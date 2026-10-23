@@ -23066,6 +23066,13 @@ window.__sim = {
     headLivery.scale.x = 27.58 / 25.95;
     headLivery.renderOrder = 2;
     root.add(headLivery);
+    const frontDark = new THREE.MeshStandardMaterial({ color: 0x1a2024, roughness: 0.6, metalness: 0.3 });
+    const coupler = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.80), frontDark);
+    coupler.position.set(0.10, 0.62, 0); root.add(coupler);
+    for (const wz of [-0.45, 0.45]) {
+      const wiper = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.72, 6), frontDark);
+      wiper.position.set(0.08, 2.35, wz); wiper.rotation.z = 1.05; root.add(wiper);
+    }
     const noseRedMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5, metalness: 0.15 });
     const noseGoldMat = new THREE.MeshStandardMaterial({ color: 0xd8a21f, roughness: 0.5, metalness: 0.2 });
     const nr1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.13, 1.72), noseRedMat); nr1.position.set(0.08, 1.18, 0); root.add(nr1);
