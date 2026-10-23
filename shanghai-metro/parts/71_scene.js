@@ -403,7 +403,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true,
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -430,6 +430,7 @@ async function buildHsrService() {
   bind('hmView', () => { if (G.hsr) G.hsr.cab = !G.hsr.cab; });
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
+  bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
   bind('hmVcb', () => { if (G.hsr && G.hsr.panto) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
@@ -487,6 +488,22 @@ function showHsrMainResult() {
   if (r) r.classList.remove('hidden');
 }
 
+function createHsrAudio() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return null;
+  try {
+    const ctx = new AC();
+    const master = ctx.createGain(); master.gain.value = 0.10; master.connect(ctx.destination);
+    const motor = ctx.createOscillator(); motor.type = 'sawtooth'; motor.frequency.value = 40;
+    const motorGain = ctx.createGain(); motorGain.gain.value = 0.02;
+    motor.connect(motorGain); motorGain.connect(master); motor.start();
+    const wind = ctx.createOscillator(); wind.type = 'triangle'; wind.frequency.value = 90;
+    const windGain = ctx.createGain(); windGain.gain.value = 0.0;
+    wind.connect(windGain); windGain.connect(master); wind.start();
+    return { ctx, master, motor, motorGain, wind, windGain, muted: false };
+  } catch (e) { return null; }
+}
+
 function hsrMainLimit(x) {
   const t = G.hsr && G.hsr.tsr;
   if (t && x >= t.start && x < t.end) return t.v;
@@ -504,6 +521,13 @@ function updateHsrMain(dt) {
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
   const throttle = (st.panto && st.vcb && (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle)) ? 1 : 0;
+  if (st.audio) {
+    const a = st.audio;
+    a.motor.frequency.setTargetAtTime(32 + st.v * 1.4, a.ctx.currentTime, 0.15);
+    a.motorGain.gain.setTargetAtTime(0.008 + throttle * 0.03 + st.v * 0.00008, a.ctx.currentTime, 0.2);
+    a.wind.frequency.setTargetAtTime(70 + st.v * 2.4, a.ctx.currentTime, 0.2);
+    a.windGain.gain.setTargetAtTime(st.v * 0.00006, a.ctx.currentTime, 0.25);
+  }
   if (!st.stopped) {
     const stopV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     const perm = Math.min(limit / 3.6, stopV);
@@ -683,6 +707,7 @@ function updateHsrMain(dt) {
 }
 function exitHsrMain() {
   if (G.mode !== 'hsr') return;
+  if (G.hsr && G.hsr.audio) { try { G.hsr.audio.ctx.close(); } catch (e) {} G.hsr.audio = null; }
   G.mode = 'menu';
   G.hsr = null;
   const hud = document.getElementById('hsrMainHud');
