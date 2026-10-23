@@ -1284,3 +1284,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - 投影 3D 雨刷开关，点击后 wipersOn=false，再点恢复 true。
 - 方向/3D EB/手柄/门/停车回归保留；npm run test:hsr 通过。
+# 停站自动施加停放制动
+
+- 停车对标成功时 st.parked=true；HUD 显示「停放制动 施加」。
+- 点「发车」进入下一段时 parked=false，HUD「停放制动 缓解」。
+- tests/hsr.js 停车测试校验 hmPark 含「施加」。
+- 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。

@@ -407,7 +407,7 @@ async function buildHsrService() {
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
-    doorT: 0, dwellStart: 0, doorSide: -1, legs: [], result: false,
+    doorT: 0, dwellStart: 0, doorSide: -1, parked: false, legs: [], result: false,
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
@@ -460,6 +460,7 @@ function hsrMainDepart() {
   if (st.stopIdx < st.stops.length - 1) {
     st.stopIdx++;
     st.stopped = false;
+    st.parked = false;
     st.v = 0;
     st.stopErr = null;
     st.legStart = performance.now();
@@ -566,6 +567,7 @@ function updateHsrMain(dt) {
     if (st.v < 0.3 && Math.abs(st.x - stop) < 500) {
       st.stopped = true;
       st.dwellStart = performance.now();
+      st.parked = true;
       st.stopErr = st.x - stop;
       st.v = 0;
       const punc = st.legSched[st.stopIdx] - (performance.now() - st.legStart) / 1000;
@@ -732,6 +734,7 @@ function updateHsrMain(dt) {
   if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
+  if (el('hmPark')) el('hmPark').textContent = st.parked ? '停放制动 施加' : '停放制动 缓解';
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + '）' : '车门关闭') : '车门关闭';
   if (el('hmDwell')) {
     if (st.stopped) {

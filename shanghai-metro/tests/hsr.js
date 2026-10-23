@@ -155,12 +155,13 @@ const { PAGE_URL, CHROME } = require('./testenv');
     st.x = st.stops[st.stopIdx].x - 0.4;
   });
   await new Promise(r => setTimeout(r, 1500));
-  const stopInfo = await page.evaluate(() => ({ stopped: window.__sim.G.hsr.stopped, err: window.__sim.G.hsr.stopErr, result: window.__sim.G.hsr.result, dwell: document.getElementById('hmDwell').textContent, hud: document.getElementById('hmErr').textContent }));
+  const stopInfo = await page.evaluate(() => ({ stopped: window.__sim.G.hsr.stopped, err: window.__sim.G.hsr.stopErr, result: window.__sim.G.hsr.result, dwell: document.getElementById('hmDwell').textContent, park: document.getElementById('hmPark').textContent, hud: document.getElementById('hmErr').textContent }));
   if (!stopInfo.stopped) fail.push('stop detection failed');
   if (!(Math.abs(stopInfo.err) <= 1.0)) fail.push('stop error out of range: ' + stopInfo.err);
   if (!/停站/.test(stopInfo.hud)) fail.push('stop HUD missing: ' + stopInfo.hud);
   if (!stopInfo.result) fail.push('final result not shown');
   if (!/停站|可发车/.test(stopInfo.dwell)) fail.push('dwell missing: ' + stopInfo.dwell);
+  if (!/施加/.test(stopInfo.park)) fail.push('parking brake missing: ' + stopInfo.park);
 
   await page.screenshot({ path: 'shots/hsr-regression.png' }).catch(() => {});
   console.log(JSON.stringify({ ok: fail.length === 0 && errors.length === 0, info, pantoDown: down, pantoUp: up, fail, errors: errors.slice(0, 4) }, null, 1));
