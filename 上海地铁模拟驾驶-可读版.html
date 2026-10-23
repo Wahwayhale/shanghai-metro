@@ -84024,6 +84024,8 @@ window.__sim = {
 /* ===== 92_hsr_main.js ===== */
 /* 京沪高铁主场景世界构建器（C 项第一步：与独立 canvas 解耦） */
 (function () {
+  const MEGA_HSR_STATION_CONFIG = { numPlatforms:12, numTracks:24, platformLength:450, platformWidth:12, platformHeightFromRail:1.25, trackGauge:1.435, totalStationWidth:320, canopyClearHeight:21, elevatedHallFloorY:12.5, elevatedHallRoofPeakY:36 };
+  const MEGA_STATIONS = ['北京南','南京南','上海虹桥'];
   function buildHsrWorld(scene, THREE) {
     THREE = THREE || window.__HSR_THREE;
     const D = window.HSR_DATA;
@@ -84116,7 +84118,65 @@ window.__sim = {
     ig.fillText('开点 20:16  ·  6 站台  ·  1-16 车厢方向 →', 18, 68);
     const infoTex = new THREE.CanvasTexture(infoC); infoTex.colorSpace = THREE.SRGBColorSpace;
     const infoMat = new THREE.MeshBasicMaterial({ map: infoTex, side: THREE.DoubleSide });
+    function buildMegaStation(st) {
+      const x = -st.x;
+      const railMat = new THREE.MeshStandardMaterial({ color: 0xc8d0d4, metalness: 0.9, roughness: 0.2 });
+      const platMat = new THREE.MeshStandardMaterial({ color: 0xd9dde0, roughness: 0.25, metalness: 0.1 });
+      const steel = new THREE.MeshStandardMaterial({ color: 0xe8ecef, roughness: 0.35, metalness: 0.6 });
+      const glass = new THREE.MeshStandardMaterial({ color: 0x9fc4d4, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.1, side: THREE.DoubleSide });
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(470, 10, 310), mat(0x8f969b, 0.9));
+      deck.position.set(x, -5, -144); g.add(deck);
+      for (let i = 0; i < 12; i++) {
+        for (const tz of [-1.5 - i * 24, -13.5 - i * 24]) {
+          for (const rz of [-0.7175, 0.7175]) {
+            const rail = new THREE.Mesh(new THREE.BoxGeometry(460, 0.08, 0.075), railMat);
+            rail.position.set(x, 0.12, tz + rz); g.add(rail);
+          }
+        }
+        const pz = -7.5 - i * 24;
+        const plat = new THREE.Mesh(new THREE.BoxGeometry(450, 1.25, 12), platMat);
+        plat.position.set(x, 0.625, pz); g.add(plat);
+        const line = new THREE.Mesh(new THREE.BoxGeometry(450, 0.04, 0.18), mat(0xd8b53a, 0.6));
+        line.position.set(x, 1.27, pz + 4.4); g.add(line);
+      }
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(460, 0.5, 310), steel);
+      roof.position.set(x, 21, -144); g.add(roof);
+      for (let sx = -4; sx <= 4; sx++) {
+        for (let sz = 0; sz < 5; sz++) {
+          const cz = -20 - sz * 58;
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.1, 19.5, 10), steel);
+          base.position.set(x + sx * 48, 11, cz); g.add(base);
+        }
+      }
+      const hall = new THREE.Mesh(new THREE.BoxGeometry(180, 23.5, 260), glass);
+      hall.position.set(x, 24.25, -144); g.add(hall);
+      const hallFloor = new THREE.Mesh(new THREE.BoxGeometry(180, 0.6, 260), steel);
+      hallFloor.position.set(x, 12.5, -144); g.add(hallFloor);
+      const hallRoof = new THREE.Mesh(new THREE.BoxGeometry(190, 0.8, 270), steel);
+      hallRoof.position.set(x, 36, -144); g.add(hallRoof);
+      for (let i = 0; i < 6; i++) {
+        const bz = -13.5 - i * 48;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(200, 3.2, 3.0), mat(0xf2f4f4, 0.4));
+        body.position.set(x, 1.75, bz); g.add(body);
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(200, 0.25, 3.02), mat(0xc8102e, 0.5));
+        stripe.position.set(x, 1.05, bz); g.add(stripe);
+      }
+      for (let i = -4; i <= 4; i++) {
+        const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+        const gg = c.getContext('2d'); gg.fillStyle = '#071018'; gg.fillRect(0, 0, 512, 96);
+        gg.fillStyle = '#ffb340'; gg.font = '700 26px "Microsoft YaHei", sans-serif'; gg.textAlign = 'center'; gg.textBaseline = 'middle';
+        gg.fillText('G25  ' + st.name + '  ' + (i + 5) + '站台  →', 256, 48);
+        const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+        const pis = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.6), new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide }));
+        pis.position.set(x + i * 50, 5.2, -1.0); g.add(pis);
+      }
+      const appName = stationLabel(st.name);
+      appName.position.set(x - 30, 3.2, -4.2); appName.rotation.y = Math.PI / 2; appName.scale.set(0.35, 0.35, 1); g.add(appName);
+      const nm = stationLabel(st.name);
+      nm.position.set(x, 29, -14); nm.rotation.y = 0; nm.scale.set(0.42, 0.42, 1); g.add(nm);
+    }
     for (const st of D.STATIONS) {
+      if (MEGA_STATIONS.includes(st.name)) { buildMegaStation(st); continue; }
       const stBase = new THREE.Mesh(new THREE.BoxGeometry(450, 11.8, 30), mat(0x9aa0a4, 0.9));
       stBase.position.set(-st.x, -5.9, -14); g.add(stBase);
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.25, 12), mat(0x6b737a, 0.9));
