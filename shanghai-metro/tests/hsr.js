@@ -68,7 +68,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const stopped = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, state: document.getElementById('hmState').textContent }));
   if (stopped.v > 0.05) fail.push('emergency brake did not stop: v=' + stopped.v);
 
-  for (let i = 0; i < 2; i++) { await page.click('#hmView'); await new Promise(r => setTimeout(r, 600)); }
+  for (let i = 0; i < 2; i++) { await page.click('#hmView'); await new Promise(r => setTimeout(r, 1000)); }
+  await new Promise(r => setTimeout(r, 800));
   const cam = await page.evaluate(() => ({ mode: window.__sim.G.hsr.camMode, label: document.getElementById('hmView').textContent }));
   if (cam.mode !== 1) fail.push('camera mode ' + cam.mode);
   if (!/车尾/.test(cam.label)) fail.push('camera label ' + cam.label);
