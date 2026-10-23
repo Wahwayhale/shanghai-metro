@@ -23204,15 +23204,19 @@ window.__sim = {
   }
 
 
+const STATION_EN2 = {'北京南':'Beijing South','廊坊':'Langfang','天津南':'Tianjin South','沧州西':'Cangzhou West','德州东':'Dezhou East','济南西':'Jinan West','泰安':"Tai'an",'曲阜东':'Qufu East','滕州东':'Tengzhou East','枣庄':'Zaozhuang','徐州东':'Xuzhou East','宿州东':'Suzhou East','蚌埠南':'Bengbu South','定远':'Dingyuan','滁州':'Chuzhou','南京南':'Nanjing South','镇江南':'Zhenjiang South','丹阳北':'Danyang North','常州北':'Changzhou North','无锡东':'Wuxi East','苏州北':'Suzhou North','昆山南':'Kunshan South','上海虹桥':'Shanghai Hongqiao'};
+
   function stationLabel(name) {
     const c = document.createElement('canvas');
     c.width = 512; c.height = 128;
     const g = c.getContext('2d');
     g.fillStyle = 'rgba(6,10,14,.88)'; g.fillRect(0, 0, 512, 128);
     g.strokeStyle = '#c8102e'; g.lineWidth = 6; g.strokeRect(3, 3, 506, 122);
-    g.font = '700 64px "Microsoft YaHei", "PingFang SC", sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f2f7fa';
-    g.fillText(name, 256, 64);
+    g.font = '700 56px "Microsoft YaHei", "PingFang SC", sans-serif';
+    g.fillText(name, 256, 44);
+    g.font = '500 26px system-ui, sans-serif'; g.fillStyle = '#b9d4e2';
+    g.fillText(STATION_EN2[name] || '', 256, 96);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthTest: false });
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 4.0), m);
