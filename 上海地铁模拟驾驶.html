@@ -23702,6 +23702,15 @@ window.__sim = {
         }
         const gend = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.25, 1.4), doorMat); gend.position.set((carXs[3] || 0) + dx + Math.sign(dx) * 0.85, 2.42, 0); root.add(gend);
       }
+      const bellowsMat = new THREE.MeshStandardMaterial({ color: 0x2b2f33, roughness: 0.95 });
+      for (const dx of [-13.15, 13.15]) {
+        for (let ri = 0; ri < 4; ri++) {
+          const rx = (carXs[3] || 0) + dx - 0.65 + ri * 0.42;
+          const top = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 1.52), bellowsMat); top.position.set(rx, 3.50, 0); root.add(top);
+          const bot = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 1.52), bellowsMat); bot.position.set(rx, 1.33, 0); root.add(bot);
+          for (const bz of [-0.74, 0.74]) { const side = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.25, 0.10), bellowsMat); side.position.set(rx, 2.42, bz); root.add(side); }
+        }
+      }
       cabinG.scene.traverse(o => {
         if (!o.isMesh || !o.material) return;
         const mats = Array.isArray(o.material) ? o.material : [o.material];
