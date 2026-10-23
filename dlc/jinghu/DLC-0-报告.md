@@ -1850,3 +1850,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 按里程夜间因子调低HSR hemisphere/directional光强：hemi 1.6→0.4，dir 2.1→0.38。
 - 天空转夜时地面/站台同步变暗。
 - 截图 hsr-nightlights.png；smoke/test:hsr通过。
+# 夜间站台照明
+
+- HSR场景加一盏可移动站台点光；距停车点<300m且夜间时移到站台并亮起3.0，否则关闭。
+- 截图 hsr-stoplight.png（南京南夜间）。
+- smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
