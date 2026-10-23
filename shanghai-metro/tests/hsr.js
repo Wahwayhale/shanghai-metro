@@ -73,6 +73,17 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const afterDepart = await page.evaluate(() => ({ idx: window.__sim.G.hsr.stopIdx, stopped: window.__sim.G.hsr.stopped }));
   if (afterDepart.idx !== 1 || afterDepart.stopped) fail.push('depart failed: ' + JSON.stringify(afterDepart));
 
+  await page.evaluate(() => {
+    const st = window.__sim.G.hsr;
+    st.stopped = false; st.doorT = 0; st.v = 0;
+    st.x = st.stops[st.stopIdx].x - 0.4;
+  });
+  await new Promise(r => setTimeout(r, 1500));
+  const stopInfo = await page.evaluate(() => ({ stopped: window.__sim.G.hsr.stopped, err: window.__sim.G.hsr.stopErr, hud: document.getElementById('hmErr').textContent }));
+  if (!stopInfo.stopped) fail.push('stop detection failed');
+  if (!(Math.abs(stopInfo.err) <= 1.0)) fail.push('stop error out of range: ' + stopInfo.err);
+  if (!/停站/.test(stopInfo.hud)) fail.push('stop HUD missing: ' + stopInfo.hud);
+
   await page.screenshot({ path: 'shots/hsr-regression.png' }).catch(() => {});
   console.log(JSON.stringify({ ok: fail.length === 0 && errors.length === 0, info, pantoDown: down, pantoUp: up, fail, errors: errors.slice(0, 4) }, null, 1));
   await browser.close();

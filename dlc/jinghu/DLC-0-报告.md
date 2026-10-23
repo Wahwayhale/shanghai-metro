@@ -894,3 +894,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 按 W 0.9s 后 v=0、stopIdx 不变，确认门开不走车。
 - 点「发车」后 stopIdx=1、stopped=false，确认正常发车。
 - npm run test:hsr 通过。
+# HSR 回归补停车对标
+
+- tests/hsr.js 设置车辆在停车点前 0.4m、v=0，等待后校验 stopped=true、stopErr≤1m、HUD 显示「停站」。
+- headless 帧率低，等待设为 1.5s。
+- 车门互锁/牵引/EB/受电弓回归保留；npm run test:hsr 通过。
