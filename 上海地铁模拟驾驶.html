@@ -18720,6 +18720,13 @@ window.__hsrMain = {
       const ray = new T.Raycaster();
       ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
       if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
+      const levs = G.hsr.cabGroup.userData.levers || [];
+      for (let li = 0; li < levs.length; li++) {
+        if (ray.intersectObject(levs[li], false).length) {
+          if (li === 0) G.hsr.touchThrottle = 1; else G.hsr.touchBrake = 1;
+          lookDrag = false; return;
+        }
+      }
     }
     lookDrag = true; lookX = e.clientX; lookY = e.clientY;
   });
@@ -18730,7 +18737,7 @@ window.__hsrMain = {
     G.hsr.yaw = Math.max(-1.6, Math.min(1.6, (G.hsr.yaw || 0) - dx * 0.0028));
     G.hsr.pitch = Math.max(-0.45, Math.min(0.45, (G.hsr.pitch || 0) + dy * 0.0022));
   });
-  window.addEventListener('pointerup', () => { lookDrag = false; if (G.hsr) G.hsr.touchEb = 0; });
+  window.addEventListener('pointerup', () => { lookDrag = false; if (G.hsr) { G.hsr.touchEb = 0; G.hsr.touchThrottle = 0; G.hsr.touchBrake = 0; } });
   window.addEventListener('pointercancel', () => { lookDrag = false; });
 })();
 
