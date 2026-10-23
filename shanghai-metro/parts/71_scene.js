@@ -631,9 +631,19 @@ function updateHsrMain(dt) {
     const plan = new Date(); plan.setHours(7, 0, 0, 0); plan.setMinutes(plan.getMinutes() + cum / 60);
     const fmt = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     let actual = '--:--';
-    if (st.stopped) actual = fmt(new Date());
-    else if (st.v > 1) actual = fmt(new Date(Date.now() + ((stop - st.x) / st.v / 60) * 60000));
+    let actualDate = null;
+    if (st.stopped) { actualDate = new Date(); actual = fmt(actualDate); }
+    else if (st.v > 1) { actualDate = new Date(Date.now() + ((stop - st.x) / st.v / 60) * 60000); actual = fmt(actualDate); }
     el('hmSched').textContent = '计划 ' + fmt(plan) + ' · 实际 ' + actual;
+    if (el('hmPunc')) {
+      if (!actualDate) { el('hmPunc').textContent = '正晚点 --'; el('hmPunc').style.color = '#c7d6df'; }
+      else {
+        const dm = Math.round((actualDate - plan) / 60000);
+        const t = dm === 0 ? '正点' : (dm > 0 ? '晚点 +' : '早点 ') + (dm > 0 ? dm : -dm) + ' 分';
+        el('hmPunc').textContent = t;
+        el('hmPunc').style.color = dm > 0 ? '#ff6b6b' : (dm < 0 ? '#ffd479' : '#8fe06a');
+      }
+    }
   }
   if (el('hmEta')) {
     if (st.stopped || st.v < 1) el('hmEta').textContent = '预计 --:--';
