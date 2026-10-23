@@ -22864,7 +22864,7 @@ window.__sim = {
     ig.fillText('开点 20:16  ·  6 站台  ·  1-16 车厢方向 →', 18, 68);
     const infoTex = new THREE.CanvasTexture(infoC); infoTex.colorSpace = THREE.SRGBColorSpace;
     const infoMat = new THREE.MeshBasicMaterial({ map: infoTex, side: THREE.DoubleSide });
-    function buildMegaStation(st) {
+    function buildMegaStation(st, detailed) {
       const x = -st.x;
       const railMat = new THREE.MeshStandardMaterial({ color: 0xc8d0d4, metalness: 0.9, roughness: 0.2 });
       const platMat = new THREE.MeshStandardMaterial({ color: 0xd9dde0, roughness: 0.25, metalness: 0.1 });
@@ -22918,11 +22918,47 @@ window.__sim = {
       }
       const appName = stationLabel(st.name);
       appName.position.set(x - 30, 3.2, -4.2); appName.rotation.y = Math.PI / 2; appName.scale.set(0.35, 0.35, 1); g.add(appName);
+      for (const sz of [-40, -80, -120, -160, -200, -240, -280]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(450, 0.04, 2.0), glass);
+        strip.position.set(x, 21.3, sz); g.add(strip);
+      }
+      if (detailed) {
+        for (let i = 0; i < 12; i++) {
+          const pz = -7.5 - i * 24;
+          for (const ex of [-110, 110]) {
+            const core = new THREE.Mesh(new THREE.BoxGeometry(3.0, 11.2, 3.0), glass);
+            core.position.set(x + ex, 6.85, pz); g.add(core);
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.3, 3.2), steel);
+            frame.position.set(x + ex, 12.5, pz); g.add(frame);
+          }
+        }
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x8f9aa0 });
+        for (let i = 0; i < 12; i++) {
+          for (const tz of [-1.5 - i * 24, -13.5 - i * 24]) {
+            for (const dir of [-1, 1]) {
+              const pts = [new THREE.Vector3(x + dir * 225, 0.12, tz), new THREE.Vector3(x + dir * 1425, 0.12, 0)];
+              const geo = new THREE.BufferGeometry().setFromPoints(pts);
+              g.add(new THREE.Line(geo, lineMat));
+            }
+          }
+        }
+        for (const dir of [-1, 1]) {
+          for (let d = 270; d <= 1400; d += 90) {
+            const gx = x + dir * d;
+            const beam = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 300), steel);
+            beam.position.set(gx, 8.0, -144); g.add(beam);
+            for (const gz of [-20, -280]) {
+              const post = new THREE.Mesh(new THREE.BoxGeometry(0.4, 8.0, 0.4), steel);
+              post.position.set(gx, 4.0, gz); g.add(post);
+            }
+          }
+        }
+      }
       const nm = stationLabel(st.name);
       nm.position.set(x, 29, -14); nm.rotation.y = 0; nm.scale.set(0.42, 0.42, 1); g.add(nm);
     }
     for (const st of D.STATIONS) {
-      if (MEGA_STATIONS.includes(st.name)) { buildMegaStation(st); continue; }
+      buildMegaStation(st, MEGA_STATIONS.includes(st.name)); continue;
       const stBase = new THREE.Mesh(new THREE.BoxGeometry(450, 11.8, 30), mat(0x9aa0a4, 0.9));
       stBase.position.set(-st.x, -5.9, -14); g.add(stBase);
       const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.25, 12), mat(0x6b737a, 0.9));
