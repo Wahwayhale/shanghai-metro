@@ -427,7 +427,7 @@ async function buildHsrService() {
   hold('hmEb', 'touchEb');
   bind('hmDepart', hsrMainDepart);
   bind('hmReset', resetHsrMain);
-  bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) G.hsr.cab = false; else G.hsr.camMode = ((G.hsr.camMode || 0) + 1) % 3; } });
+  bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) G.hsr.cab = false; else G.hsr.camMode = ((G.hsr.camMode || 0) + 1) % 2; } });
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
@@ -651,9 +651,6 @@ function updateHsrMain(dt) {
     camera.position.set(-st.x + 6.5, 3.05, 0.0);
     camera.lookAt(camera.position.x + dx * 40, camera.position.y + dy * 40, camera.position.z + dz * 40);
   } else if (st.camMode === 1) {
-    camera.position.set(-st.x - 10, 4.2, 30);
-    camera.lookAt(-st.x - 10, 2.3, 0);
-  } else if (st.camMode === 2) {
     camera.position.set(-st.x + 458, 7.5, 18);
     camera.lookAt(-st.x + 425, 2.4, 0);
   } else {
@@ -662,7 +659,7 @@ function updateHsrMain(dt) {
   }
   const kmh = st.v * 3.6;
   const el = (id) => document.getElementById(id);
-  if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '侧面', '车尾'][st.camMode || 0];
+  if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (throttle ? '牵引' : '惰行'));
