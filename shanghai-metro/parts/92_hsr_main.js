@@ -157,6 +157,10 @@
         body.position.set(x, 1.75, bz); g.add(body);
         const stripe = new THREE.Mesh(new THREE.BoxGeometry(200, 0.25, 3.02), mat(0xc8102e, 0.5));
         stripe.position.set(x, 1.05, bz); g.add(stripe);
+        const winBand = new THREE.Mesh(new THREE.BoxGeometry(200, 0.85, 3.04), mat(0x101820, 0.4));
+        winBand.position.set(x, 2.25, bz); g.add(winBand);
+        const roofBand = new THREE.Mesh(new THREE.BoxGeometry(200, 0.25, 2.4), mat(0xb9c0c4, 0.7));
+        roofBand.position.set(x, 3.45, bz); g.add(roofBand);
       }
       for (let i = -4; i <= 4; i++) {
         const c = document.createElement('canvas'); c.width = 512; c.height = 96;
