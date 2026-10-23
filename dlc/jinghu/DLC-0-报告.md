@@ -1413,3 +1413,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 照明开关状态写入 localStorage.hsrCabLight；重进/刷新恢复。
 - 验证：关灯 → reload → 重进，cabLamp.intensity=0。
 - 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
+# 帮助面板重置偏好
+
+- 帮助面板加「重置偏好」按钮，清除 HUD 收起/静音/头灯/驾驶室灯四个 localStorage 键并刷新。
+- 用于恢复默认显示/声音/灯光。
+- 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。

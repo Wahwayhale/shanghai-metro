@@ -436,6 +436,7 @@ async function buildHsrService() {
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmHelp', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); });
   bind('hsrHelpClose', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.add('hidden'); });
+  bind('hsrResetPrefs', () => { try { ['hsrHudCollapsed','hsrAudioMuted','hsrHeadlight','hsrCabLight'].forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
     const h0 = document.getElementById('hsrMainHud');

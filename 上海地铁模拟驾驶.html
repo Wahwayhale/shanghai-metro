@@ -748,7 +748,7 @@
 
 
     <div id="hsrHelp" class="hidden" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:95;width:360px;max-width:86vw;padding:18px 20px;border-radius:14px;background:rgba(7,12,16,.96);border:1px solid rgba(200,16,46,.45);color:#e8f1f6;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.8">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:14px">G25 操作说明</b><button id="hsrHelpClose" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">关闭</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:14px">G25 操作说明</b><button id="hsrResetPrefs" style="margin-right:6px;padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#ffd479;cursor:pointer">重置偏好</button><button id="hsrHelpClose" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">关闭</button></div>
       <div>W / 牵引：加速　　　S / 制动：常用制动</div>
       <div>空格 / 紧急制动：-2.5 m/s²</div>
       <div>P：受电弓　　V：VCB　　H：鸣笛</div>
@@ -18383,6 +18383,7 @@ async function buildHsrService() {
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmHelp', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); });
   bind('hsrHelpClose', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.add('hidden'); });
+  bind('hsrResetPrefs', () => { try { ['hsrHudCollapsed','hsrAudioMuted','hsrHeadlight','hsrCabLight'].forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
     const h0 = document.getElementById('hsrMainHud');
