@@ -84015,6 +84015,21 @@ window.__sim = {
       const hl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.24), hlMat);
       hl.position.set(0.10, 1.35, hz); root.add(hl);
     }
+    const decalC = document.createElement('canvas'); decalC.width = 1024; decalC.height = 96;
+    const dg = decalC.getContext('2d');
+    dg.clearRect(0, 0, 1024, 96);
+    dg.fillStyle = '#ffffff'; dg.font = '700 48px "Microsoft YaHei", sans-serif'; dg.textBaseline = 'middle';
+    dg.fillText('CR400AF-BS  ·  京沪高铁 G25', 24, 50);
+    const decalTex = new THREE.CanvasTexture(decalC); decalTex.colorSpace = THREE.SRGBColorSpace;
+    const decalMat = new THREE.MeshBasicMaterial({ map: decalTex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    for (const dx of [4, 56, 110, 164, 218, 272, 326, 380]) {
+      for (const dz of [-1.43, 1.43]) {
+        const dp = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 0.50), decalMat);
+        dp.position.set(dx, 2.25, dz);
+        if (dz < 0) dp.rotation.y = Math.PI;
+        root.add(dp);
+      }
+    }
     root.userData.doorNodes = [];
     root.userData.midDoors = [];
     head.traverse((o) => {
