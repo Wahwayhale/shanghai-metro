@@ -559,6 +559,11 @@
     tail.visible = true;
     tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
     tail.rotation.y = Math.PI;
+    const tlMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, emissive: 0xff1a1a, emissiveIntensity: 1.8, roughness: 0.3 });
+    for (const tz of [-0.72, 0.72]) {
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.22), tlMat);
+      tl.position.set(0.10, 1.30, tz); tail.add(tl);
+    }
     root.add(tail);
     tail.traverse((o) => {
       if (o.isMesh && o.name && o.name.startsWith('GEO-door_')
