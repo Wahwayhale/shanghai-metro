@@ -22998,6 +22998,15 @@ window.__sim = {
           }
         }
       }
+      if (!detailed) {
+        for (let i = 0; i < 12; i++) {
+          const pz = -7.5 - i * 24;
+          for (const ex of [-110, 110]) {
+            const core = new THREE.Mesh(new THREE.BoxGeometry(3.0, 11.2, 3.0), glass);
+            core.position.set(x + ex, 6.85, pz); g.add(core);
+          }
+        }
+      }
       const nm = stationLabel(st.name);
       nm.position.set(x, 29, -14); nm.rotation.y = 0; nm.scale.set(0.42, 0.42, 1); g.add(nm);
     }
