@@ -84184,14 +84184,17 @@ window.__sim = {
       hallRoof.position.set(x, 36, -144); g.add(hallRoof); g.userData.megaHide.push(hallRoof);
       for (let i = 0; i < 6; i++) {
         const bz = -13.5 - i * 48;
-        const body = new THREE.Mesh(new THREE.BoxGeometry(200, 3.2, 3.0), mat(0xf2f4f4, 0.4));
-        body.position.set(x, 1.75, bz); g.add(body);
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(200, 0.25, 3.02), mat(0xc8102e, 0.5));
-        stripe.position.set(x, 1.05, bz); g.add(stripe);
-        const winBand = new THREE.Mesh(new THREE.BoxGeometry(200, 0.85, 3.04), mat(0x101820, 0.4));
-        winBand.position.set(x, 2.25, bz); g.add(winBand);
-        const roofBand = new THREE.Mesh(new THREE.BoxGeometry(200, 0.25, 2.4), mat(0xb9c0c4, 0.7));
-        roofBand.position.set(x, 3.45, bz); g.add(roofBand);
+        for (let ci = 0; ci < 8; ci++) {
+          const cx = x - 100 + 12.25 + ci * 25;
+          const body = new THREE.Mesh(new THREE.BoxGeometry(24.5, 3.2, 3.0), mat(0xf2f4f4, 0.4));
+          body.position.set(cx, 1.75, bz); g.add(body);
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(24.5, 0.25, 3.02), mat(0xc8102e, 0.5));
+          stripe.position.set(cx, 1.05, bz); g.add(stripe);
+          const winBand = new THREE.Mesh(new THREE.BoxGeometry(24.5, 0.85, 3.04), mat(0x101820, 0.4));
+          winBand.position.set(cx, 2.25, bz); g.add(winBand);
+          const roofBand = new THREE.Mesh(new THREE.BoxGeometry(24.5, 0.25, 2.4), mat(0xb9c0c4, 0.7));
+          roofBand.position.set(cx, 3.45, bz); g.add(roofBand);
+        }
       }
       for (let i = -4; i <= 4; i++) {
         const c = document.createElement('canvas'); c.width = 512; c.height = 96;
