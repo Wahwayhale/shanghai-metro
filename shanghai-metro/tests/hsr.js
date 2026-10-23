@@ -60,6 +60,12 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const stopped = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, state: document.getElementById('hmState').textContent }));
   if (stopped.v > 0.05) fail.push('emergency brake did not stop: v=' + stopped.v);
 
+  await page.evaluate(() => { window.__sim.G.hsr.yaw = 1.0; window.__sim.G.hsr.pitch = 0.2; });
+  await page.click('#hmLook');
+  await new Promise(r => setTimeout(r, 400));
+  const look = await page.evaluate(() => ({ yaw: window.__sim.G.hsr.yaw, pitch: window.__sim.G.hsr.pitch }));
+  if (Math.abs(look.yaw) > 0.001 || Math.abs(look.pitch) > 0.001) fail.push('look reset failed: ' + JSON.stringify(look));
+
   await page.evaluate(() => {
     const st = window.__sim.G.hsr;
     st.stopped = true; st.v = 0; st.stopErr = 0; st.doorT = 1;
