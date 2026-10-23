@@ -468,6 +468,23 @@
     for (let bi = 0; bi < 5; bi++) add(new THREE.BoxGeometry(0.07, 0.05, 0.08), breakerMat, 5.72 + bi * 0.07, 2.02, 1.40);
     const extMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.6, metalness: 0.2 });
     add(new THREE.CylinderGeometry(0.07, 0.07, 0.42, 12), extMat, 4.55, 1.75, 1.30);
+    const cabLabel = (text) => {
+      const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+      const g2 = c.getContext('2d'); g2.fillStyle = '#1a2228'; g2.fillRect(0, 0, 256, 64);
+      g2.strokeStyle = '#5a6a74'; g2.lineWidth = 3; g2.strokeRect(2, 2, 252, 60);
+      g2.fillStyle = '#dceaf2'; g2.font = '700 22px "Microsoft YaHei", sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.fillText(text, 128, 34);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({ map: t });
+    };
+    for (const z of [-1.35, 1.35]) {
+      for (const [cx, txt] of [[4.95, z < 0 ? '左前电气柜' : '右前电气柜'], [6.35, z < 0 ? '左后电气柜' : '右后电气柜']]) {
+        const lp = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.16), cabLabel(txt));
+        lp.position.set(cx, 2.12, z); lp.rotation.y = z < 0 ? Math.PI / 2 : -Math.PI / 2;
+        g.add(lp);
+      }
+    }
+    add(new THREE.BoxGeometry(0.34, 0.52, 0.34), trim, 6.95, 1.50, 0.55);
     // rear partition door behind the seat
     add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
     const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);
