@@ -586,6 +586,7 @@
     midLivery.renderOrder = 2;
     root.add(midLivery);
 
+    root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
   }
