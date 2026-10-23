@@ -84097,6 +84097,10 @@ window.__sim = {
     headLivery.position.x = HEAD / 2;
     headLivery.renderOrder = 2;
     root.add(headLivery);
+    const noseRedMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5, metalness: 0.15 });
+    const noseGoldMat = new THREE.MeshStandardMaterial({ color: 0xd8a21f, roughness: 0.5, metalness: 0.2 });
+    const nr1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.13, 1.72), noseRedMat); nr1.position.set(0.08, 1.18, 0); root.add(nr1);
+    const nr2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1.60), noseGoldMat); nr2.position.set(0.09, 1.04, 0); root.add(nr2);
     const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2cc, emissiveIntensity: 2.2, roughness: 0.2 });
     for (const hz of [-0.78, 0.78]) {
       const hl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.24), hlMat);
