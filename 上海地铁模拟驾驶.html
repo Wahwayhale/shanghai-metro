@@ -18366,7 +18366,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, cruise: false, cruiseV: 0, brakeLevel: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, cruise: false, cruiseV: 0, brakeLevel: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
@@ -18728,7 +18728,9 @@ function updateHsrMain(dt) {
     }
     st.deadmanT = (st.v > 1 && !st.stopped) ? (st.deadmanT || 0) + dt : 0;
     if (st.deadmanT > 37) st.deadmanEb = true;
-    const eb = (keys['Space'] || st.touchEb || st.deadmanEb) ? 1 : 0;
+    const ebInput = (keys['Space'] || st.touchEb || st.deadmanEb) ? 1 : 0;
+    if (ebInput) st.ebLatched = true;
+    const eb = (ebInput || st.ebLatched) ? 1 : 0;
     const vnow = st.v;
     const Ftract = throttle ? Math.min(220000, 8800000 / Math.max(vnow, 1)) : 0;
     const dragN = 5000 + 60 * vnow + 1.1 * vnow * vnow;
@@ -18740,6 +18742,7 @@ function updateHsrMain(dt) {
     else if (overKmh > 5) a = Math.min(a, -0.8);
     if (st.v > perm + 0.3) a = Math.min(a, -0.8);
     st.v = Math.max(0, Math.min(350 / 3.6, st.v + a * dt));
+    if (eb && st.v < 0.05) st.ebLatched = false;
     st.x = Math.min(1301900, st.x + st.v * dt);
     if (st.v < 0.3 && Math.abs(st.x - stop) < 500) {
       st.stopped = true;
@@ -18802,7 +18805,7 @@ function updateHsrMain(dt) {
       if (!st.lastDmi || now - st.lastDmi > 220) {
         st.lastDmi = now;
         const kmhD = Math.round(st.v * 3.6);
-        const modeD = (keys['Space'] || st.touchEb || st.deadmanEb) ? '紧急制动'
+        const modeD = (keys['Space'] || st.touchEb || st.deadmanEb || st.ebLatched) ? '紧急制动'
           : ((!st.panto || !st.vcb) ? '无电'
           : ((st.v - limit / 3.6) > 5 / 3.6 ? 'ATP制动'
           : (st.stopped ? '停车'
@@ -18871,7 +18874,7 @@ function updateHsrMain(dt) {
   if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾', '车厢'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
-  if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (st.cruise ? '恒速' : ((st.brakeLevel || 0) > 0 ? '制动 ' + st.brakeLevel + 'B' : (throttle ? '牵引' : '惰行'))));
+  if (el('hmMode')) el('hmMode').textContent = (st.ebLatched || keys['Space'] || st.touchEb || st.deadmanEb) ? '紧急制动' : (st.stopped ? '停车' : (kmh < 1 ? '待发' : (st.cruise ? '恒速' : ((st.brakeLevel || 0) > 0 ? '制动 ' + st.brakeLevel + 'B' : (throttle ? '牵引' : '惰行'))));
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';

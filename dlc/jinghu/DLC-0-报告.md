@@ -1695,3 +1695,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 端门LED每500ms重绘：当前速度、下一站、温度。
 - 文字仍为05车/G25/北京南—上海虹桥。
 - smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
+# EB锁定到停车
+
+- 按EB后 ebLatched=true，松开空格仍保持EB直到v<0.05。
+- HUD/DMI显示紧急制动；停车自动解锁。
+- 验证：v=20按/松空格，latched=true。
+- smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
