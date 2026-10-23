@@ -79619,7 +79619,11 @@ async function buildHsrService() {
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
-  bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; });
+  bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
+  try {
+    const h0 = document.getElementById('hsrMainHud');
+    if (h0 && localStorage.getItem('hsrHudCollapsed') === '1') { h0.classList.add('collapsed'); const b0 = document.getElementById('hmCollapse'); if (b0) b0.textContent = '展开'; }
+  } catch (e) {}
   bind('hmVcb', () => { if (G.hsr && G.hsr.panto) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
