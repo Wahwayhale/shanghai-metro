@@ -20,7 +20,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const info = await page.evaluate(() => ({
     mode: window.__sim && window.__sim.G && window.__sim.G.mode,
     hsr: !!window.__hsrMain,
-    stations: (window.__sim && window.__sim.G && window.__sim.G.hsr && window.__sim.G.hsr.stops.length + 1) || 0,
+    stations: (window.HSR_DATA && window.HSR_DATA.STATIONS && window.HSR_DATA.STATIONS.length) || 0,
+    run: (window.HSR_DATA && window.HSR_DATA.RUN) || 0,
     sys: (document.getElementById('hmSys') || {}).textContent || '',
     door: (document.getElementById('hmDoor') || {}).textContent || '',
     speed: (document.getElementById('hmSpeed') || {}).textContent || ''
@@ -28,7 +29,8 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const fail = [];
   if (info.mode !== 'hsr') fail.push('mode != hsr: ' + info.mode);
   if (!info.hsr) fail.push('__hsrMain missing');
-  if (info.stations < 3) fail.push('stop count ' + info.stations);
+  if (info.stations !== 23) fail.push('station count ' + info.stations);
+  if (info.run !== 1302000) fail.push('RUN ' + info.run);
   if (!/受电弓/.test(info.sys)) fail.push('panto HUD missing');
   if (!/车门/.test(info.door)) fail.push('door HUD missing');
   if (info.speed !== '0') fail.push('initial speed ' + info.speed);

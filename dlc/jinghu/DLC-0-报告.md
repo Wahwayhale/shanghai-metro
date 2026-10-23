@@ -899,3 +899,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - tests/hsr.js 设置车辆在停车点前 0.4m、v=0，等待后校验 stopped=true、stopErr≤1m、HUD 显示「停站」。
 - headless 帧率低，等待设为 1.5s。
 - 车门互锁/牵引/EB/受电弓回归保留；npm run test:hsr 通过。
+# HSR 回归校验 23 站与 1302km
+
+- tests/hsr.js 改用 window.HSR_DATA.STATIONS，校验 23 站。
+- 校验 RUN=1302000（1302km 正线）。
+- 全量 npm test 通过；HSR 回归通过。
