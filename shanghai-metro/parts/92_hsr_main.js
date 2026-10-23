@@ -982,6 +982,7 @@
       lg2.fillStyle = '#ffb340'; lg2.font = '700 26px "Microsoft YaHei", monospace'; lg2.textAlign = 'center'; lg2.textBaseline = 'middle';
       lg2.fillText('05车  G25  北京南—上海虹桥  350km/h  24°C', 256, 34);
       const ledTex = new THREE.CanvasTexture(ledC); ledTex.colorSpace = THREE.SRGBColorSpace;
+      root.userData.cabinLed = { ctx: lg2, tex: ledTex, last: -1 };
       for (const dx of [-12.26, 12.26]) {
         const led = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.30), new THREE.MeshBasicMaterial({ map: ledTex, side: THREE.DoubleSide }));
         led.position.set((carXs[3] || 0) + dx, 3.10, 0); led.rotation.y = dx < 0 ? Math.PI / 2 : -Math.PI / 2; root.add(led);

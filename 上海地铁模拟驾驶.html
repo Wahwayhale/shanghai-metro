@@ -18691,6 +18691,16 @@ function paintCabinScenery(scenic, x) {
   for (let i = 0; i < 18; i++) ctx.fillRect(i * 30, horizon + 40 + (i % 4) * 14, 16, 4);
 }
 
+function paintCabinLed(led, st) {
+  const ctx = led.ctx; if (!ctx) return;
+  ctx.fillStyle = '#071018'; ctx.fillRect(0, 0, 512, 64);
+  ctx.fillStyle = '#ffb340'; ctx.font = '700 25px "Microsoft YaHei", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const nxt = st.stops[st.stopIdx] ? st.stops[st.stopIdx].name : '上海虹桥';
+  ctx.fillText('05车  G25  北京南—上海虹桥  ' + Math.round(st.v * 3.6) + 'km/h  24°C', 256, 26);
+  ctx.fillStyle = '#8fa3b0'; ctx.font = '600 15px "Microsoft YaHei", monospace';
+  ctx.fillText('下一站 ' + nxt, 256, 50);
+}
+
 function updateHsrMain(dt) {
   const st = G.hsr;
   if (!st) return;
@@ -18774,6 +18784,7 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
+  if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
   if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
   const cabHud = document.getElementById('hsrMainHud');
@@ -23663,6 +23674,7 @@ window.__sim = {
       lg2.fillStyle = '#ffb340'; lg2.font = '700 26px "Microsoft YaHei", monospace'; lg2.textAlign = 'center'; lg2.textBaseline = 'middle';
       lg2.fillText('05车  G25  北京南—上海虹桥  350km/h  24°C', 256, 34);
       const ledTex = new THREE.CanvasTexture(ledC); ledTex.colorSpace = THREE.SRGBColorSpace;
+      root.userData.cabinLed = { ctx: lg2, tex: ledTex, last: -1 };
       for (const dx of [-12.26, 12.26]) {
         const led = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.30), new THREE.MeshBasicMaterial({ map: ledTex, side: THREE.DoubleSide }));
         led.position.set((carXs[3] || 0) + dx, 3.10, 0); led.rotation.y = dx < 0 ? Math.PI / 2 : -Math.PI / 2; root.add(led);
