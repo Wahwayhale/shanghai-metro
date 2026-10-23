@@ -980,12 +980,18 @@
     const panto = new THREE.Group();
     const pantoMat = new THREE.MeshStandardMaterial({ color: 0x4a5359, metalness: 0.7, roughness: 0.35 });
     const pBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 1.2), pantoMat); panto.add(pBase);
-    panto.userData.arms = [];
+    panto.userData.lower = []; panto.userData.upper = [];
     for (const pz of [-0.4, 0.4]) {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 8), pantoMat);
-      arm.position.set(0, 0.45, pz); arm.rotation.z = 0.35; panto.add(arm); panto.userData.arms.push(arm);
+      const lower = new THREE.Group(); lower.position.set(0, 0.04, pz);
+      const la = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.58, 8), pantoMat);
+      la.position.y = 0.29; la.rotation.z = 0.35; lower.add(la);
+      panto.add(lower); panto.userData.lower.push(lower);
+      const upper = new THREE.Group(); upper.position.set(0, 0.60, pz);
+      const ua = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.56, 8), pantoMat);
+      ua.position.y = 0.28; ua.rotation.z = -0.35; upper.add(ua);
+      panto.add(upper); panto.userData.upper.push(upper);
     }
-    const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 0.92; panto.add(pBar);
+    const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 1.16; panto.add(pBar);
     panto.userData.bar = pBar;
     panto.position.set(HEAD / 2, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
     if (cabinG && cabinG.scene) {
