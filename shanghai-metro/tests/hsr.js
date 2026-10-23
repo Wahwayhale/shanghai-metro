@@ -201,6 +201,13 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/停站|可发车/.test(stopInfo.dwell)) fail.push('dwell missing: ' + stopInfo.dwell);
   if (!/施加/.test(stopInfo.park)) fail.push('parking brake missing: ' + stopInfo.park);
 
+  await page.keyboard.press('m'); await page.keyboard.press('l'); await page.keyboard.press('k');
+  await new Promise(r => setTimeout(r, 400));
+  const hot = await page.evaluate(() => ({ mute: window.__sim.G.hsr.audio.muted, light: window.__sim.G.hsr.cabGroup.userData.cabLamp.intensity, head: window.__sim.G.hsr.train.userData.headlightMat.emissiveIntensity }));
+  if (!hot.mute) fail.push('M mute failed');
+  if (hot.light !== 0) fail.push('L light failed: ' + hot.light);
+  if (hot.head !== 0) fail.push('K headlight failed: ' + hot.head);
+
   await page.screenshot({ path: 'shots/hsr-regression.png' }).catch(() => {});
   console.log(JSON.stringify({ ok: fail.length === 0 && errors.length === 0, info, pantoDown: down, pantoUp: up, fail, errors: errors.slice(0, 4) }, null, 1));
   await browser.close();

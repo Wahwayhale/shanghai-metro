@@ -1432,3 +1432,7 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 帮助面板同步列出。
 - 验证：按 M/L/K 后 mute=true/light=0/head=0。
 - 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。
+# HSR 回归校验 M/L/K 快捷键
+
+- 依次按 M/L/K，校验 mute=true、cabLamp=0、headlight=0。
+- 视角/帮助/车门/停车等回归保留；test:hsr 通过。
