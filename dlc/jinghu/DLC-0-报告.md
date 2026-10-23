@@ -1393,3 +1393,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - 投影台面照明开关，点击后 cabLamp.intensity=0，再点恢复 >0.5。
 - 雨刷/方向/3D EB/手柄/门/停车回归保留；test:hsr 通过。
+# 台面头灯开关
+
+- 台面左侧加「头灯」开关（x4.30,z-1.02），投影在屏幕内可点。
+- 点击切车头前照灯材质 emissiveIntensity 2.2/0。
+- 验证：点击后 intensity=0。
+- 正式版 3.06 MB、可读版 3.72 MB；smoke/test:hsr 通过。

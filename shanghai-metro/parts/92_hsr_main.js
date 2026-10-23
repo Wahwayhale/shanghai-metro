@@ -451,10 +451,11 @@
     }
     // wiper / coupling switches on the desk
     const swBase = new THREE.MeshStandardMaterial({ color: 0x1b2328, roughness: 0.7 });
-    for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂'], [4.30, 1.02, '照明']]) {
+    for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂'], [4.30, 1.02, '照明'], [4.30, -1.02, '头灯']]) {
       const sw = add(new THREE.BoxGeometry(0.10, 0.03, 0.10), swBase, sx, 2.36, sz);
       if (txt === '雨刷') g.userData.wiperSwitch = sw;
       if (txt === '照明') g.userData.lightSwitch = sw;
+      if (txt === '头灯') g.userData.headlightSwitch = sw;
       const sl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(txt));
       sl.position.set(sx, 2.38, sz); sl.rotation.x = -Math.PI / 2; g.add(sl);
     }
@@ -622,6 +623,7 @@
     const nr1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.13, 1.72), noseRedMat); nr1.position.set(0.08, 1.18, 0); root.add(nr1);
     const nr2 = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1.60), noseGoldMat); nr2.position.set(0.09, 1.04, 0); root.add(nr2);
     const hlMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2cc, emissiveIntensity: 2.2, roughness: 0.2 });
+    root.userData.headlightMat = hlMat;
     for (const hz of [-0.78, 0.78]) {
       const hl = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.16, 0.24), hlMat);
       hl.position.set(0.10, 1.35, hz); root.add(hl);
