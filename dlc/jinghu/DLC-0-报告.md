@@ -1591,3 +1591,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 相机位置叠加 cabinWalkX/Z；拖拽环视不变。
 - 帮助面板补充按键。
 - 截图 hsr-cabin-walk.png；smoke/test:hsr通过。
+# 车厢视角隐藏站名牌
+
+- 车厢模式遍历并隐藏 512x128 站名牌/信息板，解决尽头透出「北京南」。
+- 回驾驶室/外部自动恢复。
+- 修复效果截图 hsr-cabin-nolabel.png。
+- smoke/test:hsr 通过。

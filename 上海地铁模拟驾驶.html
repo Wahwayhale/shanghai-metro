@@ -18364,6 +18364,7 @@ async function buildHsrService() {
     ],
     train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
+    stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
     doorT: 0, dwellStart: 0, doorSide: -1, parked: false, doorWasOpen: false, legs: [], result: false,
@@ -18754,6 +18755,7 @@ function updateHsrMain(dt) {
   const passengerView = !st.cab && st.camMode === 2;
   if (cabHud) cabHud.classList.toggle('hidden', passengerView);
   if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
+  if (st.stationLabels) for (const l of st.stationLabels) l.visible = !passengerView;
   if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
