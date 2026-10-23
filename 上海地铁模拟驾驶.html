@@ -18366,7 +18366,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, cruise: false, cruiseV: 0, brakeLevel: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, wipersOn: true, camMode: 0, cabinWalkX: 0, cabinWalkZ: 0, deadmanT: 0, deadmanEb: false, ebLatched: false, cruise: false, cruiseV: 0, brakeLevel: 0, pantoT: 1, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     stationLabels: (() => { const a = []; if (world) world.traverse(o => { const m = o.material; if (o.isMesh && m && m.map && m.map.image && m.map.image.width === 512 && m.map.image.height === 128) a.push(o); }); return a; })(),
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
@@ -18797,7 +18797,7 @@ function updateHsrMain(dt) {
   if (st.train && st.train.userData.cabinDoors) { for (const d of st.train.userData.cabinDoors) d.m.position.z = d.dz + Math.sign(d.dz) * 0.72 * st.doorT; }
   if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
   if (st.train && st.train.userData.scenic && (Math.abs(st.x - st.train.userData.scenic.last) > 400 || st.train.userData.scenic.lastStopped !== st.stopped)) { paintCabinScenery(st.train.userData.scenic, st.x, st.stopped); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; st.train.userData.scenic.lastStopped = st.stopped; }
-  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
+  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) { const pt = st.panto ? 1 : 0.25; st.pantoT = (st.pantoT || 1) + (pt - (st.pantoT || 1)) * Math.min(1, dt * 2.5); st.train.userData.pantograph.scale.y = st.pantoT; } if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
   const cabHud = document.getElementById('hsrMainHud');
   const cabinHud = document.getElementById('hsrCabinHud');
   const passengerView = !st.cab && st.camMode === 2;

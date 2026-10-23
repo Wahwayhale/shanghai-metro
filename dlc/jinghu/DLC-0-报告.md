@@ -1756,3 +1756,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 背景改为1024x512等距柱状贴图：渐变+程序化云团。
 - EquirectangularReflectionMapping作为环境背景。
 - smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
+# 受电弓升降平滑
+
+- 受电弓缩放不再瞬切1/0.25，按dt插值，约1-2s升降。
+- P键/失电逻辑不变。
+- smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
