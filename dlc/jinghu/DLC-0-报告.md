@@ -1318,3 +1318,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 17 辆编组覆盖头/中/尾；外部视角可见。
 - 修复 bogie 代码引用 HEAD/carXs 过早导致的 ReferenceError（HSR 初始化失败）；test:hsr 捕获。
 - 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。
+# 驾驶室随速度轻微抖动
+
+- 第一人称相机在 v>0 时叠加 sin/cos 微抖，幅度随速度增大，最大约 6mm。
+- 停车/低速几乎无感；不影响按键/射线（按钮投影测试仍通过）。
+- 正式版 3.05 MB、可读版 3.71 MB；smoke/test:hsr 通过。
