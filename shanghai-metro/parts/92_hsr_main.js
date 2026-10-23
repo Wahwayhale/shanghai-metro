@@ -730,6 +730,14 @@
         }
       }
     }
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0xb9c0c4, roughness: 0.7, metalness: 0.2 });
+    const roofCenters = [HEAD / 2, ...carXs, carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2];
+    for (const rx of roofCenters) {
+      for (const off of [-5.5, 5.5]) {
+        const ac = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.22, 1.5), roofMat);
+        ac.position.set(rx + off, 4.05, 0); root.add(ac);
+      }
+    }
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
