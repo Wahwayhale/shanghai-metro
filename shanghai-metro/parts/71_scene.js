@@ -625,6 +625,16 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+  if (el('hmSched')) {
+    let cum = 0;
+    for (let i = 0; i <= st.stopIdx && i < st.legSched.length; i++) cum += st.legSched[i];
+    const plan = new Date(); plan.setHours(7, 0, 0, 0); plan.setMinutes(plan.getMinutes() + cum / 60);
+    const fmt = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    let actual = '--:--';
+    if (st.stopped) actual = fmt(new Date());
+    else if (st.v > 1) actual = fmt(new Date(Date.now() + ((stop - st.x) / st.v / 60) * 60000));
+    el('hmSched').textContent = '计划 ' + fmt(plan) + ' · 实际 ' + actual;
+  }
   if (el('hmEta')) {
     if (st.stopped || st.v < 1) el('hmEta').textContent = '预计 --:--';
     else {

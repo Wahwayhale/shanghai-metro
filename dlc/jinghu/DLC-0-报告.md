@@ -956,3 +956,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 
 - tests/hsr.js 设置 yaw=1.0/pitch=0.2，点「回正视角」后校验 yaw/pitch=0。
 - 拖拽环视、HUD 按钮、冷却/门/停车回归保留；npm run test:hsr 通过。
+# HUD 计划/实际时刻
+
+- 新增 hmSched：按 G25 07:00 发车 + LEG_SCHED 计算计划到达（南京南 10:14）。
+- 运行中按距离/速度估算实际到达；停站显示当前时刻。
+- HUD 同时保留 ETA。
+- 正式版 2.99 MB、可读版 3.65 MB；smoke/test:hsr 通过。
