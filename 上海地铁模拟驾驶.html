@@ -18341,7 +18341,7 @@ async function buildHsrService() {
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
-    doorT: 0, dwellStart: 0, legs: [], result: false,
+    doorT: 0, dwellStart: 0, doorSide: -1, legs: [], result: false,
     legSched: [11640, 3840], legStart: performance.now(),
     tsr: (() => { const start = 300000 + Math.floor(Math.random() * 650000); const v = [80, 120, 160][Math.floor(Math.random() * 3)]; return { start, end: start + 2000, v }; })()
   };
@@ -18513,12 +18513,12 @@ function updateHsrMain(dt) {
   const dstep = Math.min(1, dt / 0.8);
   if (st.doorT < doorTarget) st.doorT = Math.min(doorTarget, st.doorT + dstep);
   else if (st.doorT > doorTarget) st.doorT = Math.max(doorTarget, st.doorT - dstep);
-  for (const d of st.doorNodes) d.node.position.y = d.y0 + d.side * 0.55 * st.doorT;
+  for (const d of st.doorNodes) d.node.position.y = d.y0 + (d.side === st.doorSide ? d.side * 0.55 * st.doorT : 0);
   if (st.midDoors && st.midDoors.length) {
     const cm = new THREE.Matrix4(), im = new THREE.Matrix4();
     for (const d of st.midDoors) {
       for (let i = 0; i < d.carXs.length; i++) {
-        cm.makeTranslation(d.carXs[i], d.side * 0.55 * st.doorT, 0);
+        cm.makeTranslation(d.carXs[i], d.side === st.doorSide ? d.side * 0.55 * st.doorT : 0, 0);
         im.multiplyMatrices(cm, d.world);
         d.inst.setMatrixAt(i, im);
       }
@@ -18665,7 +18665,7 @@ function updateHsrMain(dt) {
   if (el('mcSpeed')) el('mcSpeed').textContent = Math.round(kmh);
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
-  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启' : '车门关闭') : '车门关闭';
+  if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（左）' : '车门关闭') : '车门关闭';
   if (el('hmDwell')) {
     if (st.stopped) {
       const left = Math.max(0, 120 - (performance.now() - (st.dwellStart || performance.now())) / 1000);
