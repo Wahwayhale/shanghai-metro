@@ -620,7 +620,7 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
-  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
+  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;

@@ -18567,7 +18567,7 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
-  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; }
+  if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;
@@ -23179,6 +23179,15 @@ window.__sim = {
         ac.position.set(rx + off, 4.05, 0); root.add(ac);
       }
     }
+    const panto = new THREE.Group();
+    const pantoMat = new THREE.MeshStandardMaterial({ color: 0x4a5359, metalness: 0.7, roughness: 0.35 });
+    const pBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 1.2), pantoMat); panto.add(pBase);
+    for (const pz of [-0.4, 0.4]) {
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 8), pantoMat);
+      arm.position.set(0, 0.45, pz); arm.rotation.z = 0.35; panto.add(arm);
+    }
+    const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 0.92; panto.add(pBar);
+    panto.position.set(carXs[1] || HEAD + 12, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
