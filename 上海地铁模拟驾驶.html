@@ -23658,6 +23658,15 @@ window.__sim = {
       sg.fillStyle = '#6f8c5c'; for (let i = 0; i < 16; i++) sg.fillRect(i * 34, 176 + (i % 3) * 10, 18, 4);
       const stex = new THREE.CanvasTexture(scenic); stex.colorSpace = THREE.SRGBColorSpace;
       root.userData.scenic = { ctx: sg, tex: stex, last: -1e9 };
+      const ledC = document.createElement('canvas'); ledC.width = 512; ledC.height = 64;
+      const lg2 = ledC.getContext('2d'); lg2.fillStyle = '#071018'; lg2.fillRect(0, 0, 512, 64);
+      lg2.fillStyle = '#ffb340'; lg2.font = '700 26px "Microsoft YaHei", monospace'; lg2.textAlign = 'center'; lg2.textBaseline = 'middle';
+      lg2.fillText('05车  G25  北京南—上海虹桥  350km/h  24°C', 256, 34);
+      const ledTex = new THREE.CanvasTexture(ledC); ledTex.colorSpace = THREE.SRGBColorSpace;
+      for (const dx of [-12.26, 12.26]) {
+        const led = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.30), new THREE.MeshBasicMaterial({ map: ledTex, side: THREE.DoubleSide }));
+        led.position.set((carXs[3] || 0) + dx, 3.10, 0); led.rotation.y = dx < 0 ? Math.PI / 2 : -Math.PI / 2; root.add(led);
+      }
       const doorMat = new THREE.MeshStandardMaterial({ color: 0x8fa6b4, roughness: 0.35, metalness: 0.15 });
       for (const dx of [-12.34, 12.34]) {
         const endPanel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.30, 2.85), doorMat);
