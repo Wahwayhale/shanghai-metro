@@ -1786,3 +1786,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - wall颜色乘0.68；light emissive 0.55；seat_light乘0.85。
 - 降低客室白色过曝，增加层次。
 - 截图 hsr-cabin-dark.png；smoke/test:hsr通过。
+# 进站站名牌
+
+- 站前30m、z-4.2、y3.2加5.6x1.4m站名牌，朝向来车方向。
+- 修复此前站名牌在z-10/侧后方不可见的问题。
+- 截图 hsr-appname.png；smoke/test:hsr通过。
