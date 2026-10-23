@@ -232,7 +232,7 @@
     g.fillText(name, 256, 64);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, side: THREE.DoubleSide, depthTest: false });
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(22, 5.5), m);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 4.0), m);
     mesh.rotation.y = -Math.PI / 2;
     mesh.renderOrder = 10;
     mesh.frustumCulled = false;
