@@ -853,6 +853,7 @@ function updateHsrMain(dt) {
           lamp.emissiveIntensity = over && blink ? 2.2 : 0.3;
         }
         const doorOpen = !!(st.stopped && st.doorT > 0.2);
+        for (const b of (st.cabGroup.userData.doorButtons || [])) { if (b.mat) { const on = b.side === st.doorSide; b.mat.emissive.setHex(on ? (doorOpen ? 0xffb340 : 0x2f9e5a) : 0x142028); b.mat.emissiveIntensity = on ? 1.1 : 0.25; } }
         for (const lm of (st.cabGroup.userData.doorLeds || [])) lm.emissive.setHex(doorOpen ? 0xc8102e : 0x2f9e5a);
         const wipers = st.cabGroup.userData.wipers || [];
         const wt = performance.now() / 1000;
