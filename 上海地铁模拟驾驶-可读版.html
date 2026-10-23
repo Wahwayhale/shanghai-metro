@@ -84134,16 +84134,18 @@ window.__sim = {
     ]);
     const root = new THREE.Group();
     root.name = 'HSR-MAIN-TRAIN';
-    const HEAD = 25.7, MID = 25.5, GAP = 0.35;
+    const HEAD = 27.58, MID = 25.65, GAP = 0.0;
 
     const head = headG.scene;
     head.visible = true;
     head.position.set(HEAD / 2, 0, 0);
+    head.scale.x = 27.58 / 25.95;
     root.add(head);
     const liveryGeo = liveryRibbonGeometry();
     const liveryMat = new THREE.MeshBasicMaterial({ map: liveryTexture(), side: THREE.DoubleSide, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     const headLivery = new THREE.Mesh(liveryGeo, liveryMat);
     headLivery.position.x = HEAD / 2;
+    headLivery.scale.x = 27.58 / 25.95;
     headLivery.renderOrder = 2;
     root.add(headLivery);
     const noseRedMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.5, metalness: 0.15 });
@@ -84189,6 +84191,7 @@ window.__sim = {
     const cm = new THREE.Matrix4(), im = new THREE.Matrix4();
     for (const mesh of midMeshes) {
       const inst = new THREE.InstancedMesh(mesh.geometry, mesh.material, carXs.length);
+      inst.scale.x = 25.65 / 25.5;
       for (let i = 0; i < carXs.length; i++) {
         cm.makeTranslation(carXs[i], 0, 0);
         im.multiplyMatrices(cm, mesh.matrixWorld);
@@ -84211,6 +84214,7 @@ window.__sim = {
     tail.visible = true;
     tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
     tail.rotation.y = Math.PI;
+    tail.scale.x = 27.58 / 25.95;
     const tlMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, emissive: 0xff1a1a, emissiveIntensity: 1.8, roughness: 0.3 });
     for (const tz of [-0.72, 0.72]) {
       const tl = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.22), tlMat);
