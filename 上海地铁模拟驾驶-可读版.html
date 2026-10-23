@@ -80036,13 +80036,14 @@ function updateHsrMain(dt) {
       if (!st.lastDmi || now - st.lastDmi > 220) {
         st.lastDmi = now;
         const kmhD = Math.round(st.v * 3.6);
-        const modeD = (keys['Space'] || st.touchEb) ? '紧急制动'
+        const modeD = (keys['Space'] || st.touchEb || st.deadmanEb) ? '紧急制动'
           : ((!st.panto || !st.vcb) ? '无电'
           : ((st.v - limit / 3.6) > 5 / 3.6 ? 'ATP制动'
           : (st.stopped ? '停车'
           : (kmhD < 1 ? '待发'
-          : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引'
-          : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行'))))));
+          : (st.cruise ? '恒速'
+          : ((st.brakeLevel || 0) > 0 ? '制动 ' + st.brakeLevel + 'B'
+          : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : '惰行')))))));
         const vals = [
           ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
           ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
@@ -80103,7 +80104,7 @@ function updateHsrMain(dt) {
   if (el('hmView')) el('hmView').textContent = st.cab ? '驾驶室' : ['前左', '车尾', '车厢'][st.camMode || 0];
   if (el('hmSpeed')) el('hmSpeed').textContent = Math.round(kmh);
   if (el('hmAtp')) el('hmAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
-  if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (throttle ? '牵引' : '惰行'));
+  if (el('hmMode')) el('hmMode').textContent = st.stopped ? '停车' : (kmh < 1 ? '待发' : (st.cruise ? '恒速' : ((st.brakeLevel || 0) > 0 ? '制动 ' + st.brakeLevel + 'B' : (throttle ? '牵引' : '惰行'))));
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';

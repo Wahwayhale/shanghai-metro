@@ -1643,3 +1643,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 台面加深蓝「恒速」按钮，点击切换cruise，目标为当前速度（最低10m/s）。
 - 验证点击投影按钮：cruise=true,target=10。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# DMI/ HUD模式联动制动级位/恒速
+
+- modeD：紧急制动→无电→ATP制动→停车→待发→恒速→制动 xB→牵引→惰行。
+- HUD hmMode 同步。
+- EB 判定加入 deadmanEb。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
