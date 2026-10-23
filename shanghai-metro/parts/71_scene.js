@@ -431,6 +431,7 @@ async function buildHsrService() {
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
+  bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmVcb', () => { if (G.hsr && G.hsr.panto) G.hsr.vcb = !G.hsr.vcb; });
   bind('hmExit', exitHsrMain);
   const again = document.getElementById('hmAgain');
@@ -502,6 +503,18 @@ function createHsrAudio() {
     wind.connect(windGain); windGain.connect(master); wind.start();
     return { ctx, master, motor, motorGain, wind, windGain, muted: false };
   } catch (e) { return null; }
+}
+
+function playHsrHorn(audio) {
+  if (!audio) return;
+  const ctx = audio.ctx, now = ctx.currentTime;
+  for (const f of [440, 554]) {
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.10, now + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
+    o.connect(g); g.connect(audio.master); o.start(now); o.stop(now + 1.05);
+  }
 }
 
 function hsrMainLimit(x) {
@@ -722,6 +735,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') e.preventDefault();
   if (e.code === 'KeyR') {
     resetHsrMain();
+  } else if (e.code === 'KeyH') {
+    if (G.hsr) playHsrHorn(G.hsr.audio);
   } else if (e.code === 'KeyP') {
     if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; }
   } else if (e.code === 'KeyV') {
