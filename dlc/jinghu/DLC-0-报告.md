@@ -1543,3 +1543,10 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 车窗 window_sky 材质改为 CanvasTexture 外景（天空渐变/远山/田野），不再透出车体涂装。
 - 站前 500m/250m/80m 三块蓝底「停车标 Xm」牌，位置 z-2.15，进站可见；截图 hsr-approach.png。
 - 验证 smoke/test:hsr 通过。
+# 座椅曲面重做（Blender v7）
+
+- 删除方盒靠背外壳；靠背改为圆角蓝色软包。
+- 坐垫/坐盆/头枕/侧翼/扶手全部圆角+平滑。
+- 58k 顶点，GLB 3.4MB，单文件 7.5MB（上限100MB内）。
+- 截图 hsr-cabin-seats2.png。
+- 窗材质仍为 window_sky + Three 外景贴图。
