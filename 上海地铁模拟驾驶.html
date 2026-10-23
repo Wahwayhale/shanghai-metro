@@ -18951,7 +18951,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') e.preventDefault();
   if (e.code === 'BracketLeft' && G.hsr && G.hsr.cruise) { G.hsr.cruiseV = Math.max(20 / 3.6, (G.hsr.cruiseV || 0) - 5 / 3.6); }
   if (e.code === 'BracketRight' && G.hsr && G.hsr.cruise) { G.hsr.cruiseV = Math.min(350 / 3.6, (G.hsr.cruiseV || 0) + 5 / 3.6); }
-  if (e.code === 'KeyS' && !e.repeat) { if (G.hsr) G.hsr.brakeLevel = Math.min(7, (G.hsr.brakeLevel || 0) + 1); }
+  if (e.code === 'KeyS' && !e.repeat) { if (G.hsr) { G.hsr.brakeLevel = Math.min(7, (G.hsr.brakeLevel || 0) + 1); G.hsr.cruise = false; } }
   if (e.code === 'KeyA' && !e.repeat) { if (G.hsr) G.hsr.brakeLevel = Math.max(0, (G.hsr.brakeLevel || 0) - 1); }
   if (e.code === 'KeyM') { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (err) {} } }
   if (e.code === 'KeyL') { if (G.hsr && G.hsr.cabGroup && G.hsr.cabGroup.userData.cabLamp) { const l = G.hsr.cabGroup.userData.cabLamp; l.intensity = l.intensity > 0.1 ? 0 : 0.9; try { localStorage.setItem('hsrCabLight', l.intensity > 0.1 ? '1' : '0'); } catch (err) {} } }

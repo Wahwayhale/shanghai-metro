@@ -1664,3 +1664,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - brakeLevel>0 时牵引被封锁，W不再加速；必须A回0级才能牵引。
 - 验证：S+W → v=0；A+W → 开始加速。
 - smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
+# 制动自动解除恒速
+
+- S加制动级位时 cruise=false，避免恒速与人工制动打架。
+- 验证：恒速状态按S → cruise=false, level=1。
+- smoke/test:hsr通过；单文件9.69MB、可读版10.35MB。
