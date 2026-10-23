@@ -182,7 +182,7 @@
       const db = dbC.getContext('2d'); db.fillStyle = '#0b1218'; db.fillRect(0, 0, 512, 128);
       db.strokeStyle = '#c8102e'; db.lineWidth = 8; db.strokeRect(4, 4, 504, 120);
       db.fillStyle = '#f2f7fa'; db.font = '700 40px "Microsoft YaHei", sans-serif'; db.textAlign = 'center'; db.textBaseline = 'middle';
-      db.fillText('G25  北京南 → 上海虹桥  07:00', 256, 66);
+      db.fillText('G25  北京南 → 上海虹桥  17:00', 256, 66);
       const dbTex = new THREE.CanvasTexture(dbC); dbTex.colorSpace = THREE.SRGBColorSpace;
       const dbMesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: dbTex, transparent: true, side: THREE.DoubleSide }));
       dbMesh.position.set(-st.x + 160, 4.2, -5.4); dbMesh.rotation.y = Math.PI / 2; g.add(dbMesh);
