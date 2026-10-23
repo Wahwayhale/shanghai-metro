@@ -1139,3 +1139,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 不命中手柄/红按钮时仍走拖拽环视；HUD 按钮不受影响。
 - 验证：按住左手柄 touchThrottle=1。
 - 正式版 3.04 MB、可读版 3.70 MB；smoke/test:hsr 通过。
+# HSR 回归校验 3D 紧急按钮/手柄
+
+- 将驾驶室红蘑菇按钮投影到屏幕坐标，按住校验 touchEb=1。
+- 将左手柄投影，按住校验 touchThrottle=1。
+- 松开不残留；全量 test:hsr 通过。

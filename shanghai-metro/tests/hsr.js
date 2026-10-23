@@ -43,6 +43,26 @@ const { PAGE_URL, CHROME } = require('./testenv');
   if (!/计划 10:14/.test(info.sched)) fail.push('schedule HUD: ' + info.sched);
   if (!/正晚点/.test(info.punc)) fail.push('punctuality HUD: ' + info.punc);
 
+  const ebPos = await page.evaluate(() => {
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, btn = window.__sim.G.hsr.cabGroup.userData.ebButton;
+    const v = new T.Vector3(); btn.getWorldPosition(v); v.project(cam);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  });
+  await page.mouse.move(ebPos.x, ebPos.y); await page.mouse.down(); await new Promise(r => setTimeout(r, 400));
+  const ebDown = await page.evaluate(() => window.__sim.G.hsr.touchEb);
+  await page.mouse.up();
+  if (ebDown !== 1) fail.push('3D EB not pressed: ' + ebDown);
+
+  const levPos = await page.evaluate(() => {
+    const T = window.__HSR_THREE, cam = window.__hsrMainCamera, lev = window.__sim.G.hsr.cabGroup.userData.levers[0];
+    const v = new T.Vector3(); lev.getWorldPosition(v); v.project(cam);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  });
+  await page.mouse.move(levPos.x, levPos.y); await page.mouse.down(); await new Promise(r => setTimeout(r, 400));
+  const levDown = await page.evaluate(() => window.__sim.G.hsr.touchThrottle);
+  await page.mouse.up();
+  if (levDown !== 1) fail.push('3D lever not pressed: ' + levDown);
+
   await page.click('#hmPanto');
   await new Promise(r => setTimeout(r, 1000));
   const down = await page.evaluate(() => document.getElementById('hmSys').textContent);
