@@ -451,9 +451,10 @@
     }
     // wiper / coupling switches on the desk
     const swBase = new THREE.MeshStandardMaterial({ color: 0x1b2328, roughness: 0.7 });
-    for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂']]) {
+    for (const [sx, sz, txt] of [[4.30, -0.72, '雨刷'], [4.30, 0.42, '连挂'], [4.30, 1.02, '照明']]) {
       const sw = add(new THREE.BoxGeometry(0.10, 0.03, 0.10), swBase, sx, 2.36, sz);
       if (txt === '雨刷') g.userData.wiperSwitch = sw;
+      if (txt === '照明') g.userData.lightSwitch = sw;
       const sl = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.08), dirLabel(txt));
       sl.position.set(sx, 2.38, sz); sl.rotation.x = -Math.PI / 2; g.add(sl);
     }
@@ -590,6 +591,7 @@
     }
     // interior light
     const lamp = new THREE.PointLight(0xcfe6f2, 0.9, 9, 2); lamp.position.set(5.2, 3.6, 0); g.add(lamp);
+    g.userData.cabLamp = lamp;
     return g;
   }
 
