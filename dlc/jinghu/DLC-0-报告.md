@@ -1556,3 +1556,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 客室 66k 顶点，GLB 5.07MB，单文件 9.68MB（100MB内）。
 - 截图 hsr-cabin-seatparts.png。
 - smoke/test:hsr 通过。
+# 客室车窗外景随里程变化
+
+- 每 400m 根据 st.x 重绘车窗 CanvasTexture：天空/远山/田野，部分区段出现建筑群/河流。
+- 不再是一张固定贴图；截图 hsr-cabin-scenery2.png（50km）。
+- 单文件 9.69MB、可读版 10.35MB；smoke/test:hsr 通过。

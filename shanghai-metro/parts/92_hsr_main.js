@@ -956,6 +956,7 @@
       sg.fillStyle = '#8fae76'; sg.fillRect(0, 154, 512, 102);
       sg.fillStyle = '#6f8c5c'; for (let i = 0; i < 16; i++) sg.fillRect(i * 34, 176 + (i % 3) * 10, 18, 4);
       const stex = new THREE.CanvasTexture(scenic); stex.colorSpace = THREE.SRGBColorSpace;
+      root.userData.scenic = { ctx: sg, tex: stex, last: -1e9 };
       cabinG.scene.traverse(o => {
         if (!o.isMesh || !o.material) return;
         const mats = Array.isArray(o.material) ? o.material : [o.material];

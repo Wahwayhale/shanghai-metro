@@ -693,6 +693,32 @@ function drawHsrBrake(ctx, st, kmh) {
   ctx.fillText('停车制动  ' + (st.parked ? '施加' : '缓解') + '   ·   速度 ' + Math.round(kmh) + ' km/h', 20, 302);
 }
 
+function paintCabinScenery(scenic, x) {
+  const ctx = scenic.ctx; if (!ctx) return;
+  const seed = Math.floor(x / 500);
+  const rnd = n => { const v = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return v - Math.floor(v); };
+  const W = 512, H = 256, horizon = 135 + Math.floor(rnd(1) * 35);
+  const grad = ctx.createLinearGradient(0, 0, 0, horizon);
+  grad.addColorStop(0, '#6fa8c8'); grad.addColorStop(0.6, '#cfe6f2'); grad.addColorStop(1, '#e8f2f4');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, W, horizon);
+  ctx.fillStyle = '#7d9a6a'; ctx.beginPath(); ctx.moveTo(0, horizon);
+  for (let i = 0; i <= 8; i++) ctx.lineTo(i * 64, horizon - 15 - rnd(i + 2) * 30);
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#8fae76'; ctx.fillRect(0, horizon + 4, W, H - horizon);
+  if (seed % 5 === 0) {
+    ctx.fillStyle = '#aeb6ba';
+    for (let i = 0; i < 7; i++) {
+      const bw = 18 + rnd(i + 20) * 26, bh = 18 + rnd(i + 30) * 45;
+      ctx.fillRect(40 + i * 62, horizon - bh, bw, bh + 4);
+    }
+  }
+  if (seed % 7 === 0) {
+    ctx.fillStyle = '#6f8fa6'; ctx.fillRect(0, horizon + 20, W, 12);
+  }
+  ctx.fillStyle = '#6f8c5c';
+  for (let i = 0; i < 18; i++) ctx.fillRect(i * 30, horizon + 40 + (i % 4) * 14, 16, 4);
+}
+
 function updateHsrMain(dt) {
   const st = G.hsr;
   if (!st) return;
@@ -763,6 +789,7 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
+  if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
