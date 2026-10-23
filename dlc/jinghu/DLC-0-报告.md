@@ -1751,3 +1751,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - buildHsrWorld把scene.background换成64x512竖向渐变（深蓝→浅蓝→近地白）。
 - 退出场景恢复原背景。
 - 截图 hsr-skygrad.png；smoke/test:hsr通过。
+# 天空云层
+
+- 背景改为1024x512等距柱状贴图：渐变+程序化云团。
+- EquirectangularReflectionMapping作为环境背景。
+- smoke/test:hsr通过；单文件9.70MB、可读版10.36MB。
