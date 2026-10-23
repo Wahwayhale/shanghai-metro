@@ -23016,6 +23016,23 @@ window.__sim = {
       }
     }
 
+    const carNumMat = (n) => {
+      const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+      const g2 = c.getContext('2d'); g2.clearRect(0, 0, 128, 128);
+      g2.fillStyle = 'rgba(20,24,28,0.9)'; g2.font = '800 72px system-ui, sans-serif'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
+      g2.fillText(String(n), 64, 68);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false });
+    };
+    const addCarNum = (x, n) => {
+      for (const dz of [-1.47, 1.47]) {
+        const p = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), carNumMat(n));
+        p.position.set(x, 2.32, dz); if (dz < 0) p.rotation.y = Math.PI; root.add(p);
+      }
+    };
+    addCarNum(HEAD / 2, 1);
+    for (let ci = 0; ci < carXs.length; ci++) addCarNum(carXs[ci], ci + 2);
+    addCarNum(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 17);
     const tail = headG.scene.clone(true);
     tail.visible = true;
     tail.position.set(carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2, 0, 0);
