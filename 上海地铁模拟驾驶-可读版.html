@@ -84382,6 +84382,18 @@ window.__sim = {
     midLivery.renderOrder = 2;
     root.add(midLivery);
 
+    const bogieMat = new THREE.MeshStandardMaterial({ color: 0x2b3237, roughness: 0.75, metalness: 0.3 });
+    const bogieCenters = [HEAD / 2, ...carXs, carXs[carXs.length - 1] + MID / 2 + GAP + HEAD / 2];
+    for (const bx of bogieCenters) {
+      for (const off of [-8.9, 8.9]) {
+        const bg = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.35, 2.0), bogieMat);
+        bg.position.set(bx + off, 0.55, 0); root.add(bg);
+        for (const bz of [-1.15, 1.15]) {
+          const side = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.22, 0.12), bogieMat);
+          side.position.set(bx + off, 0.55, bz); root.add(side);
+        }
+      }
+    }
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
