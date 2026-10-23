@@ -18487,6 +18487,9 @@ function updateHsrMain(dt) {
     const eb = (keys['Space'] || st.touchEb) ? 1 : 0;
     let a = 0.45 * throttle - 0.8 * brake - drag;
     if (eb) a = -2.5;
+    const overLimit = st.v - limit / 3.6;
+    if (overLimit > 2 / 3.6) a = Math.min(a, -2.5);
+    else if (overLimit > 0.5) a = Math.min(a, -1.2);
     if (st.v > perm + 0.3) a = Math.min(a, -0.8);
     st.v = Math.max(0, Math.min(350 / 3.6, st.v + a * dt));
     st.x = Math.min(1301900, st.x + st.v * dt);
@@ -18538,7 +18541,13 @@ function updateHsrMain(dt) {
       if (!st.lastDmi || now - st.lastDmi > 220) {
         st.lastDmi = now;
         const kmhD = Math.round(st.v * 3.6);
-        const modeD = (keys['Space'] || st.touchEb) ? '紧急制动' : ((!st.panto || !st.vcb) ? '无电' : (st.stopped ? '停车' : (kmhD < 1 ? '待发' : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引' : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行')))));
+        const modeD = (keys['Space'] || st.touchEb) ? '紧急制动'
+          : ((!st.panto || !st.vcb) ? '无电'
+          : ((st.v - limit / 3.6) > 0.5 ? 'ATP制动'
+          : (st.stopped ? '停车'
+          : (kmhD < 1 ? '待发'
+          : ((keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle) ? '牵引'
+          : ((keys['KeyS'] || keys['ArrowDown'] || st.touchBrake) ? '制动' : '惰行'))))));
         const vals = [
           ['DMI-1', String(kmhD), 'ATP ' + Math.round(hsrMainLimit(st.x))],
           ['DMI-2', st.stops[st.stopIdx].name, Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km'],
@@ -18655,6 +18664,7 @@ function updateHsrMain(dt) {
   if (el('hmState')) {
     const needV = Math.sqrt(Math.max(0, 2 * 0.75 * Math.max(0, stop - st.x - 20)));
     if ((keys['Space'] || st.touchEb)) { el('hmState').textContent = '紧急制动'; el('hmState').style.color = '#ff4d4d'; }
+    else if (!st.stopped && st.v > limit / 3.6 + 0.5) { el('hmState').textContent = 'ATP制动'; el('hmState').style.color = '#ff4d4d'; }
     else if (!st.stopped && st.v > needV + 2) { el('hmState').textContent = '制动'; el('hmState').style.color = '#ff6b6b'; }
     else if (!st.stopped && stop - st.x < 300) { el('hmState').textContent = '进站'; el('hmState').style.color = '#ffd479'; }
     else { el('hmState').textContent = ''; }
