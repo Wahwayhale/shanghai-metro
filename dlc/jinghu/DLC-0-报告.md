@@ -1566,3 +1566,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - GLB 的 glass 材质在 Three 中改为不透明蓝灰，端门不再透出「北京南」站名牌。
 - 行李架也变为半实心蓝灰；视觉上更干净。
 - 单文件9.69MB、可读版10.35MB；smoke/test:hsr通过。
+# 客室端门实体化
+
+- 在端门位置加两扇实心蓝灰门板，遮住端门玻璃/外部站名牌。
+- 修复参考 passengerX 在车门块之前未定义的问题（改为 carXs[3]）。
+- 单文件9.69MB、可读版10.35MB；smoke/test:hsr通过。
+- 截图 hsr-cabin-soliddoor.png。
