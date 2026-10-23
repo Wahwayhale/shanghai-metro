@@ -353,6 +353,21 @@
     add(knob, trim, 4.68, 2.58, -1.05);
     const l2 = add(lever, trim, 4.6, 2.38, 1.05, 0, 0, -0.2);
     add(knob, trim, 4.68, 2.58, 1.05);
+    const leverLabel = (text) => {
+      const lc = document.createElement('canvas'); lc.width = 256; lc.height = 64;
+      const lg = lc.getContext('2d'); lg.fillStyle = '#1a2228'; lg.fillRect(0, 0, 256, 64);
+      lg.strokeStyle = '#5a6a74'; lg.lineWidth = 3; lg.strokeRect(2, 2, 252, 60);
+      lg.fillStyle = '#dceaf2'; lg.font = '700 30px "Microsoft YaHei", sans-serif'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
+      lg.fillText(text, 128, 34);
+      const lt = new THREE.CanvasTexture(lc); lt.colorSpace = THREE.SRGBColorSpace;
+      return new THREE.MeshBasicMaterial({ map: lt });
+    };
+    for (const side of [-1, 1]) {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.06, 0.30), mid);
+      base.position.set(4.55, 2.33, side * 1.05); g.add(base);
+      const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.13), leverLabel(side < 0 ? '牵引' : '制动'));
+      lab.position.set(4.55, 2.365, side * 1.05); lab.rotation.x = -Math.PI / 2; g.add(lab);
+    }
     g.userData.levers = [l1, l2];
     const warnMat = new THREE.MeshStandardMaterial({ color: 0x2a0a0a, emissive: 0x400000, emissiveIntensity: 0.3 });
     add(new THREE.BoxGeometry(0.10, 0.04, 0.10), warnMat, 4.95, 2.22, 1.15);
