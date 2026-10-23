@@ -171,7 +171,8 @@ if (READABLE) {
 const hsrGlbFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-lod-v011.glb');
 const hsrMiddleFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-middle-lod-v003.glb');
 const hsrHeadMergedFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-merged-v001.glb');
-let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\nconst HSR_HEAD_MERGED_GLB_B64 = "";\n';
+const hsrCabinFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-passenger-cabin-v001.glb');
+let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\nconst HSR_HEAD_MERGED_GLB_B64 = "";\nconst HSR_CABIN_GLB_B64 = "";\n';
 if (fs.existsSync(hsrGlbFile)) {
   const headB64 = JSON.stringify(fs.readFileSync(hsrGlbFile).toString('base64'));
   const midB64 = fs.existsSync(hsrMiddleFile)
@@ -180,7 +181,10 @@ if (fs.existsSync(hsrGlbFile)) {
   const headMergedB64 = fs.existsSync(hsrHeadMergedFile)
     ? JSON.stringify(fs.readFileSync(hsrHeadMergedFile).toString('base64'))
     : '""';
-  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${headB64};\nconst HSR_MIDDLE_GLB_B64 = ${midB64};\nconst HSR_HEAD_MERGED_GLB_B64 = ${headMergedB64};\n`;
+  const cabinB64 = fs.existsSync(hsrCabinFile)
+    ? JSON.stringify(fs.readFileSync(hsrCabinFile).toString('base64'))
+    : '""';
+  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${headB64};\nconst HSR_MIDDLE_GLB_B64 = ${midB64};\nconst HSR_HEAD_MERGED_GLB_B64 = ${headMergedB64};\nconst HSR_CABIN_GLB_B64 = ${cabinB64};\n`;
   console.log('[dlc] 高铁头车 LOD GLB 内联', (fs.statSync(hsrGlbFile).size / 1024).toFixed(0) + ' KB');
   if (fs.existsSync(hsrMiddleFile)) {
     console.log('[dlc] 高铁中间车 LOD GLB 内联', (fs.statSync(hsrMiddleFile).size / 1024).toFixed(0) + ' KB');

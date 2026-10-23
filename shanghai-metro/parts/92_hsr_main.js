@@ -93,8 +93,11 @@
       sg.fillStyle = '#ffffff'; sg.font = '800 44px "Microsoft YaHei", sans-serif'; sg.textAlign = 'center'; sg.textBaseline = 'middle';
       sg.fillText('16辆 / 17辆动车组停车位置标', 256, 66);
       const stopTex = new THREE.CanvasTexture(stopC); stopTex.colorSpace = THREE.SRGBColorSpace;
-      const stopBoard = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
-      stopBoard.position.set(-st.x + 7, 2.15, -2.2); stopBoard.rotation.y = -Math.PI / 2; g.add(stopBoard);
+      const stopBoard = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1.0), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
+      stopBoard.position.set(-st.x + 12, 2.3, -1.95); stopBoard.rotation.y = -Math.PI / 2; g.add(stopBoard);
+      const gantry = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.8), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
+      gantry.position.set(-st.x + 14, 4.55, 0); gantry.rotation.y = -Math.PI / 2; g.add(gantry);
+
       for (let ii = -4; ii <= 4; ii++) {
         const info = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.64), infoMat);
         info.position.set(-st.x + ii * 50, 6.4, -7.5); g.add(info);
@@ -750,9 +753,10 @@
 
   async function buildTrain(scene) {
     const THREE = window.__HSR_THREE;
-    const [headG, midG] = await Promise.all([
+    const [headG, midG, cabinG] = await Promise.all([
       loadGltf(window.__HSR_ASSETS.head),
-      loadGltf(window.__HSR_ASSETS.middle)
+      loadGltf(window.__HSR_ASSETS.middle),
+      window.__HSR_ASSETS.cabin ? loadGltf(window.__HSR_ASSETS.cabin).catch(() => null) : Promise.resolve(null)
     ]);
     const root = new THREE.Group();
     root.name = 'HSR-MAIN-TRAIN';
@@ -929,6 +933,13 @@
     }
     const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 0.92; panto.add(pBar);
     panto.position.set(HEAD / 2, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
+    if (cabinG && cabinG.scene) {
+      const cabin = cabinG.scene;
+      cabin.position.set(carXs[3], 1.25, 0);
+      cabin.name = 'HSR-PASSENGER-CABIN';
+      root.add(cabin);
+      root.userData.passengerX = carXs[3];
+    }
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
