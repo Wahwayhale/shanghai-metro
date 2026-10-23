@@ -1242,6 +1242,22 @@ const STATION_EN2 = {'北京南':'Beijing South','廊坊':'Langfang','天津南'
       }
     }
     root.scale.set(1, 0.837, 0.977);
+    const D2 = window.HSR_DATA;
+    if (D2 && D2.STATIONS) {
+      const aiGroup = new THREE.Group(); aiGroup.name = 'HSR-AI-TRAINS';
+      for (const st of D2.STATIONS) {
+        if (!['北京南', '南京南', '上海虹桥'].includes(st.name)) continue;
+        const wx = -st.x;
+        for (const zi of [0, 1, 2]) {
+          const az = -13.5 - zi * 48;
+          const headClone = head.clone(true);
+          headClone.position.set(wx - 100 - 25.95, 0, az);
+          headClone.scale.set(1, 1, 1);
+          aiGroup.add(headClone);
+        }
+      }
+      scene.add(aiGroup);
+    }
     scene.add(root);
     return root;
   }
