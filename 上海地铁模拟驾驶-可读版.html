@@ -83757,6 +83757,17 @@ window.__sim = {
         const back = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.42, 0.08), mat(0x4d575f, 0.8));
         back.position.set(-st.x + bo, 1.72, -6.02); g.add(back);
       }
+      const clockC = document.createElement('canvas'); clockC.width = 128; clockC.height = 128;
+      const ck = clockC.getContext('2d'); ck.fillStyle = '#f4f6f7'; ck.beginPath(); ck.arc(64, 64, 60, 0, Math.PI * 2); ck.fill();
+      ck.strokeStyle = '#1a2328'; ck.lineWidth = 4; ck.stroke();
+      for (let h = 0; h < 12; h++) { const a = h * Math.PI / 6; ck.beginPath(); ck.moveTo(64 + Math.cos(a) * 48, 64 + Math.sin(a) * 48); ck.lineTo(64 + Math.cos(a) * 54, 64 + Math.sin(a) * 54); ck.stroke(); }
+      ck.lineWidth = 5; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64 + Math.cos(-Math.PI / 3) * 30, 64 + Math.sin(-Math.PI / 3) * 30); ck.stroke();
+      ck.lineWidth = 3; ck.beginPath(); ck.moveTo(64, 64); ck.lineTo(64, 64 - 40); ck.stroke();
+      const clockTex = new THREE.CanvasTexture(clockC); clockTex.colorSpace = THREE.SRGBColorSpace;
+      for (const cx of [-120, 120]) {
+        const cm = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshBasicMaterial({ map: clockTex, side: THREE.DoubleSide }));
+        cm.position.set(-st.x + cx, 3.9, -9.78); g.add(cm);
+      }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
       const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
