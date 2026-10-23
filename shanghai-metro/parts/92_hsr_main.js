@@ -958,7 +958,9 @@
       const stex = new THREE.CanvasTexture(scenic); stex.colorSpace = THREE.SRGBColorSpace;
       root.userData.scenic = { ctx: sg, tex: stex, last: -1e9 };
       const doorMat = new THREE.MeshStandardMaterial({ color: 0x8fa6b4, roughness: 0.35, metalness: 0.15 });
-      for (const dx of [-12.32, 12.32]) {
+      for (const dx of [-12.34, 12.34]) {
+        const endPanel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.30, 2.85), doorMat);
+        endPanel.position.set((carXs[3] || 0) + dx, 2.45, 0); root.add(endPanel);
         for (const dz of [-0.30, 0.30]) {
           const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.20, 0.58), doorMat);
           doorPanel.position.set((carXs[3] || 0) + dx, 2.45, dz); root.add(doorPanel);

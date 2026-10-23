@@ -747,6 +747,13 @@
     </div>
 
 
+
+    <div id="hsrCabinHud" class="hidden" style="position:fixed;right:18px;top:18px;z-index:70;width:230px;padding:12px 14px;border-radius:12px;background:rgba(6,12,16,.9);border:1px solid rgba(160,190,210,.25);color:#e8f1f6;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7">
+      <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14px">G25 · 5车</b><button id="cabinBack" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">返回驾驶室</button></div>
+      <div style="font-size:26px;font-weight:800;margin-top:4px"><span id="cabinSpeed">0</span><span style="font-size:11px;color:#8fa3b0"> km/h</span></div>
+      <div style="color:#8fa3b0">下一站 <span id="cabinNext">南京南</span></div>
+      <div style="color:#8fa3b0">拖拽画面环视 · 5车二等座</div>
+    </div>
     <div id="hsrHelp" class="hidden" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:95;width:360px;max-width:86vw;padding:18px 20px;border-radius:14px;background:rgba(7,12,16,.96);border:1px solid rgba(200,16,46,.45);color:#e8f1f6;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.8">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:14px">G25 操作说明</b><button id="hsrResetPrefs" style="margin-right:6px;padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#ffd479;cursor:pointer">重置偏好</button><button id="hsrHelpClose" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(160,190,210,.3);background:#162028;color:#dceaf2;cursor:pointer">关闭</button></div>
       <div>W / 牵引：加速　　　S / 制动：常用制动</div>
@@ -79640,6 +79647,7 @@ async function buildHsrService() {
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmHelp', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); });
   bind('hsrHelpClose', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.add('hidden'); });
+  bind('cabinBack', () => { const v = document.getElementById('hmView'); if (v) v.click(); });
   bind('hsrResetPrefs', () => { try { ['hsrHudCollapsed','hsrAudioMuted','hsrHeadlight','hsrCabLight'].forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
@@ -79994,6 +80002,12 @@ function updateHsrMain(dt) {
   }
   if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
+  const cabHud = document.getElementById('hsrMainHud');
+  const cabinHud = document.getElementById('hsrCabinHud');
+  const passengerView = !st.cab && st.camMode === 2;
+  if (cabHud) cabHud.classList.toggle('hidden', passengerView);
+  if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
+  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;
@@ -84826,7 +84840,9 @@ window.__sim = {
       const stex = new THREE.CanvasTexture(scenic); stex.colorSpace = THREE.SRGBColorSpace;
       root.userData.scenic = { ctx: sg, tex: stex, last: -1e9 };
       const doorMat = new THREE.MeshStandardMaterial({ color: 0x8fa6b4, roughness: 0.35, metalness: 0.15 });
-      for (const dx of [-12.32, 12.32]) {
+      for (const dx of [-12.34, 12.34]) {
+        const endPanel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.30, 2.85), doorMat);
+        endPanel.position.set((carXs[3] || 0) + dx, 2.45, 0); root.add(endPanel);
         for (const dz of [-0.30, 0.30]) {
           const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.20, 0.58), doorMat);
           doorPanel.position.set((carXs[3] || 0) + dx, 2.45, dz); root.add(doorPanel);

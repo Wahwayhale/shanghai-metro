@@ -437,6 +437,7 @@ async function buildHsrService() {
   bind('hmHorn', () => { if (G.hsr) playHsrHorn(G.hsr.audio); });
   bind('hmHelp', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.toggle('hidden'); });
   bind('hsrHelpClose', () => { const h = document.getElementById('hsrHelp'); if (h) h.classList.add('hidden'); });
+  bind('cabinBack', () => { const v = document.getElementById('hmView'); if (v) v.click(); });
   bind('hsrResetPrefs', () => { try { ['hsrHudCollapsed','hsrAudioMuted','hsrHeadlight','hsrCabLight'].forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
   bind('hmCollapse', () => { const h = document.getElementById('hsrMainHud'); if (!h) return; h.classList.toggle('collapsed'); const b = document.getElementById('hmCollapse'); if (b) b.textContent = h.classList.contains('collapsed') ? '展开' : '收起'; try { localStorage.setItem('hsrHudCollapsed', h.classList.contains('collapsed') ? '1' : '0'); } catch (e) {} });
   try {
@@ -791,6 +792,12 @@ function updateHsrMain(dt) {
   }
   if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }
+  const cabHud = document.getElementById('hsrMainHud');
+  const cabinHud = document.getElementById('hsrCabinHud');
+  const passengerView = !st.cab && st.camMode === 2;
+  if (cabHud) cabHud.classList.toggle('hidden', passengerView);
+  if (cabinHud) cabinHud.classList.toggle('hidden', !passengerView);
+  if (passengerView) { const cs = document.getElementById('cabinSpeed'), cn = document.getElementById('cabinNext'); if (cs) cs.textContent = Math.round(st.v * 3.6); if (cn) cn.textContent = st.stops[st.stopIdx].name; }
   if (st.cabGroup) {
     st.cabGroup.position.x = -st.x;
     st.cabGroup.visible = st.cab;
