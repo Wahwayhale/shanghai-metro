@@ -403,7 +403,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, camMode: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -427,7 +427,7 @@ async function buildHsrService() {
   hold('hmEb', 'touchEb');
   bind('hmDepart', hsrMainDepart);
   bind('hmReset', resetHsrMain);
-  bind('hmView', () => { if (G.hsr) G.hsr.cab = !G.hsr.cab; });
+  bind('hmView', () => { if (G.hsr) { if (G.hsr.cab) G.hsr.cab = false; else G.hsr.camMode = ((G.hsr.camMode || 0) + 1) % 3; } });
   bind('hmPanto', () => { if (G.hsr) { G.hsr.panto = !G.hsr.panto; if (!G.hsr.panto) G.hsr.vcb = false; } });
   bind('hmLook', () => { if (G.hsr) { G.hsr.yaw = 0; G.hsr.pitch = 0; } });
   bind('hmAudio', () => { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; } });
@@ -650,6 +650,12 @@ function updateHsrMain(dt) {
     const dx = -Math.cos(yaw) * Math.cos(pitch), dy = Math.sin(pitch), dz = Math.sin(yaw) * Math.cos(pitch);
     camera.position.set(-st.x + 6.5, 3.05, 0.0);
     camera.lookAt(camera.position.x + dx * 40, camera.position.y + dy * 40, camera.position.z + dz * 40);
+  } else if (st.camMode === 1) {
+    camera.position.set(-st.x - 10, 4.2, 30);
+    camera.lookAt(-st.x - 10, 2.3, 0);
+  } else if (st.camMode === 2) {
+    camera.position.set(-st.x + 458, 7.5, 18);
+    camera.lookAt(-st.x + 425, 2.4, 0);
   } else {
     camera.position.set(-st.x - 24, 5.8, 13);
     camera.lookAt(-st.x + 3, 2.4, 0);
