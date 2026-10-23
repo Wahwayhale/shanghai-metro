@@ -826,6 +826,7 @@ function updateHsrMain(dt) {
       sg.lamp.material.emissive.setHex(color);
     }
   }
+  if (st.train && st.train.userData.cabinDoors) { for (const d of st.train.userData.cabinDoors) d.m.position.z = d.dz + Math.sign(d.dz) * 0.72 * st.doorT; }
   if (st.train && st.train.userData.cabinLed && performance.now() - st.train.userData.cabinLed.last > 500) { paintCabinLed(st.train.userData.cabinLed, st); st.train.userData.cabinLed.tex.needsUpdate = true; st.train.userData.cabinLed.last = performance.now(); }
   if (st.train && st.train.userData.scenic && Math.abs(st.x - st.train.userData.scenic.last) > 400) { paintCabinScenery(st.train.userData.scenic, st.x); st.train.userData.scenic.tex.needsUpdate = true; st.train.userData.scenic.last = st.x; }
   if (st.train) { st.train.position.x = -st.x; st.train.visible = !st.cab; if (st.train.userData.pantograph) st.train.userData.pantograph.scale.y = st.panto ? 1 : 0.25; if (!st.cab) st.train.rotation.z = Math.sin(performance.now() / 900) * 0.0015 * Math.min(1, st.v / 100); }

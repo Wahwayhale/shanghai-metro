@@ -988,12 +988,12 @@
         led.position.set((carXs[3] || 0) + dx, 3.10, 0); led.rotation.y = dx < 0 ? Math.PI / 2 : -Math.PI / 2; root.add(led);
       }
       const doorMat = new THREE.MeshStandardMaterial({ color: 0x8fa6b4, roughness: 0.35, metalness: 0.15 });
+      root.userData.cabinDoors = [];
       for (const dx of [-12.34, 12.34]) {
-        const endPanel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 2.30, 2.85), doorMat);
-        endPanel.position.set((carXs[3] || 0) + dx, 2.45, 0); root.add(endPanel);
         for (const dz of [-0.30, 0.30]) {
           const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.20, 0.58), doorMat);
           doorPanel.position.set((carXs[3] || 0) + dx, 2.45, dz); root.add(doorPanel);
+          root.userData.cabinDoors.push({ m: doorPanel, dz });
         }
       }
 
