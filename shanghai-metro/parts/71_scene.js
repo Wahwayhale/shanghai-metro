@@ -366,7 +366,13 @@ async function buildHsrService() {
   }
   G.mode = 'loading';
   const s = await window.HSR_MAIN.buildTrainScene();
-  s.background = new THREE.Color(0x8ab7d6);
+  const skyC = document.createElement('canvas'); skyC.width = 4; skyC.height = 256;
+  const skyG = skyC.getContext('2d');
+  const grd = skyG.createLinearGradient(0, 0, 0, 256);
+  grd.addColorStop(0, '#4f8fc6'); grd.addColorStop(0.55, '#8db9d8'); grd.addColorStop(1, '#d6e9f5');
+  skyG.fillStyle = grd; skyG.fillRect(0, 0, 4, 256);
+  const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace;
+  s.background = skyTex;
   s.fog = new THREE.Fog(0xa8c5d8, 450, 2600);
   const hemi = new THREE.HemisphereLight(0xf2f8ff, 0x8a8f88, 1.6);
   s.add(hemi);
