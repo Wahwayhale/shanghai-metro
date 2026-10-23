@@ -56,32 +56,70 @@
     const mPier = new THREE.Matrix4();
     for (let i = 0; i < nPier; i++) { mPier.makeTranslation(600 - i * 64, -5.5, 0); piers.setMatrixAt(i, mPier); }
     piers.instanceMatrix.needsUpdate = true; g.add(piers);
+    const carColors = ['#2f6fd0', '#e8c84a', '#2f9e5a', '#8e5bd0'];
+    const carMarkerMats = [];
+    for (let n = 1; n <= 17; n++) {
+      const mc = document.createElement('canvas'); mc.width = 256; mc.height = 128;
+      const mg2 = mc.getContext('2d'); mg2.fillStyle = carColors[(n - 1) % 4]; mg2.fillRect(0, 0, 256, 128);
+      mg2.strokeStyle = '#ffffff'; mg2.lineWidth = 6; mg2.strokeRect(4, 4, 248, 120);
+      mg2.fillStyle = '#ffffff'; mg2.font = '800 64px "Microsoft YaHei", sans-serif'; mg2.textAlign = 'center'; mg2.textBaseline = 'middle';
+      mg2.fillText(n + '车', 128, 68);
+      const mt = new THREE.CanvasTexture(mc); mt.colorSpace = THREE.SRGBColorSpace;
+      carMarkerMats.push(new THREE.MeshBasicMaterial({ map: mt, side: THREE.DoubleSide }));
+    }
+    const infoC = document.createElement('canvas'); infoC.width = 512; infoC.height = 96;
+    const ig = infoC.getContext('2d'); ig.fillStyle = '#0b1b2a'; ig.fillRect(0, 0, 512, 96);
+    ig.strokeStyle = '#2a7a96'; ig.lineWidth = 4; ig.strokeRect(2, 2, 508, 92);
+    ig.fillStyle = '#ffd479'; ig.font = '700 28px "Microsoft YaHei", sans-serif'; ig.textAlign = 'left'; ig.textBaseline = 'middle';
+    ig.fillText('G25  终到 上海虹桥', 18, 32);
+    ig.fillStyle = '#cfe0ea'; ig.font = '600 20px "Microsoft YaHei", sans-serif';
+    ig.fillText('开点 20:16  ·  6 站台  ·  1-16 车厢方向 →', 18, 68);
+    const infoTex = new THREE.CanvasTexture(infoC); infoTex.colorSpace = THREE.SRGBColorSpace;
+    const infoMat = new THREE.MeshBasicMaterial({ map: infoTex, side: THREE.DoubleSide });
     for (const st of D.STATIONS) {
       const stBase = new THREE.Mesh(new THREE.BoxGeometry(450, 11.8, 30), mat(0x9aa0a4, 0.9));
       stBase.position.set(-st.x, -5.9, -14); g.add(stBase);
-      const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.1, 6.2), mat(0x6b737a, 0.9));
-      platform.position.set(-st.x, 0.55, -6.8);
+      const platform = new THREE.Mesh(new THREE.BoxGeometry(450, 1.25, 12), mat(0x6b737a, 0.9));
+      platform.position.set(-st.x, 0.625, -7.5);
       g.add(platform);
+      for (let mi = 0; mi < 18; mi++) {
+        const marker = new THREE.Mesh(new THREE.PlaneGeometry(1.35, 0.68), carMarkerMats[Math.min(16, mi)]);
+        marker.position.set(-st.x + (mi - 8.5) * 25, 1.285, -3.35);
+        marker.rotation.x = -Math.PI / 2; g.add(marker);
+      }
+      const stopC = document.createElement('canvas'); stopC.width = 512; stopC.height = 128;
+      const sg = stopC.getContext('2d'); sg.fillStyle = '#0b3f8a'; sg.fillRect(0, 0, 512, 128);
+      sg.strokeStyle = '#ffffff'; sg.lineWidth = 6; sg.strokeRect(3, 3, 506, 122);
+      sg.fillStyle = '#ffffff'; sg.font = '800 44px "Microsoft YaHei", sans-serif'; sg.textAlign = 'center'; sg.textBaseline = 'middle';
+      sg.fillText('16辆 / 17辆动车组停车位置标', 256, 66);
+      const stopTex = new THREE.CanvasTexture(stopC); stopTex.colorSpace = THREE.SRGBColorSpace;
+      const stopBoard = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: stopTex, side: THREE.DoubleSide }));
+      stopBoard.position.set(-st.x + 7, 2.15, -2.2); stopBoard.rotation.y = -Math.PI / 2; g.add(stopBoard);
+      for (let ii = -4; ii <= 4; ii++) {
+        const info = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.64), infoMat);
+        info.position.set(-st.x + ii * 50, 6.4, -7.5); g.add(info);
+      }
+
       const fascia = stationLabel(st.name);
       fascia.position.set(-st.x, 4.70, -10.15); fascia.rotation.y = 0; fascia.scale.set(0.20, 0.20, 1); g.add(fascia);
-      const roofL = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
-      roofL.position.set(-st.x, 5.65, -12.1); roofL.rotation.x = 0.14; g.add(roofL);
-      const roofR = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 4.4), mat(0xb9c1c7, 0.8));
-      roofR.position.set(-st.x, 5.65, -8.3); roofR.rotation.x = -0.14; g.add(roofR);
+      const roofL = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 5.5), mat(0xb9c1c7, 0.8));
+      roofL.position.set(-st.x, 8.2, -11.0); roofL.rotation.x = 0.14; g.add(roofL);
+      const roofR = new THREE.Mesh(new THREE.BoxGeometry(450, 0.16, 5.5), mat(0xb9c1c7, 0.8));
+      roofR.position.set(-st.x, 8.2, -4.0); roofR.rotation.x = -0.14; g.add(roofR);
       const ridge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.18, 0.45), mat(0x9aa4ab, 0.6));
-      ridge.position.set(-st.x, 5.92, -10.2); g.add(ridge);
+      ridge.position.set(-st.x, 8.47, -7.5); g.add(ridge);
       for (let r = -3; r <= 3; r++) {
-        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 9.6), mat(0x8f979e, 0.6));
-        rib.position.set(-st.x + r * 60, 5.36, -10.2); g.add(rib);
+        const rib = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 12.0), mat(0x8f979e, 0.6));
+        rib.position.set(-st.x + r * 60, 7.91, -7.5); g.add(rib);
       }
       const lampMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, emissive: 0xeaf6ff, emissiveIntensity: 1.4 });
       for (let l = -2; l <= 2; l++) {
         const lamp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.18), lampMat);
-        lamp.position.set(-st.x + l * 80, 5.12, -10.2); g.add(lamp);
+        lamp.position.set(-st.x + l * 80, 7.4, -7.5); g.add(lamp);
       }
       for (const bo of [-120, 0, 120]) {
         const bench = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.38, 0.55), mat(0x4d575f, 0.8));
-        bench.position.set(-st.x + bo, 1.45, -5.8); g.add(bench);
+        bench.position.set(-st.x + bo, 1.55, -6.5); g.add(bench);
       }
       for (const px of [-120, 0, 120]) {
         const nc = document.createElement('canvas'); nc.width = 128; nc.height = 128;
@@ -101,12 +139,12 @@
       const dbMesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: dbTex, transparent: true, side: THREE.DoubleSide }));
       dbMesh.position.set(-st.x + 160, 4.2, -5.4); dbMesh.rotation.y = Math.PI / 2; g.add(dbMesh);
       const whiteLine = new THREE.Mesh(new THREE.BoxGeometry(450, 0.04, 0.08), mat(0xf2f4f5, 0.8));
-      whiteLine.position.set(-st.x, 1.14, -3.95); g.add(whiteLine);
+      whiteLine.position.set(-st.x, 1.27, -2.55); g.add(whiteLine);
       const tactile = new THREE.Mesh(new THREE.BoxGeometry(450, 0.035, 0.40), mat(0xd8b53a, 0.85));
-      tactile.position.set(-st.x, 1.14, -4.38); g.add(tactile);
+      tactile.position.set(-st.x, 1.27, -2.95); g.add(tactile);
       for (const bo of [-120, 0, 120]) {
         const back = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.42, 0.08), mat(0x4d575f, 0.8));
-        back.position.set(-st.x + bo, 1.72, -6.02); g.add(back);
+        back.position.set(-st.x + bo, 1.82, -6.72); g.add(back);
       }
       const clockC = document.createElement('canvas'); clockC.width = 128; clockC.height = 128;
       const ck = clockC.getContext('2d'); ck.fillStyle = '#f4f6f7'; ck.beginPath(); ck.arc(64, 64, 60, 0, Math.PI * 2); ck.fill();
@@ -130,7 +168,7 @@
         em.position.set(-st.x + exx, 3.1, -9.78); g.add(em);
       }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
-      edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
+      edge.position.set(-st.x, 1.27, -1.85); g.add(edge);
       const shellMat = mat(0x8f99a1, 0.85);
       const backWall = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 0.3), shellMat);
       backWall.position.set(-st.x, 4.1, -22.4); g.add(backWall);
@@ -238,8 +276,8 @@
       const roof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.45, 4.2), mat(0x9aa4ab, 0.7));
       roof.position.set(-st.x, 8.35, -16.0); g.add(roof);
       for (let j = -5; j <= 5; j++) {
-        const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.8, 0.28), mat(0x8f979e, 0.6));
-        col.position.set(-st.x + j * 40, 2.9, -10.2);
+        const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 7.2, 0.28), mat(0x8f979e, 0.6));
+        col.position.set(-st.x + j * 40, 4.1, -10.2);
         g.add(col);
         const cap = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.16, 0.62), mat(0x9aa4ab, 0.6));
         cap.position.set(-st.x + j * 40, 5.22, -10.2); g.add(cap);
