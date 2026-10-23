@@ -763,6 +763,7 @@
       <div>空格 / 紧急制动：-2.5 m/s²</div>
       <div>P：受电弓　　V：VCB　　H：鸣笛　　F：踩警惕</div>
       <div>M：静音　　L：驾驶室灯　　K：头灯　　T：恒速</div>
+      <div>恒速中 [ / ] 调目标速度（±5 km/h）</div>
       <div>车厢视角：Q/E 前后　A/D 左右　拖拽环视</div>
       <div>停站后点「发车」；门未关不能走车</div>
       <div>C / 视角：驾驶室→前左→车尾</div>
@@ -18901,7 +18902,7 @@ function updateHsrMain(dt) {
   if (el('mcAtp')) el('mcAtp').textContent = 'ATP ' + (st.stopped ? 0 : Math.round(limit));
   if (el('mcNext')) el('mcNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmPark')) el('hmPark').textContent = st.parked ? '停放制动 施加' : '停放制动 缓解';
-  if (el('hmCruise')) { el('hmCruise').textContent = st.cruise ? '恒速开' : '恒速'; el('hmCruise').style.color = st.cruise ? '#8fe06a' : ''; }
+  if (el('hmCruise')) { el('hmCruise').textContent = st.cruise ? ('恒速 ' + Math.round((st.cruiseV || 0) * 3.6)) : '恒速'; el('hmCruise').style.color = st.cruise ? '#8fe06a' : ''; }
   if (el('hmBrakeLv')) el('hmBrakeLv').textContent = '制动 ' + (st.brakeLevel || 0) + '/7';
   if (el('hmDeadman')) { const left = Math.max(0, 37 - (st.deadmanT || 0)); el('hmDeadman').textContent = st.deadmanEb ? '警惕 EB' : (left < 8 ? '警惕 ' + left.toFixed(0) + 's' : '警惕 正常'); el('hmDeadman').style.color = st.deadmanEb ? '#ff4d4d' : (left < 8 ? '#ffd479' : ''); }
   if (el('hmDoor')) el('hmDoor').textContent = st.stopped ? (st.doorT > 0.25 ? '车门开启（' + (st.doorSide < 0 ? '左' : '右') + '）' : '车门关闭') : '车门关闭';
@@ -18938,6 +18939,8 @@ function exitHsrMain() {
 window.addEventListener('keydown', (e) => {
   if (G.mode !== 'hsr') return;
   if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'BracketLeft' && G.hsr && G.hsr.cruise) { G.hsr.cruiseV = Math.max(20 / 3.6, (G.hsr.cruiseV || 0) - 5 / 3.6); }
+  if (e.code === 'BracketRight' && G.hsr && G.hsr.cruise) { G.hsr.cruiseV = Math.min(350 / 3.6, (G.hsr.cruiseV || 0) + 5 / 3.6); }
   if (e.code === 'KeyS' && !e.repeat) { if (G.hsr) G.hsr.brakeLevel = Math.min(7, (G.hsr.brakeLevel || 0) + 1); }
   if (e.code === 'KeyA' && !e.repeat) { if (G.hsr) G.hsr.brakeLevel = Math.max(0, (G.hsr.brakeLevel || 0) - 1); }
   if (e.code === 'KeyM') { if (G.hsr && G.hsr.audio) { const a = G.hsr.audio; a.muted = !a.muted; a.master.gain.value = a.muted ? 0 : 0.10; try { localStorage.setItem('hsrAudioMuted', a.muted ? '1' : '0'); } catch (err) {} } }
