@@ -22881,8 +22881,10 @@ window.__sim = {
       const platC = document.createElement('canvas'); platC.width = 256; platC.height = 96;
       const pg2 = platC.getContext('2d'); pg2.fillStyle = '#0b3f8a'; pg2.fillRect(0, 0, 256, 96);
       pg2.strokeStyle = '#ffffff'; pg2.lineWidth = 5; pg2.strokeRect(3, 3, 250, 90);
-      pg2.fillStyle = '#ffffff'; pg2.font = '800 46px "Microsoft YaHei", sans-serif'; pg2.textAlign = 'center'; pg2.textBaseline = 'middle';
-      pg2.fillText(((D.STATIONS.indexOf(st) % 6) + 1) + ' 站台', 128, 50);
+      const pn = ((D.STATIONS.indexOf(st) % 6) + 1);
+      pg2.fillStyle = '#ffffff'; pg2.font = '800 40px "Microsoft YaHei", sans-serif'; pg2.textAlign = 'center'; pg2.textBaseline = 'middle';
+      pg2.fillText(pn + ' 站台', 128, 38);
+      pg2.font = '500 20px system-ui, sans-serif'; pg2.fillStyle = '#cfe0ea'; pg2.fillText('Platform ' + pn, 128, 72);
       const platTex = new THREE.CanvasTexture(platC); platTex.colorSpace = THREE.SRGBColorSpace;
       const platSign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.82), new THREE.MeshBasicMaterial({ map: platTex, side: THREE.DoubleSide }));
       platSign.position.set(-st.x - 24, 2.25, -3.3); platSign.rotation.y = Math.PI / 2; g.add(platSign);

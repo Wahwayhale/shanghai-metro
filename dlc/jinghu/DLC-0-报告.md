@@ -1826,3 +1826,7 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - stationLabel改为中文56px+英文26px两行；23站英文名映射。
 - 进站站名牌/站房牌/站台牌同步显示中英文。
 - 截图 hsr-bistation.png；smoke/test:hsr通过。
+# 站台号牌英文
+
+- 站台号牌改为“1 站台 / Platform 1”两行。
+- smoke/test:hsr通过；单文件9.71MB、可读版10.37MB。
