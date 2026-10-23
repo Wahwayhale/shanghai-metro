@@ -58,6 +58,21 @@ const { PAGE_URL, CHROME } = require('./testenv');
   const stopped = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, state: document.getElementById('hmState').textContent }));
   if (stopped.v > 0.05) fail.push('emergency brake did not stop: v=' + stopped.v);
 
+  await page.evaluate(() => {
+    const st = window.__sim.G.hsr;
+    st.stopped = true; st.v = 0; st.stopErr = 0; st.doorT = 1;
+  });
+  await new Promise(r => setTimeout(r, 300));
+  await page.keyboard.down('w');
+  await new Promise(r => setTimeout(r, 900));
+  await page.keyboard.up('w');
+  const doorState = await page.evaluate(() => ({ v: window.__sim.G.hsr.v, idx: window.__sim.G.hsr.stopIdx, stopped: window.__sim.G.hsr.stopped }));
+  if (doorState.v > 0.05 || doorState.idx !== 0) fail.push('door interlock failed: ' + JSON.stringify(doorState));
+  await page.click('#hmDepart');
+  await new Promise(r => setTimeout(r, 700));
+  const afterDepart = await page.evaluate(() => ({ idx: window.__sim.G.hsr.stopIdx, stopped: window.__sim.G.hsr.stopped }));
+  if (afterDepart.idx !== 1 || afterDepart.stopped) fail.push('depart failed: ' + JSON.stringify(afterDepart));
+
   await page.screenshot({ path: 'shots/hsr-regression.png' }).catch(() => {});
   console.log(JSON.stringify({ ok: fail.length === 0 && errors.length === 0, info, pantoDown: down, pantoUp: up, fail, errors: errors.slice(0, 4) }, null, 1));
   await browser.close();

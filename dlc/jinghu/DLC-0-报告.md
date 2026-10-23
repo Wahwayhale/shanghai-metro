@@ -888,3 +888,9 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 空格 1.2s 后 v<=0.05，确认紧急制动停车。
 - 受电弓/VCB 顺序、零错误校验保留。
 - npm run test:hsr 通过。
+# HSR 回归补车门互锁
+
+- tests/hsr.js 模拟停站开门：stopped=true/doorT=1。
+- 按 W 0.9s 后 v=0、stopIdx 不变，确认门开不走车。
+- 点「发车」后 stopIdx=1、stopped=false，确认正常发车。
+- npm run test:hsr 通过。
