@@ -84108,6 +84108,17 @@ window.__sim = {
       rail.position.set(4.25, 2.55, z * 0.92); g.add(rail);
     }
     // sun visors
+    // cab equipment bay / electrical cabinet details
+    const ventMat = new THREE.MeshStandardMaterial({ color: 0x2a343a, roughness: 0.8 });
+    for (let vi = 0; vi < 5; vi++) {
+      add(new THREE.BoxGeometry(0.42, 0.025, 0.03), ventMat, 5.25, 1.62 + vi * 0.09, -1.38);
+      add(new THREE.BoxGeometry(0.42, 0.025, 0.03), ventMat, 5.25, 1.62 + vi * 0.09, 1.38);
+    }
+    const breakerMat = new THREE.MeshStandardMaterial({ color: 0x1a2328, emissive: 0x2a1a0a, emissiveIntensity: 0.25 });
+    add(new THREE.BoxGeometry(0.42, 0.55, 0.06), breakerMat, 5.85, 1.95, 1.36);
+    for (let bi = 0; bi < 5; bi++) add(new THREE.BoxGeometry(0.07, 0.05, 0.08), breakerMat, 5.72 + bi * 0.07, 2.02, 1.40);
+    const extMat = new THREE.MeshStandardMaterial({ color: 0xc8102e, roughness: 0.6, metalness: 0.2 });
+    add(new THREE.CylinderGeometry(0.07, 0.07, 0.42, 12), extMat, 4.55, 1.75, 1.30);
     // rear partition door behind the seat
     add(new THREE.BoxGeometry(0.07, 2.15, 0.92), mid, 7.28, 2.55, 0.55);
     const doorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.75), glassMat);
