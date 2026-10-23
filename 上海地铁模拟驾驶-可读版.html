@@ -84441,7 +84441,7 @@ window.__sim = {
       arm.position.set(0, 0.45, pz); arm.rotation.z = 0.35; panto.add(arm);
     }
     const pBar = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 1.4), pantoMat); pBar.position.y = 0.92; panto.add(pBar);
-    panto.position.set(carXs[1] || HEAD + 12, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
+    panto.position.set(HEAD / 2, 4.05, 0); root.add(panto); root.userData.pantograph = panto;
     root.scale.set(1, 0.837, 0.977);
     scene.add(root);
     return root;
