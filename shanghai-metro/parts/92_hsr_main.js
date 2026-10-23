@@ -85,6 +85,14 @@
       const dbTex = new THREE.CanvasTexture(dbC); dbTex.colorSpace = THREE.SRGBColorSpace;
       const dbMesh = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: dbTex, transparent: true, side: THREE.DoubleSide }));
       dbMesh.position.set(-st.x + 160, 4.2, -5.4); dbMesh.rotation.y = Math.PI / 2; g.add(dbMesh);
+      const whiteLine = new THREE.Mesh(new THREE.BoxGeometry(450, 0.04, 0.08), mat(0xf2f4f5, 0.8));
+      whiteLine.position.set(-st.x, 1.14, -3.95); g.add(whiteLine);
+      const tactile = new THREE.Mesh(new THREE.BoxGeometry(450, 0.035, 0.40), mat(0xd8b53a, 0.85));
+      tactile.position.set(-st.x, 1.14, -4.38); g.add(tactile);
+      for (const bo of [-120, 0, 120]) {
+        const back = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.42, 0.08), mat(0x4d575f, 0.8));
+        back.position.set(-st.x + bo, 1.72, -6.02); g.add(back);
+      }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
       const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
