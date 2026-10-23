@@ -625,6 +625,14 @@ function updateHsrMain(dt) {
   if (el('hmNext')) el('hmNext').textContent = '下一站 ' + st.stops[st.stopIdx].name + ' · ' + Math.max(0, (stop - st.x) / 1000).toFixed(1) + ' km';
   if (el('hmDist')) el('hmDist').textContent = (st.x / 1000).toFixed(1) + ' km';
   if (el('hmErr')) el('hmErr').textContent = st.stopped ? '停站 ' + (st.stopErr >= 0 ? '+' : '') + st.stopErr.toFixed(2) + ' m' : '';
+  if (el('hmEta')) {
+    if (st.stopped || st.v < 1) el('hmEta').textContent = '预计 --:--';
+    else {
+      const mins = Math.max(0, (stop - st.x) / st.v / 60);
+      const eta = new Date(Date.now() + mins * 60000);
+      el('hmEta').textContent = '预计 ' + eta.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    }
+  }
   if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分');
   if (el('hmSignal')) {
     let ns = null;
