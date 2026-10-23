@@ -84006,6 +84006,9 @@ window.__sim = {
       skg.beginPath(); skg.ellipse(cx, cy, r * 1.8, r * 0.45, 0, 0, Math.PI * 2); skg.fill();
       skg.beginPath(); skg.ellipse(cx + r * 0.6, cy - r * 0.25, r * 1.1, r * 0.5, 0, 0, Math.PI * 2); skg.fill();
     }
+    const sunGrad = skg.createRadialGradient(760, 120, 4, 760, 120, 70);
+    sunGrad.addColorStop(0, 'rgba(255,250,225,0.95)'); sunGrad.addColorStop(0.25, 'rgba(255,245,200,0.55)'); sunGrad.addColorStop(1, 'rgba(255,245,200,0)');
+    skg.fillStyle = sunGrad; skg.fillRect(680, 40, 160, 160);
     const skyTex = new THREE.CanvasTexture(skyC); skyTex.colorSpace = THREE.SRGBColorSpace; skyTex.mapping = THREE.EquirectangularReflectionMapping;
     scene.userData.prevBg = scene.background;
     scene.background = skyTex;
