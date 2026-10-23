@@ -22576,6 +22576,12 @@ window.__sim = {
         const mull = new THREE.Mesh(new THREE.BoxGeometry(0.30, 7, 0.22), mullMat);
         mull.position.set(-st.x + m * 10, 4.6, -14.30); g.add(mull);
       }
+      for (const fy of [2.55, 4.35, 6.15]) {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(102, 0.16, 0.22), mat(0x9aa4ab, 0.6));
+        band.position.set(-st.x, fy, -14.30); g.add(band);
+      }
+      const parapet = new THREE.Mesh(new THREE.BoxGeometry(104, 0.55, 0.35), mat(0x9aa4ab, 0.7));
+      parapet.position.set(-st.x, 8.55, -14.30); g.add(parapet);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.45, 4.2), mat(0x9aa4ab, 0.7));
       roof.position.set(-st.x, 8.35, -16.0); g.add(roof);
       const winMat = new THREE.MeshStandardMaterial({ color: 0x2a3942, emissive: 0x1a2a33, emissiveIntensity: 0.35, roughness: 0.4 });
