@@ -534,8 +534,8 @@
   #hsrMainHud .hm-row b{color:#8fe06a}
   #hsrMainHud .hm-stop{color:#ffd479}
   #hsrMainHud .hm-hint{margin-top:10px;font-size:9px;color:#7f93a0;line-height:1.5}
-  #hsrMainHud .hm-ctrl{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-  #hsrMainHud .hm-ctrl button{pointer-events:auto;flex:1;min-width:46px;padding:7px 4px;border-radius:7px;border:1px solid rgba(160,190,210,.28);background:rgba(20,30,38,.9);color:#dceaf2;font:700 9px/1 ui-monospace,monospace;cursor:pointer}
+  #hsrMainHud .hm-ctrl{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+  #hsrMainHud .hm-ctrl button{pointer-events:auto;flex:1;min-width:0;width:100%;padding:7px 3px;border-radius:7px;border:1px solid rgba(160,190,210,.28);background:rgba(20,30,38,.9);color:#dceaf2;font:700 9px/1 ui-monospace,monospace;cursor:pointer}
   #hsrMainHud .hm-ctrl button:active{background:rgba(200,16,46,.45)}
   #hsrMainCab{position:fixed;inset:0;z-index:70;pointer-events:none;display:block}
   #hsrMainCab .frame{position:absolute;left:6.5%;right:6.5%;top:6.5%;bottom:25%;border:18px solid #080c0f;border-radius:22px;box-shadow:0 0 0 2200px rgba(2,5,7,.62),inset 0 0 60px rgba(0,0,0,.4)}
