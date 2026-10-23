@@ -118,9 +118,30 @@
       }
       const edge = new THREE.Mesh(new THREE.BoxGeometry(450, 0.05, 0.22), mat(0xd8b53a, 0.8));
       edge.position.set(-st.x, 1.13, -3.62); g.add(edge);
-      const bldg = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 8), mat(0x8f99a1, 0.85));
-      bldg.position.set(-st.x, 4.1, -18.5); g.add(bldg);
-      const facadeMat = new THREE.MeshStandardMaterial({ color: 0x33434c, emissive: 0x16242c, emissiveIntensity: 0.5, roughness: 0.25, metalness: 0.3 });
+      const shellMat = mat(0x8f99a1, 0.85);
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(110, 8.2, 0.3), shellMat);
+      backWall.position.set(-st.x, 4.1, -22.4); g.add(backWall);
+      for (const sx of [-54.85, 54.85]) {
+        const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 8.2, 7.9), shellMat);
+        sideWall.position.set(-st.x + sx, 4.1, -18.45); g.add(sideWall);
+      }
+      const shellRoof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.3, 7.9), shellMat);
+      shellRoof.position.set(-st.x, 8.2, -18.45); g.add(shellRoof);
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(110, 0.2, 7.9), mat(0xb7bdc1, 0.9));
+      floor.position.set(-st.x, 1.2, -18.45); g.add(floor);
+      const interiorCol = mat(0x9aa4ab, 0.8);
+      for (let c = -4; c <= 4; c++) {
+        const col = new THREE.Mesh(new THREE.BoxGeometry(0.55, 6.7, 0.55), interiorCol);
+        col.position.set(-st.x + c * 12, 4.55, -18.0); g.add(col);
+      }
+      const lightMat = new THREE.MeshStandardMaterial({ color: 0xf4fbff, emissive: 0xeaf6ff, emissiveIntensity: 1.2 });
+      for (const lz of [-16.5, -20.0]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(96, 0.06, 0.35), lightMat);
+        strip.position.set(-st.x, 7.7, lz); g.add(strip);
+      }
+      const board = new THREE.Mesh(new THREE.BoxGeometry(18, 3.2, 0.15), mat(0x101820, 0.5));
+      board.position.set(-st.x, 4.4, -21.9); g.add(board);
+      const facadeMat = new THREE.MeshStandardMaterial({ color: 0x6f98aa, transparent: true, opacity: 0.42, roughness: 0.12, metalness: 0.15, side: THREE.DoubleSide });
       const facade = new THREE.Mesh(new THREE.BoxGeometry(100, 7, 0.16), facadeMat);
       facade.position.set(-st.x, 4.6, -14.38); g.add(facade);
       const entryMat = new THREE.MeshStandardMaterial({ color: 0x1c2d36, emissive: 0x0e1a20, emissiveIntensity: 0.5, roughness: 0.25, metalness: 0.3 });
@@ -145,11 +166,6 @@
       parapet.position.set(-st.x, 8.55, -14.30); g.add(parapet);
       const roof = new THREE.Mesh(new THREE.BoxGeometry(110, 0.45, 4.2), mat(0x9aa4ab, 0.7));
       roof.position.set(-st.x, 8.35, -16.0); g.add(roof);
-      const winMat = new THREE.MeshStandardMaterial({ color: 0x2a3942, emissive: 0x1a2a33, emissiveIntensity: 0.35, roughness: 0.4 });
-      for (let w = -4; w <= 4; w++) {
-        const win = new THREE.Mesh(new THREE.BoxGeometry(7, 1.4, 0.12), winMat);
-        win.position.set(-st.x + w * 11, 5.2, -14.45); g.add(win);
-      }
       for (let j = -5; j <= 5; j++) {
         const col = new THREE.Mesh(new THREE.BoxGeometry(0.28, 4.8, 0.28), mat(0x8f979e, 0.6));
         col.position.set(-st.x + j * 40, 2.9, -10.2);
