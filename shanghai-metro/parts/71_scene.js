@@ -403,7 +403,7 @@ async function buildHsrService() {
       { name: '南京南', x: 1017900 },
       { name: '上海虹桥', x: 1301900 }
     ],
-    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, camMode: 0, audio: createHsrAudio(),
+    train, cabGroup, begin: performance.now(), touchThrottle: 0, touchBrake: 0, touchEb: 0, cab: true, yaw: 0, pitch: 0, panto: true, vcb: true, dir: 1, camMode: 0, audio: createHsrAudio(),
     signals: (world && world.userData && world.userData.signals) || [],
     doorNodes: (train && train.userData && train.userData.doorNodes) || [],
     midDoors: (train && train.userData && train.userData.midDoors) || [],
@@ -541,7 +541,7 @@ function updateHsrMain(dt) {
   window.__hsrMainCamera = camera;
   const stop = st.stops[st.stopIdx].x;
   const limit = hsrMainLimit(st.x);
-  const throttle = (st.panto && st.vcb && (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle)) ? 1 : 0;
+  const throttle = (st.panto && st.vcb && st.dir && (keys['KeyW'] || keys['ArrowUp'] || st.touchThrottle)) ? 1 : 0;
   if (st.audio) {
     const a = st.audio;
     a.motor.frequency.setTargetAtTime(32 + st.v * 1.4, a.ctx.currentTime, 0.15);
@@ -712,7 +712,8 @@ function updateHsrMain(dt) {
       el('hmEta').textContent = '预计 ' + eta.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
     }
   }
-  if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分');
+  if (el('hmSys')) el('hmSys').textContent = '受电弓 ' + (st.panto ? '升' : '降') + ' · VCB ' + (st.vcb ? '合' : '分') + ' · 方向 ' + (st.dir ? '前' : '0');
+  if (st.cabGroup && st.cabGroup.userData.dirKnob) st.cabGroup.userData.dirKnob.rotation.z = st.dir ? 0 : 0.7;
   if (el('hmSignal')) {
     let ns = null;
     for (const sg of (st.signals || [])) { if (sg.x > st.x && (!ns || sg.x < ns.x)) ns = sg; }
@@ -796,6 +797,8 @@ window.__hsrMain = {
       const ray = new T.Raycaster();
       ray.setFromCamera(new T.Vector2((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1), cam);
       if (ray.intersectObject(btn, false).length) { G.hsr.touchEb = 1; lookDrag = false; return; }
+      const dk = G.hsr.cabGroup.userData.dirKnob;
+      if (dk && ray.intersectObject(dk, false).length) { G.hsr.dir = G.hsr.dir ? 0 : 1; lookDrag = false; return; }
       const dbs = G.hsr.cabGroup.userData.doorButtons || [];
       for (const b of dbs) {
         if (ray.intersectObject(b.m, false).length) { G.hsr.doorSide = b.side; lookDrag = false; return; }
