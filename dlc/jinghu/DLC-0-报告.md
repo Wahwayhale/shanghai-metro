@@ -1538,3 +1538,8 @@ B 与 C 可并行，但 C 依赖 B 的最终 GLB 命名与 LOD 结构。
 - 合并后 12.2k 顶点，Decimate 0.32，GLB 2.0MB。
 - 单文件 5.68MB（可读版 6.35MB），比 v2 增加约1MB。
 - 车厢视角截图 hsr-cabin-v4.png。
+# 客室车窗外景 + 进站停车标
+
+- 车窗 window_sky 材质改为 CanvasTexture 外景（天空渐变/远山/田野），不再透出车体涂装。
+- 站前 500m/250m/80m 三块蓝底「停车标 Xm」牌，位置 z-2.15，进站可见；截图 hsr-approach.png。
+- 验证 smoke/test:hsr 通过。
