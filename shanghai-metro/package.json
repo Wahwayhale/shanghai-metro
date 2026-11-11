@@ -1,0 +1,36 @@
+{
+  "name": "shanghai-metro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "上海地铁模拟驾驶 —— Three.js 单文件离线 WebGL 模拟器",
+  "scripts": {
+    "build": "node build2.js",
+    "build:readable": "node build2.js --readable",
+    "smoke": "node tests/smoke.js",
+    "test": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/session.test.js && node tests/unit/routes.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js && node tests/smoke.js && node tests/regress_modules.js && node tests/regress_crossover.js && node tests/regress_bodies.js && node tests/golden.js",
+    "test:smoke": "node tests/smoke.js",
+    "test:modules": "node tests/regress_modules.js",
+    "test:golden": "node tests/golden.js",
+    "golden:update": "node tests/golden.js --update",
+    "test:crossover": "node tests/regress_crossover.js",
+    "test:bodies": "node tests/regress_bodies.js",
+    "test:unit": "node tests/unit/bodychain.test.js && node tests/unit/timetable.test.js && node tests/unit/schedule.test.js && node tests/unit/session.test.js && node tests/unit/routes.test.js && node tests/unit/dynamics.test.js && node tests/unit/ai.test.js && node tests/unit/ats.test.js",
+    "test:timetable": "node tests/unit/timetable.test.js",
+    "test:schedule": "node tests/unit/schedule.test.js",
+    "test:session": "node tests/unit/session.test.js",
+    "test:routes": "node tests/unit/routes.test.js",
+    "test:ride": "node tests/regress_ride.js",
+    "test:punc": "node tests/regress_punc.js",
+    "test:day": "node tests/regress_session.js",
+    "test:p3": "node tests/regress_p3.js",
+    "test:p4": "node tests/regress_p4.js",
+    "package:deploy": "node scripts/package-deploy.js",
+    "test:passenger": "node tests/regress_passenger.js"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  },
+  "dependencies": {
+    "three": "0.160.1"
+  }
+}

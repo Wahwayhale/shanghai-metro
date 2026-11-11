@@ -1,0 +1,51 @@
+{
+  "stops": 6,
+  "results": [
+    {
+      "zh": "浦东大道",
+      "err": 0.1449,
+      "stopScore": 100,
+      "arrT": 105.02,
+      "depDelay": -0.041
+    },
+    {
+      "zh": "杨树浦路",
+      "err": 0.2137,
+      "stopScore": 100,
+      "arrT": 199.96,
+      "depDelay": -0.059
+    },
+    {
+      "zh": "大连路",
+      "err": 0.149,
+      "stopScore": 100,
+      "arrT": 275.18,
+      "depDelay": -0.049
+    },
+    {
+      "zh": "临平路",
+      "err": 0.1515,
+      "stopScore": 100,
+      "arrT": 384,
+      "depDelay": -0.047
+    },
+    {
+      "zh": "海伦路",
+      "err": 0.1545,
+      "stopScore": 100,
+      "arrT": 496.34,
+      "depDelay": -0.05
+    },
+    {
+      "zh": "宝山路",
+      "err": 0.154,
+      "stopScore": 100,
+      "arrT": 674.76,
+      "depDelay": 0
+    }
+  ],
+  "maxErr": 0.2137,
+  "avgStopScore": 100,
+  "energy": 42.782,
+  "vMax": 76.43
+}

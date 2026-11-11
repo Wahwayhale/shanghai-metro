@@ -1,0 +1,1313 @@
+/* ================================================================
+   世界构建 A：材质初始化、轨道、隧道、高架、地面、城市、地标
+   ================================================================ */
+
+/* 材质缓存：initMaterials 唯一依赖的主题参数是 theme.windowGlow（纹理本身
+   已有 TEX_CACHE）。同一主题重复加载线路时直接复用整套材质，
+   省掉 30+ 次 MeshStandardMaterial 构造与着色器编译。
+   实测 4 号线加载中 initMaterials 占 2.1 s，是第二大瓶颈。 */
+const MAT_CACHE = new Map();
+
+function initMaterials(renderer, theme) {
+  const key = String(theme.windowGlow);
+  const cached = MAT_CACHE.get(key);
+  if (cached) {
+    /* 复用：把缓存的材质灌回 MAT（MAT 是模块级对象，被各构建函数直接引用） */
+    for (const k in cached) MAT[k] = cached[k];
+    return MAT;
+  }
+
+  const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const setAniso = t => { t.anisotropy = aniso; return t; };
+
+  MAT.tunnel = new THREE.MeshStandardMaterial({
+    map: setAniso(texConcrete('#5d6265', 0.1, 256)), roughness: 0.94, metalness: 0.02,
+    color: 0xffffff, side: THREE.DoubleSide, emissive: new THREE.Color('#2b2b29'), emissiveIntensity: 0.6
+  });
+  MAT.tunnel.map.repeat.set(1, 1);
+  /* 隧道壁法线：低频起伏（衬砌不平整）+ 横向拼缝（管片接缝） */
+  MAT.tunnel.normalMap = setAniso(texNormalMap('n_tunnel', 256, 256, (x, y) => {
+    let h = fbm2(x, y, 11, 3) * 0.8;
+    /* 每 64 px 一条管片缝，缝处高度下陷 */
+    const seam = Math.abs((y % 64) - 0.5);
+    if (seam < 1.2) h -= 0.5;
+    return h;
+  }, 3.2));
+  MAT.tunnel.normalScale = new THREE.Vector2(1.1, 1.1);
+  /* 隧道壁粗糙度：整体 0.94，混入竖向水痕（更光滑）与斑驳 */
+  MAT.tunnel.roughnessMap = setAniso(texRoughMap('r_tunnel', 256, 256, (x, y) => {
+    const base = 0.90 + fbm2(x, y, 71, 3) * 0.10;
+    const streak = Math.sin(x * 0.11 + fbm2(x, y, 83, 2) * 6.0);
+    return base - (streak > 0.75 ? 0.28 : 0);
+  }));
+  MAT.tunnel.roughness = 1.0;
+
+  MAT.stationWall = new THREE.MeshStandardMaterial({
+    map: setAniso(texConcrete('#93979a', 0.06, 0)), roughness: 0.82, metalness: 0.04,
+    color: 0xffffff, side: THREE.DoubleSide, emissive: new THREE.Color('#45453d'), emissiveIntensity: 0.5
+  });
+  /* 站台墙：细密抹灰起伏 + 竖向板材缝 */
+  MAT.stationWall.normalMap = setAniso(texNormalMap('n_stwall', 256, 256, (x, y) => {
+    let h = fbm2(x, y, 23, 3) * 0.6;
+    if (Math.abs((x % 128) - 0.5) < 1.0) h -= 0.35;
+    return h;
+  }, 2.4));
+  MAT.stationWall.normalScale = new THREE.Vector2(0.8, 0.8);
+
+  MAT.concrete = new THREE.MeshStandardMaterial({
+    map: setAniso(texConcrete('#77797b', 0.08, 0)), roughness: 0.9, metalness: 0.03,
+    side: THREE.DoubleSide, emissive: new THREE.Color('#111'), emissiveIntensity: 0.35
+  });
+  MAT.concreteDark = new THREE.MeshStandardMaterial({
+    map: setAniso(texConcrete('#4c5053', 0.1, 0)), roughness: 0.95, metalness: 0.02,
+    side: THREE.DoubleSide, emissive: new THREE.Color('#232323'), emissiveIntensity: 0.5
+  });
+  MAT.ballast = new THREE.MeshStandardMaterial({
+    map: setAniso(texBallast()), roughness: 0.98, metalness: 0.0, color: 0xbfc2c2, side: THREE.DoubleSide,
+    emissive: new THREE.Color('#101010'), emissiveIntensity: 0.4
+  });
+  MAT.ballast.map.repeat.set(1, 1);
+  /* 道砟：碎石颗粒。用高频哈希做颗粒感，凹凸尺度比隧道壁细得多 */
+  MAT.ballast.normalMap = setAniso(texNormalMap('n_ballast', 128, 128, (x, y) => {
+    return hash2(x >> 1, y >> 1, 7) * 0.7 + fbm2(x, y, 5, 2) * 0.3;
+  }, 4.5));
+  MAT.ballast.normalScale = new THREE.Vector2(1.4, 1.4);
+  /* 道砟粗糙度：整体 0.9~1.0，碎石颗粒间有明暗 */
+  MAT.ballast.roughnessMap = setAniso(texRoughMap('r_ballast', 128, 128, (x, y) => {
+    return 0.86 + hash2(x >> 1, y >> 1, 19) * 0.14;
+  }));
+  MAT.ballast.roughness = 1.0;
+
+  MAT.rail = new THREE.MeshStandardMaterial({ color: 0xd7dade, roughness: 0.28, metalness: 0.92, envMapIntensity: 1.2 });
+  MAT.sleeper = new THREE.MeshStandardMaterial({ color: 0x9a9d9c, roughness: 0.9, metalness: 0.05 });
+  MAT.platform = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.58, metalness: 0.08, envMapIntensity: 0.9, color: 0xe4e8ea, emissive: new THREE.Color('#343638'), emissiveIntensity: 0.1 });
+  MAT.platform.map.repeat.set(2, 28);
+  /* 站台地面：地砖网格 + 轻微磨损。砖缝用 32px 周期，与基础色贴图对齐 */
+  MAT.platform.normalMap = setAniso(texNormalMap('n_platform', 256, 256, (x, y) => {
+    const gx = Math.abs((x % 32) - 0.5), gy = Math.abs((y % 32) - 0.5);
+    let h = 0.6;
+    if (gx < 1.0 || gy < 1.0) h -= 0.45;      // 砖缝
+    h += fbm2(x, y, 41, 2) * 0.25;            // 磨损起伏
+    return h;
+  }, 2.2));
+  MAT.platform.normalScale = new THREE.Vector2(0.9, 0.9);
+  /* 站台地面粗糙度：砖面 0.72，砖缝积灰更涩，局部磨亮 */
+  MAT.platform.roughnessMap = setAniso(texRoughMap('r_platform', 256, 256, (x, y) => {
+    const gx = Math.abs((x % 32) - 0.5), gy = Math.abs((y % 32) - 0.5);
+    const inJoint = gx < 1.0 || gy < 1.0;
+    const wear = fbm2(x, y, 97, 2);
+    let r = inJoint ? 0.94 : 0.68 + wear * 0.18;
+    if (wear > 0.78) r -= 0.22;          // 被踩亮的地方
+    return r;
+  }));
+  MAT.platform.roughness = 1.0;
+  MAT.tactile = new THREE.MeshStandardMaterial({ map: setAniso(texTactile()), roughness: 0.68, metalness: 0.04, color: 0xffffff, emissive: new THREE.Color('#4a3606'), emissiveIntensity: 0.1 });
+  MAT.tactile.map.repeat.set(1, 180);
+  MAT.safety = new THREE.MeshStandardMaterial({ color: 0xf0be32, roughness: 0.62, metalness: 0.05, emissive: new THREE.Color('#4a3808'), emissiveIntensity: 0.1 });
+  MAT.darkMetal = new THREE.MeshStandardMaterial({ color: 0x262d32, roughness: 0.44, metalness: 0.72, emissive: new THREE.Color('#121518'), emissiveIntensity: 0.08 });
+  MAT.metal = new THREE.MeshStandardMaterial({ color: 0xb4bec4, roughness: 0.30, metalness: 0.82, envMapIntensity: 1.1, emissive: new THREE.Color('#22272a'), emissiveIntensity: 0.08 });
+  /* 站台立柱专用：搪瓷钢板贴图 + 轻微自发光，避免纯白塑料感 */
+  MAT.column = new THREE.MeshStandardMaterial({
+    map: setAniso(texColumnEnamel()), roughness: 0.36, metalness: 0.12,
+    envMapIntensity: 0.9, emissive: new THREE.Color('#4a4f4e'), emissiveIntensity: 0.10
+  });
+  MAT.column.map.repeat.set(1, 2);
+  MAT.white = new THREE.MeshStandardMaterial({ color: 0xf0f3f4, roughness: 0.42, metalness: 0.08, envMapIntensity: 0.75, emissive: new THREE.Color('#3b3f42'), emissiveIntensity: 0.1 });
+  /* 吊顶：比墙面暗一档。真实站台吊顶（铝板/矿棉板）反射率低，
+     而且紧贴灯带，用白色会把灯光二次反射成一片亮斑。 */
+  MAT.ceiling = new THREE.MeshStandardMaterial({ color: 0xb9c0c2, roughness: 0.86, metalness: 0.04, envMapIntensity: 0.5, emissive: new THREE.Color('#22262a'), emissiveIntensity: 0.06 });
+  /* 玻璃：极弱的法线波纹打破完美平整（真实玻璃并不绝对平整），不新增 mesh、不新增 pass。 */
+  /* 屏蔽门玻璃用 Standard 材质：原 MeshPhysicalMaterial + clearcoat 每像素多算一套清漆 BRDF，
+     而玻璃铺满整个站台、层层叠加，是核显上的大头开销之一。 */
+  MAT.psdGlass = new THREE.MeshStandardMaterial({
+    color: 0xcfe6ee, roughness: 0.06, metalness: 0.10, transparent: true, opacity: 0.16,
+    envMapIntensity: 1.9, side: THREE.DoubleSide, depthWrite: false
+  });
+  MAT.psdGlass.normalMap = setAniso(texNormalMap('n_glass', 128, 128, (x, y) => {
+    /* 极缓慢的起伏，幅度很小，只让反射略微扭曲 */
+    return fbm2(x, y, 131, 2) * 0.06;
+  }, 1.6));
+  MAT.psdGlass.normalScale = new THREE.Vector2(0.35, 0.35);
+  MAT.water = new THREE.MeshStandardMaterial({ color: 0x0c2230, roughness: 0.08, metalness: 0.9, envMapIntensity: 1.4 });
+  MAT.tree = new THREE.MeshStandardMaterial({ color: 0x1e3320, roughness: 0.95 });
+  MAT.trunk = new THREE.MeshStandardMaterial({ color: 0x322a24, roughness: 0.9 });
+  MAT.ground = new THREE.MeshStandardMaterial({ map: setAniso(texGround()), roughness: 0.95, metalness: 0.02, color: 0x8a8f90 });
+  MAT.ground.map.repeat.set(26, 26);
+  MAT.asphalt = new THREE.MeshStandardMaterial({ color: 0x34383a, roughness: 0.96, metalness: 0.02 });
+  MAT.sidewalk = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.82, metalness: 0.04, color: 0xb9bfc0 });
+
+  /* 灯带用 Basic 材质 + toneMapped:false，颜色值 >1 会直接溢到纯白并撑爆泛光。
+     原来是 (1.15,1.08,0.94)，配合 bloom 后整条灯带是一坨白斑。
+     压到 1.0 以下（不到 1 的亮度靠 ACES 也能保住「亮」的观感），泛光只留一圈柔光。 */
+  MAT.strip = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.86, 0.82, 0.72), toneMapped: false, fog: false });
+  MAT.stripCool = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.80, 0.96, 1.06), toneMapped: false, fog: false });
+  MAT.lampWarm = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.6, 1.8), toneMapped: false });
+  MAT.lampRed = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.0, 0.25, 0.2), toneMapped: false });
+  MAT.lampGreen = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.6, 1.1), toneMapped: false });
+  MAT.exitSign = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 1.9, 1.0), toneMapped: false, side: THREE.DoubleSide });
+
+  MAT.bld = [];
+  for (let v = 0; v < 3; v++) {
+    for (let f = 0; f < 3; f++) {
+      const t = texBuilding(v, [10, 20, 34][f]);
+      MAT.bld.push(new THREE.MeshStandardMaterial({
+        map: setAniso(t.map), emissiveMap: setAniso(t.emissive), emissive: 0xffffff,
+        emissiveIntensity: theme.windowGlow, roughness: 0.82, metalness: 0.15, color: 0xffffff
+      }));
+    }
+  }
+
+  /* 存一份快照供下次复用（浅拷贝，材质对象本身共享） */
+  const snap = {};
+  for (const k in MAT) snap[k] = MAT[k];
+  MAT_CACHE.set(key, snap);
+  return MAT;
+}
+
+function texGround() {
+  if (TEX_CACHE.has('ground')) return TEX_CACHE.get('ground');
+  const [c, x] = cv2d(512, 512);
+  x.fillStyle = '#4e5352'; x.fillRect(0, 0, 512, 512);
+  // 街区
+  for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
+    const v = 62 + Math.random() * 16;
+    x.fillStyle = `rgb(${v},${v + 3},${v + 2})`;
+    x.fillRect(gx * 128 + 10, gy * 128 + 10, 108, 108);
+  }
+  // 道路
+  x.fillStyle = '#3a3e3f';
+  for (let i = 0; i < 4; i++) { x.fillRect(i * 128, 0, 20, 512); x.fillRect(0, i * 128, 512, 20); }
+  x.fillStyle = 'rgba(210,200,160,.25)';
+  for (let i = 0; i < 4; i++) {
+    x.fillRect(i * 128 + 9, 0, 2, 512);
+    x.fillRect(0, i * 128 + 9, 512, 2);
+  }
+  noiseFill(x, 512, 512, 6000, '#000', 0.02, 0.09);
+  noiseFill(x, 512, 512, 2000, '#fff', 0.01, 0.04);
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set('ground', t);
+  return t;
+}
+
+/* ---------------- 沿线路挤出截面 ---------------- */
+/* 分块阈值：单段挤出几何超过这个长度（米）就切开，
+   让每块有自己的包围球，视锥外的块可以被 three.js 整体跳过。
+   1.3 km 的线路按 150 m 切 = 9 块，可见时通常只有 2–3 块在视野内。 */
+const EXTRUDE_CHUNK = 150;
+
+/* 原 extrudeAlong 的实现（生成单块）。extrudeAlong 会在它之上做分块。 */
+function extrudeAlongChunk(route, i0, i1, profile, mat, opts = {}) {
+  const { step = 2, uScale = 6, vScale = 8, closed = true } = opts;
+  const prof = profile.slice();
+  if (closed) prof.push(prof[0]);
+  const cum = [0];
+  for (let k = 1; k < prof.length; k++) {
+    cum.push(cum[k - 1] + Math.hypot(prof[k][0] - prof[k - 1][0], prof[k][1] - prof[k - 1][1]));
+  }
+  const rings = Math.max(2, Math.floor((i1 - i0) / step) + 1);
+  const vc = prof.length;
+  const pos = new Float32Array(rings * vc * 3);
+  const uv = new Float32Array(rings * vc * 2);
+  const idx = [];
+  let vi = 0, ui = 0;
+  for (let r = 0; r < rings; r++) {
+    const i = Math.min(i1, i0 + r * step);
+    const p = route.P[i], right = route.R[i], up = route.U[i];
+    const s = route.S[i];
+    for (let k = 0; k < vc; k++) {
+      pos[vi++] = p.x + right.x * prof[k][0] + up.x * prof[k][1];
+      pos[vi++] = p.y + right.y * prof[k][0] + up.y * prof[k][1];
+      pos[vi++] = p.z + right.z * prof[k][0] + up.z * prof[k][1];
+      uv[ui++] = cum[k] / uScale;
+      uv[ui++] = s / vScale;
+    }
+  }
+  for (let r = 0; r < rings - 1; r++) {
+    for (let k = 0; k < vc - 1; k++) {
+      const a = r * vc + k, b = a + 1, c = a + vc, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  return new THREE.Mesh(g, mat);
+}
+
+/* 分块包装：按路线索引区间切成多段，每段一个 mesh，各自有包围球。
+   返回一个 Group（调用方一律 group.add(...)，兼容）。 */
+function extrudeAlong(route, i0, i1, profile, mat, opts = {}) {
+  const step = opts.step || 2;
+  /* 把「索引区间」换算成米数：route.S[i] 是累计里程 */
+  const sStart = route.S ? route.S[Math.max(0, Math.min(route.N, i0))] : 0;
+  const sEnd = route.S ? route.S[Math.max(0, Math.min(route.N, i1))] : 0;
+  const spanM = Math.abs(sEnd - sStart);
+  if (!(spanM > EXTRUDE_CHUNK * 1.6) || !route.S) {
+    return extrudeAlongChunk(route, i0, i1, profile, mat, opts);
+  }
+  const g = new THREE.Group();
+  const pieces = Math.max(1, Math.ceil(spanM / EXTRUDE_CHUNK));
+  const idxPerPiece = Math.max(1, Math.round((i1 - i0) / pieces));
+  for (let k = 0; k < pieces; k++) {
+    const a = i0 + k * idxPerPiece;
+    const b = k === pieces - 1 ? i1 : Math.min(i1, a + idxPerPiece + 1);   // +1 让相邻块共享一圈顶点，避免接缝
+    if (b - a < 2) continue;
+    const mesh = extrudeAlongChunk(route, a, b, profile, mat, opts);
+    mesh.frustumCulled = true;
+    g.add(mesh);
+  }
+  return g;
+}
+
+/* ---------------- 轨道 ---------------- */
+function buildTrack(route, group, quality) {
+  const i0 = 0, i1 = route.N;
+  // 道床
+  const bedProfile = [[-7.3, -0.98], [-5.9, -0.36], [5.9, -0.36], [7.3, -0.98]];
+  const bed = extrudeAlong(route, i0, i1, bedProfile, MAT.ballast, { step: 2, uScale: 4, vScale: 4 });
+  group.add(bed);
+  // 四条钢轨
+  const railProf = [[-0.04, -0.17], [0.04, -0.17], [0.04, -0.015], [0.028, 0], [-0.028, 0], [-0.04, -0.015]];
+  for (const off of [-TRACK_LAT - RAIL_HALF, -TRACK_LAT + RAIL_HALF, TRACK_LAT - RAIL_HALF, TRACK_LAT + RAIL_HALF]) {
+    const p = railProf.map(([a, b]) => [a + off, b]);
+    group.add(extrudeAlong(route, i0, i1, p, MAT.rail, { step: 2, uScale: 1, vScale: 2 }));
+  }
+  /* 轨枕：**这是整个场景里三角形最多的东西**（1.3 km × 2 股道，每 1.35 m 一根
+     = 4.9 万根 × 12 三角 ≈ 59 万三角形），而且原来 frustumCulled=false，
+     意味着不管相机看哪儿，每帧都要把 4.9 万根枕木全提交一遍。
+
+     两处改动：
+       1) 步距 1.35 → 1.75 m。真实轨枕间距 0.6 m，但在 60 km/h 的车速下
+          1.75 m 与 1.35 m 在视觉上完全无法区分，三角形直接少 23%。
+       2) 按 120 m 分块，每块一个 InstancedMesh 并开启 frustumCulled。
+          相机永远只看得到身前身后各一两块，实际提交量降到 ~2 块
+          （约 1400 根），比原来一次性 4.9 万根少 97%。
+     分块后 draw call 从 1 变成 ~11，但每块都能被视锥剔除，
+     净效果是「可见时几乎不增加成本，不可见时彻底省掉」。 */
+  const stepM = 1.75;
+  const CHUNK_LEN = 120;
+  const chunkCount = Math.max(1, Math.ceil(route.length / CHUNK_LEN));
+  const sleeperGeo = new THREE.BoxGeometry(2.5, 0.16, 0.26);
+  const dummy = new THREE.Object3D();
+  for (let ci = 0; ci < chunkCount; ci++) {
+    const s0 = ci * CHUNK_LEN;
+    const s1 = Math.min(route.length - 1, s0 + CHUNK_LEN);
+    if (s1 - s0 < 2) continue;
+    const perTrack = Math.floor((s1 - s0) / stepM) + 1;
+    const cap = perTrack * 2;
+    const chunk = new THREE.InstancedMesh(sleeperGeo, MAT.sleeper, cap);
+    let n = 0;
+    for (let tr = 0; tr < 2; tr++) {
+      const lat = tr === 0 ? -TRACK_LAT : TRACK_LAT;
+      for (let s = s0 + 0.5; s < s1; s += stepM) {
+        const f = route.frameAt(s);
+        dummy.position.copy(f.pos).addScaledVector(f.right, lat).addScaledVector(f.up, -0.3);
+        dummy.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        chunk.setMatrixAt(n++, dummy.matrix);
+        if (n >= cap) break;
+      }
+      if (n >= cap) break;
+    }
+    if (!n) { chunk.dispose(); continue; }
+    chunk.count = n;
+    chunk.instanceMatrix.needsUpdate = true;
+    /* 关键：允许视锥剔除（原来这里是 false） */
+    chunk.frustumCulled = true;
+    chunk.computeBoundingSphere();
+    group.add(chunk);
+  }
+
+  // 接触网（明线区段）；第三轨线路不架接触网
+  const third = (typeof line !== 'undefined' && line && line.thirdRail);
+  if (!third) buildCatenary(route, group);
+  else buildThirdRail(route, group);
+}
+
+/* 第三轨受流：轨旁导电轨 + 防护罩 */
+function buildThirdRail(route, group) {
+  for (const side of [-1, 1]) {
+    const off = side * (TRACK_LAT + RAIL_HALF + 0.34);
+    const prof = [[-0.07, 0.14], [0.07, 0.14], [0.07, 0.24], [-0.07, 0.24]];
+    const p = prof.map(([a, b]) => [a + off, b]);
+    group.add(extrudeAlong(route, 0, route.N, p, MAT.rail, { step: 3, uScale: 1, vScale: 1 }));
+    // 防护罩（上方盖板）
+    const cover = [[off - 0.18, 0.34], [off + 0.18, 0.34], [off + 0.18, 0.38], [off - 0.18, 0.38]];
+    group.add(extrudeAlong(route, 0, route.N, cover, new THREE.MeshStandardMaterial({ color: 0x39433f, roughness: 0.8 }), { step: 4, uScale: 2, vScale: 2 }));
+    // 绝缘支架
+    const n = Math.floor(route.length / 6);
+    const br = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.24, 0.16), new THREE.MeshStandardMaterial({ color: 0x8a7f5e, roughness: 0.7 }), n);
+    const d = new THREE.Object3D();
+    for (let i = 0; i < n; i++) {
+      const f = route.frameAt(i * 6 + 2);
+      d.position.copy(f.pos).addScaledVector(f.right, off).addScaledVector(f.up, 0.16);
+      d.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+      d.updateMatrix();
+      br.setMatrixAt(i, d.matrix);
+    }
+    br.instanceMatrix.needsUpdate = true; br.frustumCulled = false;
+    group.add(br);
+  }
+}
+
+function buildCatenary(route, group) {
+  const wireMat = new THREE.LineBasicMaterial({ color: 0x3d4448, transparent: true, opacity: 0.9 });
+  const pts = [[], []];
+  for (let s = 0; s <= route.length; s += 10) {
+    const f = route.frameAt(s);
+    for (let tr = 0; tr < 2; tr++) {
+      const lat = tr === 0 ? -TRACK_LAT : TRACK_LAT;
+      const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.up, 4.85);
+      pts[tr].push(p);
+    }
+  }
+  for (let tr = 0; tr < 2; tr++) {
+    const g = new THREE.BufferGeometry().setFromPoints(pts[tr]);
+    group.add(new THREE.Line(g, wireMat));
+  }
+  // 吊弦
+  const drop = [];
+  for (let s = 0; s <= route.length; s += 24) {
+    const f = route.frameAt(s);
+    for (let tr = 0; tr < 2; tr++) {
+      const lat = tr === 0 ? -TRACK_LAT : TRACK_LAT;
+      const a = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.up, 4.85);
+      const b = a.clone().add(new THREE.Vector3(0, 1.15, 0));
+      drop.push(a, b);
+    }
+  }
+  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(drop), wireMat));
+
+  // 支柱（仅在无隧道区段）
+  const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 7.4, 8);
+  const armGeo = new THREE.BoxGeometry(4.4, 0.09, 0.09);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x565b5d, roughness: 0.6, metalness: 0.5 });
+  const positions = [];
+  for (let s = 30; s < route.length; s += 26) {
+    const i = Math.round(s / route.ds);
+    if (route.P[i].y < -2.2) continue;
+    for (const side of [-1, 1]) {
+      positions.push({ s, side });
+    }
+  }
+  const poles = new THREE.InstancedMesh(poleGeo, poleMat, positions.length);
+  const arms = new THREE.InstancedMesh(armGeo, poleMat, positions.length);
+  const d = new THREE.Object3D();
+  positions.forEach((p, k) => {
+    const f = route.frameAt(p.s);
+    const base = f.pos.clone().addScaledVector(f.right, p.side * (TRACK_LAT + 3.4));
+    base.y = Math.max(0, base.y - 0.5);
+    d.position.copy(base).add(new THREE.Vector3(0, 3.7, 0));
+    d.rotation.set(0, 0, 0);
+    d.updateMatrix();
+    poles.setMatrixAt(k, d.matrix);
+    const armPos = f.pos.clone().addScaledVector(f.right, p.side * (TRACK_LAT + 2.1)).addScaledVector(f.up, 5.55);
+    d.position.copy(armPos);
+    d.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+    d.scale.set(p.side * 1, 1, 1);
+    d.updateMatrix();
+    arms.setMatrixAt(k, d.matrix);
+  });
+  poles.instanceMatrix.needsUpdate = true; arms.instanceMatrix.needsUpdate = true;
+  poles.frustumCulled = false; arms.frustumCulled = false;
+  group.add(poles, arms);
+}
+
+/* ---------------- 隧道 ---------------- */
+function tunnelRanges(route) {
+  const runs = [];
+  let cur = null;
+  const skip = route.stations.filter(s => s.y < -2).map(s => [s.s - 74, s.s + 74]);
+  for (let i = 0; i <= route.N; i += 1) {
+    const s = route.S[i];
+    const inSkip = skip.some(([a, b]) => s > a && s < b);
+    const isT = route.P[i].y < -1.7 && !inSkip;
+    if (isT && !cur) cur = { a: i, b: i };
+    else if (isT && cur) cur.b = i;
+    else if (!isT && cur) { if (cur.b - cur.a > 3) runs.push(cur); cur = null; }
+  }
+  if (cur && cur.b - cur.a > 3) runs.push(cur);
+  return runs;
+}
+
+/* 沿线路生成一条「面向下」的发光带（隧道灯带）。
+   原来是 THREE.Line（1 像素线宽），在 1080p 以上会细到看不见，
+   而且在弯道里会因线段角度变化而闪烁。改成实心带状几何：
+   每个采样点向左右各扩展 width/2，相邻两点之间连成两个三角形。 */
+function ceilingRibbon(route, a, b, width, yOff, mat, step) {
+  const pos = [];
+  const idx = [];
+  const st = step || 2;
+  let n = 0;
+  for (let i = a; i <= b; i += st) {
+    const p = route.P[i], u = route.U[i], r = route.R[i];
+    const cx = p.x + u.x * yOff, cy = p.y + u.y * yOff, cz = p.z + u.z * yOff;
+    const hw = width / 2;
+    pos.push(cx - r.x * hw, cy - r.y * hw, cz - r.z * hw);
+    pos.push(cx + r.x * hw, cy + r.y * hw, cz + r.z * hw);
+    if (n > 0) {
+      const k = (n - 1) * 2;
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+
+function buildTunnels(route, group) {
+  const R = TUNNEL_R, spring = 3.1, rise = 2.35;
+  const prof = [[-R, -0.42], [-R, spring]];
+  const steps = 14;
+  for (let k = 1; k < steps; k++) {
+    const a = PI - PI * (k / steps);
+    prof.push([R * Math.cos(a), spring + rise * Math.sin(a)]);
+  }
+  prof.push([R, spring], [R, -0.42]);
+
+  const runs = tunnelRanges(route);
+  for (const run of runs) {
+    const m = extrudeAlong(route, run.a, run.b, prof, MAT.tunnel, { step: 2, uScale: 7, vScale: 7 });
+    group.add(m);
+
+    // 顶部灯带：实心带状（原来是 1px 的 Line，高分屏下会消失）
+    const stripMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(2.2, 2.1, 1.7), toneMapped: false, fog: false, side: THREE.DoubleSide
+    });
+    const strip = ceilingRibbon(route, run.a, run.b, 0.22, TUNNEL_R - 0.55, stripMat, 2);
+    strip.frustumCulled = false;
+    group.add(strip);
+
+    // 环向灯（每 22m）
+    const lampGeo = new THREE.BoxGeometry(0.6, 0.1, 0.32);
+    const cnt = Math.floor((route.S[run.b] - route.S[run.a]) / 22);
+    const lamps = new THREE.InstancedMesh(lampGeo, MAT.lampWarm, Math.max(1, cnt));
+    const d = new THREE.Object3D();
+    for (let k = 0; k < cnt; k++) {
+      const s = route.S[run.a] + k * 22 + 6;
+      const f = route.frameAt(s);
+      d.position.copy(f.pos).addScaledVector(f.up, TUNNEL_R - 0.5);
+      d.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+      d.updateMatrix();
+      lamps.setMatrixAt(k, d.matrix);
+    }
+    lamps.count = cnt;
+    lamps.instanceMatrix.needsUpdate = true;
+    lamps.frustumCulled = false;
+    group.add(lamps);
+
+    // 疏散指示
+    for (let s = route.S[run.a] + 40; s < route.S[run.b] - 20; s += 120) {
+      const f = route.frameAt(s);
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35), MAT.exitSign);
+      sign.position.copy(f.pos).addScaledVector(f.right, R - 0.3).addScaledVector(f.up, 2.35);
+      sign.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.tan.clone().negate(), f.up, f.right.clone().negate()));
+      group.add(sign);
+    }
+
+    // 洞口门框
+    for (const [idx, dir] of [[run.a, -1], [run.b, 1]]) {
+      const f = route.frameAt(route.S[idx]);
+      const frame = new THREE.Group();
+      frame.position.copy(f.pos);
+      frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+      const wallMat = MAT.concrete;
+      const mk = (w, h, d2, x, y, z) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d2), wallMat);
+        b.position.set(x, y, z); frame.add(b);
+      };
+      mk(3.2, 9.4, 1.4, -R - 1.5, 3.2, 0);
+      mk(3.2, 9.4, 1.4, R + 1.5, 3.2, 0);
+      mk(2 * R + 6.4, 3.0, 1.4, 0, 7.6, 0);
+      group.add(frame);
+    }
+  }
+}
+
+/* ---------------- 高架 ---------------- */
+function buildViaduct(route, group) {
+  const deckProf = [[-7.4, -0.34], [-7.35, -1.15], [-6.2, -1.55], [6.2, -1.55], [7.35, -1.15], [7.4, -0.34]];
+  const runs = [];
+  let cur = null;
+  for (let i = 0; i <= route.N; i++) {
+    const on = route.P[i].y > 3.2;
+    if (on && !cur) cur = { a: i, b: i };
+    else if (on && cur) cur.b = i;
+    else if (!on && cur) { if (cur.b - cur.a > 4) runs.push(cur); cur = null; }
+  }
+  if (cur && cur.b - cur.a > 4) runs.push(cur);
+
+  for (const run of runs) {
+    group.add(extrudeAlong(route, run.a, run.b, deckProf, MAT.concrete, { step: 2, uScale: 5, vScale: 5 }));
+    // 护栏
+    for (const side of [-1, 1]) {
+      const p = [[side * 5.45, -0.34], [side * 5.45, 0.86], [side * 5.2, 0.96], [side * 5.2, -0.34]];
+      group.add(extrudeAlong(route, run.a, run.b, p, MAT.concreteDark, { step: 3, uScale: 4, vScale: 4 }));
+    }
+    // 桥墩
+    const spanStep = 26;
+    const s0 = route.S[run.a], s1 = route.S[run.b];
+    const cnt = Math.max(1, Math.floor((s1 - s0) / spanStep));
+    const pierGeo = new THREE.CylinderGeometry(0.95, 1.08, 1, 16);   // 圆台桥墩
+    const capGeo = new RoundedBoxGeometry(9.6, 1.1, 1.6, 2, 0.16);   // 盖梁倒圆
+    const pierMat = MAT.concrete;
+    const piers = new THREE.InstancedMesh(pierGeo, pierMat, cnt);
+    const caps = new THREE.InstancedMesh(capGeo, pierMat, cnt);
+    const d = new THREE.Object3D();
+    for (let k = 0; k < cnt; k++) {
+      const s = s0 + k * spanStep + 8;
+      const f = route.frameAt(s);
+      const h = Math.max(2.5, f.pos.y - 1.6);
+      d.position.copy(f.pos); d.position.y = h / 2;
+      d.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+      d.scale.set(1, h, 1);
+      d.updateMatrix(); piers.setMatrixAt(k, d.matrix);
+      d.position.copy(f.pos); d.position.y = f.pos.y - 1.9;
+      d.scale.set(1, 1, 1); d.updateMatrix(); caps.setMatrixAt(k, d.matrix);
+    }
+    piers.instanceMatrix.needsUpdate = true; caps.instanceMatrix.needsUpdate = true;
+    piers.frustumCulled = false; caps.frustumCulled = false;
+    group.add(piers, caps);
+  }
+}
+
+/* ---------------- 街道层（P5-4） ----------------
+   高架段下面的地面原本是空的，看起来像浮在空中。
+   真实的高架地铁绝大多数沿城市主干道走，所以这里沿线路在两侧各铺一条
+   道路 + 人行道，再加车道虚线。全部用带状几何 + 实例化，draw call 控制在
+   个位数（当前固定成本 6.5 ms，加 draw call 会直接吃掉分辨率预算）。
+
+   ribbonY 的帮助函数：按给定的横向偏移与宽度，沿线路生成一条水平带。
+   y 用固定值（地面高度），不跟随线路起伏 —— 线路是架在空中的。 */
+function cityRibbon(route, a, b, side, latCenter, width, y, mat, step) {
+  const pos = [], idx = [];
+  const st = step || 3;
+  let n = 0;
+  for (let i = a; i <= b; i += st) {
+    const P = route.P[i], R = route.R[i];
+    const cx = P.x + R.x * side * latCenter;
+    const cz = P.z + R.z * side * latCenter;
+    const hw = width / 2;
+    pos.push(cx - R.x * hw, y, cz - R.z * hw);
+    pos.push(cx + R.x * hw, y, cz + R.z * hw);
+    if (n > 0) {
+      const k = (n - 1) * 2;
+      idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+    }
+    n++;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  const m = new THREE.Mesh(g, mat);
+  m.receiveShadow = false;
+  return m;
+}
+
+function buildRoads(route, group) {
+  /* 只在高架段铺路：地下段的地面在城市建筑之间，铺了也看不见 */
+  const runs = [];
+  let cur = null;
+  for (let i = 0; i <= route.N; i++) {
+    const on = route.P[i].y > 3.2;
+    if (on && !cur) cur = { a: i, b: i };
+    else if (on && cur) cur.b = i;
+    else if (!on && cur) { if (cur.b - cur.a > 4) runs.push(cur); cur = null; }
+  }
+  if (cur && cur.b - cur.a > 4) runs.push(cur);
+  if (typeof G !== 'undefined' && G) G.roadRuns = runs.length;
+  if (!runs.length) return 0;
+
+  /* 带状几何的三角形绕序容易朝下，被背面剔除后就整条看不见。
+     路面是平面条带，用 DoubleSide 的代价可以忽略，省掉绕序调试。 */
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.95, metalness: 0.02, side: THREE.DoubleSide });
+  const walkMat = new THREE.MeshStandardMaterial({ color: 0xa8adb2, roughness: 0.90, metalness: 0.02, side: THREE.DoubleSide });
+  const curbMat = new THREE.MeshStandardMaterial({ color: 0xd2d6d6, roughness: 0.82, side: THREE.DoubleSide });
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xd8d2b8, toneMapped: false });
+
+  let meshes = 0;
+  for (const run of runs) {
+    for (const side of [-1, 1]) {
+      /* 车行道：中心距线路 18 m，宽 12 m（双向四车道） */
+      group.add(cityRibbon(route, run.a, run.b, side, 18, 12, 0.03, roadMat)); meshes++;
+      /* 人行道：靠线路一侧 3 m */
+      group.add(cityRibbon(route, run.a, run.b, side, 10.6, 3.0, 0.14, walkMat)); meshes++;
+      /* 路缘石 */
+      group.add(cityRibbon(route, run.a, run.b, side, 12.25, 0.35, 0.16, curbMat)); meshes++;
+      /* 外侧人行道 */
+      group.add(cityRibbon(route, run.a, run.b, side, 25.6, 3.0, 0.14, walkMat)); meshes++;
+    }
+
+    /* 车道虚线：沿道路中心线每 12 m 一段 5 m 长的短条，实例化 */
+    const dashGeo = new THREE.BoxGeometry(0.16, 0.02, 5);
+    const totalLen = route.S[run.b] - route.S[run.a];
+    const cnt = Math.max(1, Math.floor(totalLen / 12));
+    const dashes = new THREE.InstancedMesh(dashGeo, lineMat, cnt * 2);
+    const d = new THREE.Object3D();
+    let di = 0;
+    for (let k = 0; k < cnt; k++) {
+      const s = route.S[run.a] + k * 12 + 3;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        d.position.set(
+          f.pos.x + f.right.x * side * 18,
+          0.05,
+          f.pos.z + f.right.z * side * 18
+        );
+        d.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        d.updateMatrix();
+        dashes.setMatrixAt(di++, d.matrix);
+      }
+    }
+    dashes.count = di;
+    dashes.instanceMatrix.needsUpdate = true;
+    dashes.frustumCulled = false;
+    group.add(dashes);
+    meshes++;
+
+    /* 路灯：沿外侧人行道每 28 m 一根，灯头自发光。
+       灯杆与灯头各一个 InstancedMesh（2 个 draw call），
+       材质不同无法合并，但这个数量可以接受。 */
+    const lampCnt = Math.max(1, Math.floor(totalLen / 28));
+    const poleGeo = new THREE.CylinderGeometry(0.11, 0.14, 8, 6);
+    poleGeo.translate(0, 4, 0);
+    const headGeo = new THREE.BoxGeometry(0.9, 0.16, 0.34);
+    const poles = new THREE.InstancedMesh(poleGeo, MAT.metal, lampCnt * 2);
+    const heads = new THREE.InstancedMesh(headGeo, MAT.strip, lampCnt * 2);
+    const dl = new THREE.Object3D();
+    let li = 0;
+    for (let k = 0; k < lampCnt; k++) {
+      const s = route.S[run.a] + k * 28 + 14;
+      const f = route.frameAt(s);
+      for (const side of [-1, 1]) {
+        const lx = f.pos.x + f.right.x * side * 27.6;
+        const lz = f.pos.z + f.right.z * side * 27.6;
+        dl.position.set(lx, 0, lz);
+        dl.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+        dl.scale.set(1, 1, 1);
+        dl.updateMatrix(); poles.setMatrixAt(li, dl.matrix);
+        dl.position.set(lx, 8, lz);
+        dl.updateMatrix(); heads.setMatrixAt(li, dl.matrix);
+        li++;
+      }
+    }
+    poles.count = li; heads.count = li;
+    poles.instanceMatrix.needsUpdate = true; heads.instanceMatrix.needsUpdate = true;
+    poles.frustumCulled = false; heads.frustumCulled = false;
+    group.add(poles, heads);
+    meshes += 2;
+    if (typeof G !== 'undefined' && G) G.lampCount = li;
+  }
+  if (typeof G !== 'undefined' && G) G.roadStats = { runs: runs.length, meshes };
+  return meshes;
+}
+
+/* ---------------- 地面 / 河流 ---------------- */
+function buildGround(route, group) {
+  /* 地面平面必须盖住整条线路：线路可延伸到 ±20 km，
+     原来固定 14 km 且以原点居中，远端建筑会「悬在虚空里」。
+     改为按线路中点居中、边长 60 km。 */
+  const midPt = route.frameAt(route.length * 0.5).pos;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(60000, 60000, 1, 1), MAT.ground);
+  plane.rotation.x = -PI / 2;
+  plane.position.set(midPt.x, -0.05, midPt.z);
+  plane.receiveShadow = true;
+  group.add(plane);
+
+  // 黄浦江
+  const cps = RIVER_PATH.map(([la, lo]) => {
+    const p = route.projectLL(la, lo);
+    return new THREE.Vector3(p.x, 0, p.z);
+  });
+  const curve = new THREE.CatmullRomCurve3(cps, false, 'catmullrom', 0.5);
+  const N = 160;
+  const pts = curve.getSpacedPoints(N);
+  const pos = [], uv = [], idx = [];
+  for (let i = 0; i <= N; i++) {
+    const p = pts[i];
+    const t = (i < N ? pts[i + 1].clone().sub(p) : p.clone().sub(pts[i - 1])).normalize();
+    const n = new THREE.Vector3(-t.z, 0, t.x);
+    const a = p.clone().addScaledVector(n, RIVER_WIDTH / 2);
+    const b = p.clone().addScaledVector(n, -RIVER_WIDTH / 2);
+    pos.push(a.x, 0.04, a.z, b.x, 0.04, b.z);
+    uv.push(0, i / 8, 1, i / 8);
+  }
+  for (let i = 0; i < N; i++) {
+    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+    idx.push(a, b, c, b, d, c);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  const water = new THREE.Mesh(g, MAT.water);
+  water.receiveShadow = false;
+  group.add(water);
+
+  // 河岸
+  const bankMat = new THREE.MeshStandardMaterial({ color: 0x5c605f, roughness: 0.9 });
+  for (const side of [1, -1]) {
+    const bp = [], bi = [];
+    for (let i = 0; i <= N; i++) {
+      const p = pts[i];
+      const t = (i < N ? pts[i + 1].clone().sub(p) : p.clone().sub(pts[i - 1])).normalize();
+      const n = new THREE.Vector3(-t.z, 0, t.x).multiplyScalar(side * RIVER_WIDTH / 2);
+      const a = p.clone().add(n);
+      bp.push(a.x, -0.1, a.z, a.x, 0.9, a.z);
+    }
+    for (let i = 0; i < N; i++) {
+      const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
+      if (side > 0) bi.push(a, c, b, b, c, d); else bi.push(a, b, c, b, d, c);
+    }
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3));
+    bg.setIndex(bi); bg.computeVertexNormals();
+    group.add(new THREE.Mesh(bg, bankMat));
+  }
+  return { riverPts: pts };
+}
+
+function distToRiver(x, z, pts) {
+  let best = 1e9;
+  for (let i = 0; i < pts.length - 1; i += 2) {
+    const ax = pts[i].x, az = pts[i].z, bx = pts[i + 1].x, bz = pts[i + 1].z;
+    const dx = bx - ax, dz = bz - az;
+    const t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    const px = ax + dx * t, pz = az + dz * t;
+    const d = Math.hypot(x - px, z - pz);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/* ---------------- 城市 ---------------- */
+/* ----------------------------------------------------------------
+   静态世界合并（性能）
+   ----------------------------------------------------------------
+   世界里的路灯、桥墩、护栏、地标零件等大量一次性小网格，每个占 1 个 draw call。
+   它们全程不动，按「材质 + 是否投影」分桶后合并成大 mesh：
+     draw call 从「网格数」降到「材质种类数」（通常十几）。
+   只处理直接挂在 worldGroup 下、且不是 InstancedMesh / 不是挤出分块 Group 的网格，
+   避免破坏需要单独控制可见性的东西。
+   ---------------------------------------------------------------- */
+function mergeWorldStatics(group) {
+  if (!group || typeof BufferGeometryUtils === "undefined") return 0;
+  group.updateMatrixWorld(true);
+  const buckets = new Map();
+  const remove = [];
+  const meshes = [];
+  group.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh) return;
+    if (!o.geometry || !o.material || Array.isArray(o.material)) return;
+    if (o.material.transparent) return;              // 透明件顺序敏感，不合并
+    if (o.userData && o.userData.noMerge) return;    // 需要单独控制的跳过
+    if (!o.geometry.attributes || !o.geometry.attributes.position) return;
+    meshes.push(o);
+  });
+  for (const o of meshes) {
+    const key = o.material.uuid + "|" + (o.castShadow ? 1 : 0);
+    if (!buckets.has(key)) buckets.set(key, { mat: o.material, cast: !!o.castShadow, list: [] });
+    buckets.get(key).list.push(o);
+  }
+  let merged = 0;
+  buckets.forEach(b => {
+    if (b.list.length < 4) return;                   // 少于 4 个不值得合并
+    const geos = [];
+    for (const o of b.list) {
+      const g2 = o.geometry.clone();
+      g2.applyMatrix4(o.matrixWorld);
+      if (!g2.attributes.normal) g2.computeVertexNormals();
+      /* 合并要求属性一致：缺 uv 的补一个零 uv */
+      if (!g2.attributes.uv) {
+        const c = g2.attributes.position.count;
+        g2.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(c * 2), 2));
+      }
+      geos.push(g2);
+    }
+    let mg = null;
+    try { mg = BufferGeometryUtils.mergeGeometries(geos, false); } catch (e) { mg = null; }
+    geos.forEach(g2 => g2.dispose());
+    if (!mg) return;
+    const mesh = new THREE.Mesh(mg, b.mat);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.frustumCulled = true;
+    /* 挂回第一个被合并对象的父节点，保持世界坐标系一致（matrixWorld 已烘进几何） */
+    const parent = b.list[0].parent || group;
+    parent.add(mesh);
+    b.list.forEach(o => { if (o.parent) o.parent.remove(o); });
+    merged += b.list.length;
+  });
+  return merged;
+}
+function buildCity(route, group, riverPts) {
+  /* ---- P5：分区驱动的城市 ----
+     原来是把沿线走廊按高度分 3 桶、每桶一个 InstancedMesh 铺方盒子。
+     现在改为：按位置查所属城市分区 → 取该区允许的建筑原型 → 分组实例化。
+     分区数据在 45_city_data.js，原型几何在 47_city_proto.js。
+     draw call 预算：8 种原型 × 1 个材质 = 8，远低于原来的 3 桶 + 树。 */
+  const districts = resolveCityDistricts(route);
+
+  /* 地标避让表：城市建筑不能压在地标上。
+     半径按地标体量给：塔类/穹顶类大（150-200 m），塔/寺/教堂中等（90 m）。
+     不避让的后果是「静安寺被一栋 140 m 塔楼盖住」，而且相机贴近时会
+     直接黑屏（在建筑内部）。 */
+  const LM_CLEAR = {
+    pearl: 200, twist: 190, swfc: 180, jinmao: 170, bund: 260,
+    stadium: 160, museum: 150, temple: 110, pagoda: 90, church: 100,
+    shells: 170, dome_station: 210, egg: 110, funnel: 160
+  };
+  const lmSites = [];
+  if (typeof LANDMARKS !== 'undefined') {
+    for (const lm of LANDMARKS) {
+      const w = route.projectLL(lm.lat, lm.lon);
+      lmSites.push({ x: w.x, z: w.z, r: LM_CLEAR[lm.kind] || 120 });
+    }
+  }
+
+  const rng = mulberry32(77123);
+  const items = [];
+  const districtHits = new Set();
+
+  /* 关键：建筑必须落在**格网**上，而不是随机撒点。
+     随机撒点会让大体量街区互相重叠，看起来是一张黑毯子 —— 没有一点
+     街道缝隙，就是典型的「像 SimCity 不像上海」。
+     这里按分区街区尺度推算格距，间距取街区的 1.45 倍，保证楼间留出马路；
+     再用填充率 district.density 决定填不填。
+     注意：必须用**累加步长**推进，不能用「采样序号取模」——
+     后者会因为步长与采样间隔不是整数倍而漏掉绝大部分行。 */
+  let sPos = 260;
+  let guard = 0;
+  while (sPos < route.length - 220 && guard < 4000) {
+    guard++;
+    const f = route.frameAt(sPos);
+    const probe = f.pos.clone().addScaledVector(f.right, 90);
+    const dist0 = cityDistrictAt(probe.x, probe.z, districts);
+    const bs = dist0.block || [80, 160];
+    /* 格距上限 150 m：再大就会变成「每 200 m 才一栋楼」的空旷感。
+       真实上海街区虽有 200 m 级的，但街区内部是多栋小楼，不是一栋巨构。 */
+    const latStep = Math.min(150, (bs[0] + bs[1]) * 0.5 * 1.45);
+
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 7; k++) {
+        const lat = side * (72 + k * latStep);
+        const along = (rng() - 0.5) * latStep * 0.4;
+        const p = f.pos.clone().addScaledVector(f.right, lat).addScaledVector(f.tan, along);
+        if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 30) continue;
+
+        let blocked = false;
+        let nearestSt = 1e9;
+        for (const st of route.stations) {
+          const dSt = Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z);
+          if (dSt < nearestSt) nearestSt = dSt;
+          if (dSt < 36) { blocked = true; break; }
+          if (st.y < -2) {
+            const ex = st.frame.pos.clone().addScaledVector(st.frame.right, 14).addScaledVector(st.frame.tan, 47);
+            if (Math.hypot(p.x - ex.x, p.z - ex.z) < 48) { blocked = true; break; }
+          }
+        }
+        /* 地标避让 */
+        if (!blocked) {
+          for (const lm of lmSites) {
+            if (Math.hypot(p.x - lm.x, p.z - lm.z) < lm.r) { blocked = true; break; }
+          }
+        }
+        if (blocked) continue;
+
+        const dist = cityDistrictAt(p.x, p.z, districts);
+        districtHits.add(dist.id);
+        if (rng() > (dist.density || 0.7)) continue;
+
+        const rH = rng(), rJ = rng(), rP = rng(), rW = rng(), rD = rng(), rT = rng(), rC = rng();
+        const dbs = dist.block || [80, 160];
+        /* 楼宽只能取街区的一个零头：街区 80–220 m，单栋楼通常 18–70 m。
+           之前直接把 block 当楼宽，结果全是「100 m 宽 20 m 高」的薄饼。 */
+        const w = 16 + rW * Math.min(54, dbs[1] * 0.34);
+        const d = 14 + rD * Math.min(46, dbs[1] * 0.28);
+        /* 注意：CITY_FALLBACK 没有 x/z 字段。直接减会得到 NaN，
+           高度变 NaN -> 缩放矩阵失效 -> 建筑整批不可见（且不报错）。
+           这里兜底成「以自身为原点」，衰减取最大值。 */
+        const cx = dist.x == null ? p.x : dist.x;
+        const cz = dist.z == null ? p.z : dist.z;
+        let h = cityBuildingHeight(dist, p.x - cx, p.z - cz, rH, rJ);
+        /* 车站周边限高：真实车站是开放空间（站前广场、公交枢纽、低层配套），
+           不会紧贴着盖一栋 150 m 塔楼。原来建筑高度只看分区与离中心的距离，
+           完全不知道车站在哪，导致站旁天际线不合理。
+             60 m 内   -> 压到 35%
+             60–220 m  -> 从 35% 线性恢复到 100%
+             220 m 外  -> 不限制 */
+        if (nearestSt < 220) {
+          const k = nearestSt <= 60 ? 0.35 : 0.35 + 0.65 * ((nearestSt - 60) / 160);
+          h *= k;
+        }
+        items.push({
+          proto: cityPickProto(dist.kind, rP),
+          x: p.x, y: 0, z: p.z,
+          w, h, d,
+          rot: Math.atan2(f.tan.x, f.tan.z) + (rng() - 0.5) * 0.25,
+          tint: 0.80 + rT * 0.34,
+          warmth: rC
+        });
+      }
+    }
+    sPos += latStep * 0.7;
+  }
+
+  /* 8 种原型共用一个材质：靠 instanceColor 做明度差异。
+     用 MAT.bld 的第一组（最亮的立面贴图），其余靠染色区分。 */
+  /* 高架站下方铺一块站前广场：否则车站像是「立在一片空地上」。
+     全部用实例化，26 个站只占 1 个 draw call。 */
+  const plazaStations = route.stations.filter(st => st.frame.pos.y > 3 && !st.synthetic);
+  if (plazaStations.length) {
+    const plazaGeo = new THREE.BoxGeometry(1, 1, 1);
+    const plazaMat = new THREE.MeshStandardMaterial({ color: 0x9a9fa2, roughness: 0.94, metalness: 0.02 });
+    const plazas = new THREE.InstancedMesh(plazaGeo, plazaMat, plazaStations.length);
+    const dp = new THREE.Object3D();
+    plazaStations.forEach((st, k) => {
+      const f = st.frame;
+      dp.position.set(f.pos.x, 0.10, f.pos.z);
+      dp.rotation.set(0, Math.atan2(f.tan.x, f.tan.z), 0);
+      dp.scale.set(30, 0.2, 118);   /* 比两侧道路内缘（21.2 m）略宽即可，太宽会盖住车道 */
+      dp.updateMatrix();
+      plazas.setMatrixAt(k, dp.matrix);
+    });
+    plazas.instanceMatrix.needsUpdate = true;
+    plazas.frustumCulled = false;
+    group.add(plazas);
+  }
+
+  const cityMat = (MAT.bld && MAT.bld[2]) || MAT.bld[0];
+  const built = buildCityChunked(group, items, cityMat);
+  /* 站周限高验证：统计距最近车站 100 m 内的最高建筑 */
+  let maxNearSt = 0, cntNearSt = 0;
+  for (const it of items) {
+    let d = 1e9;
+    for (const st of route.stations) {
+      const dd = Math.hypot(it.x - st.frame.pos.x, it.z - st.frame.pos.z);
+      if (dd < d) d = dd;
+    }
+    if (d < 100) { cntNearSt++; if (it.h > maxNearSt) maxNearSt = it.h; }
+  }
+  G.cityStats = {
+    buildings: items.length,
+    chunks: built.chunks,
+    meshes: built.meshes,
+    districts: districtHits.size,
+    nearStation: cntNearSt,
+    maxHeightNearStation: Math.round(maxNearSt)
+  };
+  /* 首次建好后立刻按当前相机刷一次可见性，避免第一帧整城不显示 */
+  if (camera) updateCityLOD(camera.position);
+
+
+  /* 行道树
+     原来的实现有两个问题：
+     1) 位置用 f.pos（线路中心），高架段的 y 是十几米 —— 树直接浮在空中；
+     2) 只有 320 棵，撒在 14–38 m 的随机横向位置，看不出成行。
+     改为：贴地（y 由地面起算）、沿道路外侧人行道成行布置、间隔 14 m。 */
+  const treeN = 1400;
+  const trunkGeo = new THREE.CylinderGeometry(0.16, 0.22, 2.2, 5);
+  const crownGeo = new THREE.IcosahedronGeometry(1.7, 0);
+  const trunks = new THREE.InstancedMesh(trunkGeo, MAT.trunk, treeN);
+  const crowns = new THREE.InstancedMesh(crownGeo, MAT.tree, treeN);
+  const dt = new THREE.Object3D();
+  let tn = 0;
+  const treeStep = 14;
+  for (let s = 160; s < route.length - 160 && tn < treeN; s += treeStep) {
+    const f = route.frameAt(s);
+    for (const side of [-1, 1]) {
+      if (tn >= treeN) break;
+      /* 外侧人行道（27–29 m）之外再留 1 m，避开路灯 */
+      const lat = side * (29 + RNG() * 2.5);
+      const p = f.pos.clone().addScaledVector(f.right, lat);
+      if (distToRiver(p.x, p.z, riverPts) < RIVER_WIDTH / 2 + 8) continue;
+      const h = 0.95 + RNG() * 0.7;
+      /* 关键：y 从地面起算，不要用 f.pos.y（那是线路高度） */
+      dt.position.set(p.x, 1.1 * h, p.z);
+      dt.rotation.set(0, RNG() * TAU, 0);
+      dt.scale.set(h, h, h);
+      dt.updateMatrix(); trunks.setMatrixAt(tn, dt.matrix);
+      dt.position.y = 2.6 * h;
+      dt.scale.set(h * (0.8 + RNG() * 0.5), h, h * (0.8 + RNG() * 0.5));
+      dt.updateMatrix(); crowns.setMatrixAt(tn, dt.matrix);
+      tn++;
+    }
+  }
+  trunks.count = tn; crowns.count = tn;
+  trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true;
+  trunks.frustumCulled = false; crowns.frustumCulled = false;
+  group.add(trunks, crowns);
+  if (typeof G !== 'undefined' && G) G.treeCount = tn;
+}
+
+/* ---------------- 地标 ---------------- */
+function buildLandmarks(route, group, theme) {
+  const glow = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.8, 1.5, 1.1), toneMapped: false });
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0x2b4050, roughness: 0.12, metalness: 0.85, envMapIntensity: 1.3,
+    emissive: new THREE.Color(0x1a2a3a), emissiveIntensity: 0.5
+  });
+  const concreteMat = new THREE.MeshStandardMaterial({ color: 0xb9b3a8, roughness: 0.8, metalness: 0.1 });
+
+  let builtCount = 0;
+  const builtKinds = [];
+  for (const lm of LANDMARKS) {
+    const p = route.projectLL(lm.lat, lm.lon);
+    let nearest = 1e9;
+    for (const st of route.stations) nearest = Math.min(nearest, Math.hypot(p.x - st.frame.pos.x, p.z - st.frame.pos.z));
+    if (nearest > 3600) continue;
+    builtCount++;
+    builtKinds.push(lm.kind);
+    const g = new THREE.Group();
+    g.position.set(p.x, 0, p.z);
+
+    if (lm.kind === 'pearl') {
+      // 三根斜撑
+      for (let i = 0; i < 3; i++) {
+        const a = i / 3 * TAU;
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 5.2, 150, 10), concreteMat);
+        leg.position.set(Math.cos(a) * 26, 75, Math.sin(a) * 26);
+        leg.rotation.z = Math.cos(a) * 0.17; leg.rotation.x = -Math.sin(a) * 0.17;
+        g.add(leg);
+      }
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(7, 11, 300, 16), concreteMat);
+      shaft.position.y = 150; g.add(shaft);
+      for (const [y, r] of [[112, 28], [263, 23], [350, 14]]) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10), new THREE.MeshStandardMaterial({
+          color: 0xd94a63, roughness: 0.25, metalness: 0.5, emissive: 0xb01f3a, emissiveIntensity: 0.9
+        }));
+        s.position.y = y; g.add(s);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 1.008, 0.7, 6, 32), glow);
+        ring.position.y = y; ring.rotation.x = PI / 2; g.add(ring);
+      }
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 2.2, 110, 8), concreteMat);
+      ant.position.y = 405; g.add(ant);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(2.2, 12, 8), MAT.lampRed);
+      tip.position.y = 462; g.add(tip);
+    } else if (lm.kind === 'twist') {
+      const seg = 26, total = lm.h;
+      for (let i = 0; i < seg; i++) {
+        const t = i / seg;
+        const w = lerp(62, 34, t), d = lerp(58, 30, t);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(w, total / seg * 1.02, d), glassMat);
+        b.position.y = total * (i + 0.5) / seg;
+        b.rotation.y = t * 0.9;
+        g.add(b);
+      }
+      const crown = new THREE.Mesh(new THREE.BoxGeometry(36, 8, 32), glow);
+      crown.position.y = total; g.add(crown);
+    } else if (lm.kind === 'swfc') {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(58, 430, 58), glassMat);
+      b.position.y = 215; b.scale.set(1, 1, 1); g.add(b);
+      const top = new THREE.Mesh(new THREE.BoxGeometry(56, 62, 56), glassMat);
+      top.position.y = 461; g.add(top);
+      // 顶部风洞
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(24, 30, 60), new THREE.MeshBasicMaterial({ color: 0x05080c }));
+      hole.position.y = 452; g.add(hole);
+    } else if (lm.kind === 'jinmao') {
+      const tiers = [[54, 52, 190], [44, 42, 80], [36, 34, 60], [28, 26, 42], [20, 18, 30]];
+      let y = 0;
+      for (const [w, d, h] of tiers) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({
+          color: 0x8b8172, roughness: 0.35, metalness: 0.75, envMapIntensity: 1.2
+        }));
+        b.position.y = y + h / 2; g.add(b);
+        const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 1.2, d + 0.6), glow);
+        band.position.y = y + h; g.add(band);
+        y += h;
+      }
+      const spire = new THREE.Mesh(new THREE.ConeGeometry(8, 42, 8), MAT.metal);
+      spire.position.y = y + 21; g.add(spire);
+    } else if (lm.kind === 'bund') {
+      const warmMat = new THREE.MeshStandardMaterial({
+        color: 0x6b5f4c, roughness: 0.75, metalness: 0.15,
+        emissive: new THREE.Color(0xffc07a), emissiveIntensity: 0.55
+      });
+      for (let i = 0; i < 9; i++) {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(30 + RNG() * 14, 26 + RNG() * 16, 22), warmMat);
+        b.position.set(0, b.geometry.parameters.height / 2, -180 + i * 44);
+        b.rotation.y = PI / 2;
+        g.add(b);
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(7, 10, 6), new THREE.MeshStandardMaterial({ color: 0x5b6158, roughness: 0.5, metalness: 0.5 }));
+        dome.position.set(0, b.geometry.parameters.height + 5, -180 + i * 44);
+        g.add(dome);
+      }
+    } else if (lm.kind === 'stadium') {
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(95, 88, 34, 36, 1, true), new THREE.MeshStandardMaterial({
+        color: 0x9aa3a6, roughness: 0.6, metalness: 0.3, side: THREE.DoubleSide
+      }));
+      ring.position.y = 17; g.add(ring);
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(98, 98, 5, 36), new THREE.MeshStandardMaterial({ color: 0xc9d3d6, roughness: 0.4, metalness: 0.4 }));
+      roof.position.y = 36; g.add(roof);
+      const field = new THREE.Mesh(new THREE.CylinderGeometry(70, 70, 1.4, 36), new THREE.MeshStandardMaterial({ color: 0x22451f, roughness: 0.95 }));
+      field.position.y = 1.5; g.add(field);
+      for (let i = 0; i < 12; i++) {
+        const a = i / 12 * TAU;
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 40, 6), MAT.metal);
+        post.position.set(Math.cos(a) * 96, 20, Math.sin(a) * 96); g.add(post);
+      }
+    } else if (lm.kind === 'museum') {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(120, 22, 90), new THREE.MeshStandardMaterial({ color: 0xb9bdbd, roughness: 0.5, metalness: 0.4 }));
+      base.position.y = 11; g.add(base);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(38, 16, 8, 0, TAU, 0, PI / 2), new THREE.MeshPhysicalMaterial({
+        color: 0x9fc6d8, roughness: 0.08, metalness: 0.5, transparent: true, opacity: 0.55, envMapIntensity: 1.3
+      }));
+      dome.position.y = 22; g.add(dome);
+
+    /* ================= P5-3 新增 7 个地标 ================= */
+
+    } else if (lm.kind === 'temple') {
+      /* 静安寺：台基 + 主殿 + 金色歇山顶 + 左右配殿 */
+      const stone = new THREE.MeshStandardMaterial({ color: 0x8a7f6d, roughness: 0.85 });
+      const gold = new THREE.MeshStandardMaterial({
+        color: 0xc9a24a, roughness: 0.35, metalness: 0.75,
+        emissive: new THREE.Color(0x6b4a10), emissiveIntensity: 0.35
+      });
+      const base = new THREE.Mesh(new THREE.BoxGeometry(76, 6, 56), stone);
+      base.position.y = 3; g.add(base);
+      const hall = new THREE.Mesh(new THREE.BoxGeometry(52, 20, 34), stone);
+      hall.position.y = 16; g.add(hall);
+      /* 歇山顶：用四坡四边形近似 —— 上小下大的两段 */
+      const roof1 = new THREE.Mesh(new THREE.CylinderGeometry(19, 40, 9, 4), gold);
+      roof1.position.y = 30.5; roof1.rotation.y = PI / 4; roof1.scale.z = 0.72;
+      g.add(roof1);
+      const roof2 = new THREE.Mesh(new THREE.CylinderGeometry(6, 19, 6, 4), gold);
+      roof2.position.y = 38; roof2.rotation.y = PI / 4; roof2.scale.z = 0.72;
+      g.add(roof2);
+      for (const sx of [-1, 1]) {
+        const wing = new THREE.Mesh(new THREE.BoxGeometry(20, 12, 22), stone);
+        wing.position.set(sx * 40, 12, 6); g.add(wing);
+        const wr = new THREE.Mesh(new THREE.CylinderGeometry(8, 16, 6, 4), gold);
+        wr.position.set(sx * 40, 21, 6); wr.rotation.y = PI / 4; wr.scale.z = 0.8;
+        g.add(wr);
+      }
+
+    } else if (lm.kind === 'pagoda') {
+      /* 龙华塔：八角七层，逐层收分，塔刹 */
+      const brick = new THREE.MeshStandardMaterial({ color: 0x9d7a5c, roughness: 0.9 });
+      const eave = new THREE.MeshStandardMaterial({ color: 0x4a4038, roughness: 0.75 });
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(11, 12, 5, 8), brick);
+      base.position.y = 2.5; g.add(base);
+      let y = 5;
+      for (let i = 0; i < 7; i++) {
+        const r = 7.4 - i * 0.72;
+        const h = 4.4 - i * 0.18;
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.82, r, h, 8), brick);
+        body.position.y = y + h / 2; g.add(body);
+        const eaveRing = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.28, r * 1.12, 0.7, 8), eave);
+        eaveRing.position.y = y + h; g.add(eaveRing);
+        y += h + 0.7;
+      }
+      /* 塔刹用铜金色。注意不能引用 temple 分支里的 gold ——
+         那是块级作用域，在 pagoda 分支里取不到，运行时会抛 ReferenceError。 */
+      const spireMat = new THREE.MeshStandardMaterial({ color: 0xb08d3f, roughness: 0.4, metalness: 0.7 });
+      const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 1.1, 7, 8), spireMat);
+      spire.position.y = y + 3.5; g.add(spire);
+
+    } else if (lm.kind === 'church') {
+      /* 徐家汇天主教堂：中殿 + 双尖塔 + 玫瑰窗 */
+      const brickM = new THREE.MeshStandardMaterial({ color: 0x8d5a44, roughness: 0.9 });
+      const roofM = new THREE.MeshStandardMaterial({ color: 0x3b3a3c, roughness: 0.8 });
+      const nave = new THREE.Mesh(new THREE.BoxGeometry(28, 22, 64), brickM);
+      nave.position.y = 11; g.add(nave);
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 64, 3), roofM);
+      ridge.rotation.z = PI / 2; ridge.rotation.y = PI / 2;
+      ridge.position.y = 27; ridge.scale.z = 0.55; g.add(ridge);
+      for (const sx of [-1, 1]) {
+        const tower = new THREE.Mesh(new THREE.BoxGeometry(11, 42, 11), brickM);
+        tower.position.set(sx * 15, 21, 34); g.add(tower);
+        const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 7.6, 18, 8), roofM);
+        spire.position.set(sx * 15, 51, 34); g.add(spire);
+      }
+      const rose = new THREE.Mesh(new THREE.CircleGeometry(5, 16), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.4, 1.15, 0.75), toneMapped: false
+      }));
+      rose.position.set(0, 20, 32.2); g.add(rose);
+
+    } else if (lm.kind === 'shells') {
+      /* 东方体育中心：三片弧形壳体 */
+      const shellM = new THREE.MeshStandardMaterial({
+        color: 0xd7dee2, roughness: 0.3, metalness: 0.55, side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 3; i++) {
+        const s = new THREE.Mesh(
+          new THREE.SphereGeometry(34 + i * 6, 16, 8, 0, TAU, 0, PI * 0.42),
+          shellM
+        );
+        s.position.set((i - 1) * 44, 6, (i - 1) * 16);
+        s.scale.set(1.25, 1.0, 0.85);
+        s.rotation.y = i * 0.5;
+        g.add(s);
+      }
+      const pool = new THREE.Mesh(new THREE.CylinderGeometry(80, 80, 0.6, 28), MAT.water || shellM);
+      pool.position.y = 0.3; g.add(pool);
+
+    } else if (lm.kind === 'dome_station') {
+      /* 上海南站：圆形大屋盖 + 环状基座 */
+      const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(105, 112, 16, 32, 1, true), new THREE.MeshStandardMaterial({
+        color: 0xa8b0b3, roughness: 0.65, metalness: 0.25, side: THREE.DoubleSide
+      }));
+      baseRing.position.y = 8; g.add(baseRing);
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 20, 9, 0, TAU, 0, PI * 0.34), new THREE.MeshPhysicalMaterial({
+        color: 0xcfd8dc, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.62, envMapIntensity: 1.4,
+        side: THREE.DoubleSide
+      }));
+      dome.position.y = 14; g.add(dome);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(112, 2.2, 8, 40), MAT.metal);
+      rim.position.y = 16; rim.rotation.x = PI / 2; g.add(rim);
+      const plaza = new THREE.Mesh(new THREE.CylinderGeometry(150, 150, 0.8, 32), new THREE.MeshStandardMaterial({ color: 0x6e7376, roughness: 0.95 }));
+      plaza.position.y = 0.4; g.add(plaza);
+
+    } else if (lm.kind === 'egg') {
+      /* 五角场彩蛋：椭球发光体 + 环形基座 */
+      const eggMat = new THREE.MeshPhysicalMaterial({
+        color: 0xdfe9ee, roughness: 0.18, metalness: 0.4,
+        emissive: new THREE.Color(0x2a4a66), emissiveIntensity: 0.8,
+        transparent: true, opacity: 0.78, envMapIntensity: 1.6
+      });
+      const egg = new THREE.Mesh(new THREE.SphereGeometry(15, 16, 11), eggMat);
+      egg.position.y = 22; egg.scale.set(1, 1.35, 1);
+      g.add(egg);
+      const ring = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 4, 28), new THREE.MeshStandardMaterial({
+        color: 0x8f979b, roughness: 0.5, metalness: 0.5
+      }));
+      ring.position.y = 2; g.add(ring);
+      const glow = new THREE.Mesh(new THREE.CircleGeometry(23, 28), new THREE.MeshBasicMaterial({
+        color: new THREE.Color(0.6, 1.1, 1.5), toneMapped: false, transparent: true, opacity: 0.5
+      }));
+      glow.position.y = 4.1; glow.rotation.x = -PI / 2; g.add(glow);
+
+    } else if (lm.kind === 'funnel') {
+      /* 世博轴阳光谷：六个倒锥形采光罩 */
+      const funnelMat = new THREE.MeshStandardMaterial({
+        color: 0xcfe0e6, roughness: 0.2, metalness: 0.45, side: THREE.DoubleSide
+      });
+      const glassM = new THREE.MeshPhysicalMaterial({
+        color: 0x9fc6d8, roughness: 0.06, metalness: 0.5, transparent: true, opacity: 0.42, envMapIntensity: 1.5,
+        side: THREE.DoubleSide
+      });
+      for (let i = 0; i < 6; i++) {
+        const f = new THREE.Mesh(new THREE.CylinderGeometry(26, 7, 30, 20, 1, true), glassM);
+        f.position.set(0, 15, -160 + i * 64);
+        g.add(f);
+        const lip = new THREE.Mesh(new THREE.TorusGeometry(26, 1.1, 6, 28), funnelMat);
+        lip.position.set(0, 30, -160 + i * 64); lip.rotation.x = PI / 2;
+        g.add(lip);
+      }
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(30, 3, 420), new THREE.MeshStandardMaterial({ color: 0x9aa3a6, roughness: 0.7, metalness: 0.3 }));
+      deck.position.y = 1.5; g.add(deck);
+    }
+    group.add(g);
+  }
+  /* 统计本次实际建造的地标（离线路 3.6 km 内的才建），供回归与调试用 */
+  if (typeof G !== 'undefined' && G) G.landmarks = { total: LANDMARKS.length, built: builtCount, kinds: builtKinds };
+}

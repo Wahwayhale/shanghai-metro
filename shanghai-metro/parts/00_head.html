@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>上海地铁 · 模拟驾驶 | Shanghai Metro Driver</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2306090c%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%278%27 fill=%27none%27 stroke=%27%238CC63F%27 stroke-width=%273%27/%3E%3Cpath d=%27M6 16h20%27 stroke=%27%238CC63F%27 stroke-width=%272%27/%3E%3C/svg%3E">
+<style>
+  :root{
+    --line:#8CC63F;
+    --line-glow:rgba(140,198,63,.35);
+    --bg:#06090c;
+    --panel:rgba(11,16,21,.82);
+    --panel-2:rgba(16,22,28,.9);
+    --stroke:rgba(255,255,255,.10);
+    --stroke-2:rgba(255,255,255,.18);
+    --text:#eaf1f6;
+    --muted:#8598a6;
+    --amber:#ffb020;
+    --red:#ff4d4f;
+    --green:#3ddc97;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei","Segoe UI",Roboto,sans-serif;
+    user-select:none;-webkit-font-smoothing:antialiased}
+  canvas{display:block}
+  #app{position:fixed;inset:0;overflow:hidden;background:#05080a}
+  #scene{position:absolute;inset:0;width:100%;height:100%}
+  .hidden{display:none!important}
+  .kicker{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:-.01em}
+  .panel{background:linear-gradient(180deg,rgba(14,19,24,.86),rgba(8,12,16,.92));
+    border:1px solid var(--stroke);border-radius:14px;
+    box-shadow:0 18px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.045);
+    backdrop-filter:blur(18px) saturate(130%);-webkit-backdrop-filter:blur(18px) saturate(130%)}
+
+  /* ============ 主菜单 ============ */
+  #menu{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;
+    background:
+      radial-gradient(120% 80% at 78% 12%, rgba(20,34,26,.35), transparent 60%),
+      linear-gradient(90deg, rgba(4,7,9,.97) 0%, rgba(4,7,9,.90) 34%, rgba(4,7,9,.12) 58%, rgba(4,7,9,.10) 78%, rgba(4,7,9,.42) 100%),
+      linear-gradient(0deg, rgba(4,7,9,.94), transparent 42%);
+    padding:clamp(16px,2.6vw,42px) clamp(22px,4vw,64px);
+    overflow-y:auto}
+  #menu::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+    background-size:64px 64px;
+    mask-image:linear-gradient(90deg,rgba(0,0,0,.5),transparent 55%)}
+  .menu-grid{position:relative;z-index:2;display:grid;grid-template-columns:minmax(320px,420px) minmax(560px,1fr);
+    gap:clamp(24px,4vw,64px);align-items:start;flex:1}
+
+  .brand{padding-top:clamp(4px,2vh,26px)}
+  .brand-badge{display:inline-flex;align-items:center;gap:9px;padding:7px 13px 7px 8px;border:1px solid rgba(255,255,255,.14);
+    border-radius:100px;font-size:11px;letter-spacing:.18em;color:#cfdae2;background:rgba(255,255,255,.045)}
+  .brand-badge .roundel{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+    background:var(--line);color:#0a1206;font-weight:800;font-size:11px;letter-spacing:0}
+  .brand h1{font-size:clamp(40px,4.8vw,68px);line-height:.98;margin:22px 0 0;font-weight:800;letter-spacing:-.03em;
+    background:linear-gradient(180deg,#ffffff 30%,#9fb0bb);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand .en{font-size:clamp(10px,1vw,12px);letter-spacing:.34em;color:#7f929f;margin-top:14px;font-weight:600}
+  .brand-sub{color:#93a5b1;font-size:12px;line-height:1.8;margin:20px 0 0;max-width:330px;border-left:2px solid var(--line);padding-left:14px}
+  .brand-stats{display:flex;gap:26px;margin-top:22px}
+  .brand-stats div b{display:block;font-size:20px;font-weight:700}
+  .brand-stats div span{font-size:10px;color:var(--muted);letter-spacing:.14em}
+
+  .picker{padding-top:clamp(0px,2vh,18px);display:flex;flex-direction:column;min-height:0}
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:12px;text-shadow:0 2px 18px rgba(0,0,0,.85)}
+  .section-head h2{margin:4px 0 0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .route-list{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,470px);overflow-y:auto;
+    padding-right:6px;mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%)}
+  .route-list::-webkit-scrollbar{width:5px}
+  .route-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.16);border-radius:3px}
+  .route-card{position:relative;flex:0 0 auto;display:grid;grid-template-columns:1fr 190px;gap:14px;align-items:center;
+    padding:12px 16px 12px 19px;border-radius:12px;cursor:pointer;
+    background:linear-gradient(100deg,rgba(17,23,29,.86),rgba(11,15,19,.7));
+    border:1px solid var(--stroke);transition:.18s ease;overflow:hidden}
+  .route-card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--rc,#888);opacity:.55;transition:.18s}
+  .route-card:hover{border-color:rgba(255,255,255,.22);transform:translateX(2px)}
+  .route-card.on{border-color:var(--rc);background:linear-gradient(100deg,rgba(26,34,42,.95),rgba(12,17,22,.8));
+    box-shadow:0 0 0 1px var(--rc),0 12px 34px -14px var(--rc)}
+  .route-card.on::before{opacity:1;top:8px;bottom:8px;box-shadow:0 0 14px var(--rc)}
+  .rc-line{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .rc-badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:5px;background:var(--rc);color:#08110a;letter-spacing:.02em}
+  .route-card.dual .rc-badge{background:linear-gradient(135deg,var(--rc) 0%,var(--rc) 48%,var(--rc2) 52%,var(--rc2) 100%)}
+  .rc-career{margin-left:8px;font-size:9px;font-weight:700;letter-spacing:.04em;color:#0a1206;
+    background:var(--line);padding:2px 6px;border-radius:5px;vertical-align:1px}
+  .rc-career.rev{background:rgba(255,255,255,.08);color:#c3d4de;border:1px solid rgba(255,255,255,.16);padding:1px 5px}
+  .rc-career.day{background:rgba(140,198,63,.14);color:#c9f07a;border:1px solid rgba(140,198,63,.35);padding:1px 5px}
+  .rc-seg{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+  .rc-title{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .rc-title small{display:block;margin:4px 0 0;font-size:11px;color:#8799a5;font-weight:500;letter-spacing:.02em}
+  .rc-meta{display:flex;flex-wrap:wrap;gap:5px 12px;margin-top:9px;font-size:10.5px;color:#8fa2ae}
+  .rc-meta i{font-style:normal;color:#5f7280}
+  .rc-desc{font-size:11px;color:#8b9daa;line-height:1.6;margin-top:6px;max-width:540px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rc-map{height:56px;position:relative}
+  .rc-map svg{width:100%;height:100%;overflow:visible}
+
+  .menu-bottom{position:relative;z-index:2;margin-top:clamp(12px,2vh,22px);display:flex;flex-wrap:wrap;gap:18px 26px;align-items:flex-end;justify-content:space-between}
+  .settings{display:flex;flex-wrap:wrap;gap:10px 22px}
+  .setting{display:flex;flex-direction:column;gap:7px}
+  .seg{display:inline-flex;padding:3px;border-radius:9px;background:rgba(255,255,255,.05);border:1px solid var(--stroke)}
+  .seg button{border:0;background:transparent;color:#93a5b1;font-size:11.5px;padding:6px 12px;border-radius:6px;cursor:pointer;
+    font-family:inherit;transition:.15s;white-space:nowrap}
+  .seg button:hover{color:#e6eef4}
+  .seg button.on{background:var(--line);color:#0a1206;font-weight:700;box-shadow:0 2px 10px var(--line-glow)}
+  .start-wrap{display:flex;align-items:center;gap:14px}
+  .btn-primary{border:0;cursor:pointer;font-family:inherit;font-size:15px;font-weight:700;color:#0a1206;
+    background:var(--line);padding:16px 30px;border-radius:11px;letter-spacing:.02em;
+    box-shadow:0 10px 30px -8px var(--line-glow),inset 0 1px 0 rgba(255,255,255,.4);
+    display:inline-flex;align-items:center;gap:16px;transition:.16s}
+  .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-primary span{font-size:18px;line-height:0}
+  .fineprint{position:relative;z-index:2;font-size:10px;color:#4f616e;letter-spacing:.04em;margin-top:22px}
+
+  /* ============ 加载 ============ */
+  #loading{position:absolute;inset:0;z-index:60;background:#05080a;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:26px}
+  .load-mark{font-size:11px;letter-spacing:.4em;color:#5f7280}
+  .load-title{font-size:26px;font-weight:700;letter-spacing:.04em}
+  .load-bar{width:min(420px,60vw);height:2px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+  .load-bar i{display:block;height:100%;width:0%;background:var(--line);transition:width .3s ease;box-shadow:0 0 16px var(--line)}
+  .load-step{font-size:11.5px;color:#7d909d;letter-spacing:.08em;min-height:18px}
+  .load-pct{font-size:10px;color:#4d606d;letter-spacing:.2em}
+
+  /* ============ HUD ============ */
+  #hud{position:absolute;inset:0;z-index:20;pointer-events:none;
+    font-size:12px;opacity:0;transition:opacity .5s ease}
+  #hud.on{opacity:1}
+  .hud-top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:18px 22px}
+  .line-pill{display:flex;align-items:center;gap:10px;padding:8px 15px 8px 10px;border-radius:100px;
+    background:rgba(7,11,14,.7);border:1px solid var(--stroke);backdrop-filter:blur(14px)}
+  .line-pill .dot{width:9px;height:9px;border-radius:50%;background:var(--line);box-shadow:0 0 12px var(--line)}
+  .line-pill b{font-size:13px;font-weight:800;letter-spacing:.02em}
+  .line-pill em{font-style:normal;font-size:10.5px;color:#8b9daa;letter-spacing:.1em;padding-left:9px;border-left:1px solid rgba(255,255,255,.14)}
+  .hud-clock{text-align:right;padding:7px 14px;border-radius:10px;background:rgba(7,11,14,.62);border:1px solid var(--stroke);backdrop-filter:blur(14px)}
+  .hud-clock b{font-size:19px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .hud-clock span{display:block;font-size:9.5px;letter-spacing:.16em;color:#8b9daa;margin-top:2px}
+  .hud-clock span.late{color:var(--amber)}
+  .hud-clock span.early{color:#6fd3ff}
+  .hud-clock i{display:block;font-style:normal;font-size:10.5px;font-weight:600;letter-spacing:.04em;
+    color:#3ddc97;margin-top:3px;font-variant-numeric:tabular-nums}
+  .hud-clock i.late{color:var(--amber)}
+  .hud-clock i.early{color:#6fd3ff}
+  .hud-clock i.bad{color:#ff6b5a}
+  .hud-duty{font-style:normal;font-size:9.5px;letter-spacing:.06em;color:#c9f07a;margin-left:9px;
+    padding:2px 7px;border-radius:6px;background:rgba(140,198,63,.14);border:1px solid rgba(140,198,63,.28)}
+  .hud-duty.hidden{display:none}
+
+  /* ---------------- 触屏手柄（P4-1） ---------------- */
+  #touch{display:none}
+  body.touch-mode #touch{display:flex}
+  body.touch-mode .hud-bottom{display:none}
+  body.touch-mode .keys-hint{display:none}
+  body.touch-mode .hud-right{max-height:52vh}
+  body.touch-mode .hud-left{top:70px;width:190px;padding:10px 12px 8px}
+  body.touch-mode .hud-left .next-zh{font-size:21px}
+  body.touch-mode .hud-left .dist-row b{font-size:26px}
+  body.touch-mode .hud-left .hud-sub:last-child{display:none}
+  body.touch-mode .hud-clock b{font-size:16px}
+  #touch{position:absolute;left:12px;right:12px;bottom:12px;z-index:14;gap:10px;align-items:stretch}
+  .touch-card{background:rgba(7,11,14,.74);border:1px solid var(--stroke);border-radius:14px;backdrop-filter:blur(14px)}
+  .touch-btns{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:8px;width:164px}
+  .touch-btns button{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#cfe0ea;
+    border-radius:10px;font-family:inherit;font-size:12px;font-weight:600;padding:10px 6px;touch-action:manipulation}
+  .touch-btns button:active{background:rgba(140,198,63,.22);border-color:var(--line)}
+  .touch-btns button.on{background:rgba(140,198,63,.22);border-color:var(--line);color:#c9f07a}
+  .touch-btns button.eb{border-color:rgba(255,107,90,.42);color:#ff8f80}
+  .touch-btns button.eb.on{background:rgba(255,107,90,.24)}
+  .touch-mid{flex:1;min-width:0;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:8px}
+  .touch-track{position:relative;height:38px;border-radius:11px;background:linear-gradient(90deg,rgba(255,107,90,.22),rgba(255,255,255,.05) 50%,rgba(140,198,63,.22));
+    border:1px solid rgba(255,255,255,.1);touch-action:none;overflow:hidden}
+  .touch-track .zero{position:absolute;left:50%;top:5px;bottom:5px;width:2px;margin-left:-1px;background:rgba(255,255,255,.28)}
+  .touch-track i{position:absolute;top:5px;bottom:5px;border-radius:5px;background:rgba(140,198,63,.55);width:0}
+  .touch-knob{position:absolute;top:50%;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;
+    background:#e8f5d0;border:3px solid #0b0f12;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+  .touch-read{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10.5px;color:#8fa2ae}
+  .touch-read b{color:#dfeefb;font-variant-numeric:tabular-nums}
+  .touch-read .t-zero{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#b9ccd7;
+    border-radius:7px;font-family:inherit;font-size:10px;padding:4px 8px}
+  @media (orientation:portrait) and (pointer:coarse){
+    #touch{flex-direction:column}
+    .touch-btns{width:auto;grid-template-columns:repeat(4,1fr)}
+  }
+
+  .hud-left{position:absolute;left:22px;top:96px;width:206px;padding:15px 16px 13px}
+  .hud-left .next-zh{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:5px}
+  .hud-left .next-en{font-size:9.5px;color:#7f939f;letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+  .dist-row{display:flex;align-items:baseline;gap:4px;margin-top:13px}
+  .dist-row b{font-size:32px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+  .dist-row span{font-size:11px;color:#7f939f}
+  .dist-row .arr{font-size:9px;color:#5f7280;margin-left:auto;letter-spacing:.1em}
+  .stop-track{height:4px;border-radius:4px;background:rgba(255,255,255,.1);margin-top:12px;position:relative;overflow:hidden}
+  .stop-track i{position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--line);border-radius:4px;transition:width .18s linear}
+  .stop-track u{position:absolute;top:-3px;bottom:-3px;width:1px;background:rgba(255,255,255,.35)}
+  .hud-sub{display:flex;justify-content:space-between;margin-top:10px;font-size:10px;color:#7f939f}
+  .hud-sub b{color:#dfe8ee;font-weight:600;font-variant-numeric:tabular-nums}
+
+  .hud-right{position:absolute;right:22px;top:96px;width:236px;padding:13px 14px 10px}
+  .hud-right .tt-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  .hud-right .tt-head b{font-size:11px;letter-spacing:.06em;color:#cfdae2}
+  .tt-list{display:flex;flex-direction:column;gap:1px;max-height:302px;overflow-y:auto}
+  .tt-row{display:grid;grid-template-columns:16px 1fr auto auto;gap:7px;align-items:center;padding:5px 4px;border-radius:5px;font-size:10.5px;color:#8ea1ad}
+  .tt-row .st{width:6px;height:6px;border-radius:50%;border:1.5px solid #4a5c69;justify-self:center}
+  .tt-row.done{color:#556673}
+  .tt-row.done .st{background:#3a4a56;border-color:#3a4a56}
+  .tt-row.now{background:rgba(255,255,255,.06);color:#fff}
+  .tt-row.now .st{border-color:var(--line);background:var(--line);box-shadow:0 0 8px var(--line)}
+  .tt-row .t1{font-variant-numeric:tabular-nums;color:#6d808d}
+  .tt-row .t2{font-variant-numeric:tabular-nums;color:#c7d4dd}
+
+  .hud-bottom{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:stretch;gap:8px}
+  .gauge{display:flex;align-items:center;gap:14px;padding:10px 20px 10px 16px;border-radius:14px}
+  .speed-wrap{display:flex;align-items:baseline;gap:5px;min-width:106px}
+  .speed-wrap b{font-size:44px;font-weight:750;letter-spacing:-.04em;line-height:.92;font-variant-numeric:tabular-nums}
+  .speed-wrap span{font-size:10px;color:#7f939f;letter-spacing:.1em}
+  .lim-wrap{text-align:center;padding-left:14px;border-left:1px solid rgba(255,255,255,.12)}
+  .lim-wrap i{display:block;font-style:normal;font-size:8.5px;letter-spacing:.16em;color:#7f939f}
+  .lim-wrap b{font-size:19px;font-weight:700;color:var(--line);font-variant-numeric:tabular-nums}
+  .lim-wrap b.warn{color:var(--amber)}
+  .lim-wrap b.eb{color:var(--red)}
+  .lever-box{width:174px;padding:11px 13px;border-radius:14px;display:flex;flex-direction:column;justify-content:center;gap:7px}
+  .lever-title{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.12em;color:#7f939f}
+  .lever-title b{color:#dfe8ee;letter-spacing:.04em;font-weight:700}
+  .lever-bar{height:7px;border-radius:5px;background:rgba(255,255,255,.09);position:relative;overflow:hidden}
+  .lever-bar .zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.4)}
+  .lever-bar i{position:absolute;top:0;bottom:0;border-radius:5px}
+  .lever-bar i.tr{left:50%;background:linear-gradient(90deg,var(--line),#d6ff9a);width:0}
+  .lever-bar i.br{right:50%;background:linear-gradient(270deg,#ff6b4a,#ffd166);width:0}
+  .door-box{display:flex;gap:6px;padding:9px 10px;border-radius:14px;align-items:center}
+  .door-ind{display:flex;flex-direction:column;align-items:center;gap:5px;width:52px}
+  .door-ind .ic{width:26px;height:20px;border-radius:3px;border:1.5px solid #4e6270;display:flex;overflow:hidden;background:rgba(255,255,255,.03)}
+  .door-ind .ic u{flex:1;background:transparent;border-right:1px solid #4e6270;transition:.2s}
+  .door-ind .ic u:last-child{border-right:0}
+  .door-ind.open .ic u{background:var(--line);border-color:var(--line)}
+  .door-ind span{font-size:8px;letter-spacing:.12em;color:#7f939f}
+  .door-ind.open span{color:var(--line)}
+  .exam-result{display:flex;flex-direction:column;gap:6px;margin:12px 0 2px;padding:12px 14px;
+    border-radius:10px;background:rgba(255,255,255,.035);border:1px solid var(--stroke)}
+  .exam-result .er-head{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;letter-spacing:.04em}
+  .exam-result .er-head .pass{color:#b4e072}
+  .exam-result .er-head .fail{color:#ff8b8d}
+  .exam-result .er-item{font-size:11px;color:#93a7b3;line-height:1.5}
+  .exam-result .er-item b{display:inline-block;width:14px;font-weight:800}
+  .exam-result .er-item.ok b{color:#b4e072}
+  .exam-result .er-item.bad b{color:#ff8b8d}
+  .exam-panel{position:absolute;right:22px;top:118px;width:224px;display:none;flex-direction:column;gap:5px;
+    padding:10px 12px;border-radius:11px;background:rgba(7,11,15,.8);border:1px solid var(--stroke);
+    backdrop-filter:blur(14px);box-shadow:0 12px 34px rgba(0,0,0,.45)}
+  .exam-panel.on{display:flex}
+  .exam-panel h6{font-size:10px;letter-spacing:.12em;color:#8fa2ae;margin:0 0 2px;font-weight:700}
+  .exam-item{display:flex;align-items:flex-start;gap:7px;font-size:10px;line-height:1.45;color:#9db0bc}
+  .exam-item i{flex:0 0 12px;font-style:normal;font-weight:800}
+  .exam-item.ok{color:#b4e072}
+  .exam-item.bad{color:#ff8b8d}
+  .eb-banner{position:absolute;left:50%;top:150px;transform:translateX(-50%) translateY(-6px);
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 26px;border-radius:12px;
+    background:rgba(48,8,10,.88);border:1px solid rgba(255,77,79,.55);box-shadow:0 0 30px rgba(255,40,40,.25);
+    opacity:0;pointer-events:none;transition:.2s;backdrop-filter:blur(10px)}
+  .eb-banner.on{opacity:1;transform:translateX(-50%) translateY(0);animation:ebPulse 1.6s ease-in-out infinite}
+  .eb-banner b{font-size:14px;color:#ff8b8d;letter-spacing:.08em}
+  .eb-banner span{font-size:10px;color:#d9a3a4;letter-spacing:.06em}
+  @keyframes ebPulse{0%,100%{box-shadow:0 0 24px rgba(255,40,40,.18)}50%{box-shadow:0 0 42px rgba(255,40,40,.42)}}
+  .ato-btn{position:absolute;right:22px;bottom:52px;pointer-events:auto;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 14px;border-radius:11px;
+    background:rgba(7,11,14,.72);border:1px solid var(--stroke);backdrop-filter:blur(14px);transition:.18s}
+  .ato-btn b{font-size:12px;letter-spacing:.14em;color:#7f939f;font-weight:700}
+  .ato-btn span{font-size:8.5px;letter-spacing:.06em;color:#5f7280}
+  .ato-btn.on{border-color:var(--line);background:rgba(20,34,20,.8);box-shadow:0 0 18px var(--line-glow)}
+  .ato-btn.on b{color:var(--line)}
+  .ato-btn.on span{color:#bfe9a0}
+  .keys-hint{position:absolute;left:22px;bottom:14px;display:flex;flex-wrap:wrap;gap:5px 11px;
+    max-width:min(640px,58vw);font-size:9.5px;color:#61737f;letter-spacing:.04em;line-height:1.5}
+  .keys-hint b{color:#9fb0bb;font-weight:600}
+
+  .toast-area{position:absolute;top:76px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px;width:min(520px,60vw)}
+  .toast{padding:9px 18px;border-radius:100px;background:rgba(8,12,16,.88);border:1px solid var(--stroke);
+    font-size:12px;letter-spacing:.02em;backdrop-filter:blur(12px);animation:toastIn .3s ease both;white-space:nowrap;
+    box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .toast.good{border-color:rgba(61,220,151,.45);color:#b6ffe0}
+  .toast.warn{border-color:rgba(255,176,32,.45);color:#ffe0a8}
+  .toast.bad{border-color:rgba(255,77,79,.45);color:#ffc2c3}
+  .toast.out{animation:toastOut .35s ease both}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  @keyframes toastOut{to{opacity:0;transform:translateY(-6px)}}
+
+  /* ---------- ATS 调度面板 ---------- */
+  #ats{position:absolute;right:0;top:0;bottom:0;width:min(420px,38vw);z-index:46;
+    background:linear-gradient(180deg,rgba(7,11,15,.97),rgba(7,11,15,.93));
+    border-left:1px solid var(--stroke);backdrop-filter:blur(20px);
+    transform:translateX(101%);transition:transform .3s cubic-bezier(.2,.7,.3,1);
+    display:flex;flex-direction:column;padding:16px 15px 14px;gap:11px;
+    box-shadow:-20px 0 60px rgba(0,0,0,.55)}
+  #ats.on{transform:none}
+  .ats-head{display:flex;align-items:center;justify-content:space-between}
+  .ats-head b{font-size:13px;letter-spacing:.14em}
+  .ats-head span{font-size:10px;color:#7f939f;font-variant-numeric:tabular-nums}
+  .ats-sub{font-size:9.5px;color:#61737f;letter-spacing:.06em;margin-top:-4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ats-close{border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:#9fb0bb;
+    width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;
+    display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit}
+  .ats-close:hover{border-color:#ff6b5a;color:#ff8b8d}
+  #atsCanvas{width:100%;height:158px;display:block;border-radius:10px;
+    background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)}
+  .ats-ix{display:flex;flex-direction:column;gap:5px}
+  .ats-ix-head{display:flex;align-items:center;justify-content:space-between;font-size:9.5px;color:#7f939f;letter-spacing:.08em}
+  .ats-ix-head i{font-style:normal;font-size:9px;color:#5f7280;font-variant-numeric:tabular-nums}
+  .ats-ix-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;text-align:left;
+    background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06);transition:.15s}
+  .ats-ix-btn b{font-size:10.5px;font-weight:600;color:#c3d4de}
+  .ats-ix-btn span{font-size:8.5px;color:#5f7280}
+  .ats-ix-btn:hover{border-color:var(--line);background:rgba(255,255,255,.07)}
+  .ats-ix-btn.on{border-color:var(--line);background:rgba(140,198,63,.14)}
+  .ats-ix-btn.on b{color:#c9f07a}
+  .ats-ix-btn.on span{color:#8fae6a}
+  .ats-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px}
+  .ats-row{display:grid;grid-template-columns:auto 1fr 40px auto;gap:8px;align-items:center;
+    padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.035);
+    border:1px solid rgba(255,255,255,.05);font-size:10.5px}
+  .ats-row.me{background:rgba(255,255,255,.075);border-color:var(--line)}
+  .ats-dev{font-size:10px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums;
+    letter-spacing:.01em;color:#3ddc97;white-space:nowrap}
+  .ats-dev.late{color:#ffb020}
+  .ats-dev.bad{color:#ff6b5a}
+  .ats-dev.early{color:#6fd3ff}
+  .ats-dev.na{color:#5f7280;font-weight:500}
+  .ats-no{font-weight:800;font-size:12px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .ats-no i{display:block;font-style:normal;font-size:8.5px;font-weight:500;color:#7492a1;letter-spacing:.06em}
+  .ats-mid{min-width:0}
+  .ats-mid b{display:block;font-size:10.5px;font-weight:600;color:#dbe7ee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ats-mid span{display:block;font-size:9px;color:#7f939f;margin-top:2px;font-variant-numeric:tabular-nums}
+  .ats-ops{display:flex;gap:4px}
+  .ats-btn{border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:#b9ccd7;
+    font-size:9.5px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:inherit;
+    white-space:nowrap;transition:.15s}
+  .ats-btn:hover{border-color:var(--line);color:#fff}
+  .ats-btn.hold{border-color:rgba(255,176,32,.45);color:#ffb020}
+  .ats-btn.hold:hover{background:rgba(255,176,32,.14)}
+  .ats-btn.skip{border-color:rgba(120,190,255,.35);color:#8fc7ff}
+  .ats-btn.on{background:var(--line);color:#0a1206;border-color:var(--line);font-weight:700}
+  .ats-tag{font-size:8.5px;padding:2px 6px;border-radius:5px;letter-spacing:.04em;font-weight:700}
+  .ats-tag.run{background:rgba(140,198,63,.22);color:#b4e072}
+  .ats-tag.dwell{background:rgba(255,176,32,.22);color:#ffce78}
+  .ats-tag.hold{background:rgba(255,77,79,.24);color:#ff9b9d}
+  .ats-foot{display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#5f7280}
+  .atsbtn-hud{position:absolute;right:22px;bottom:88px;pointer-events:auto;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 14px;border-radius:11px;
+    background:rgba(7,11,14,.72);border:1px solid var(--stroke);backdrop-filter:blur(14px);transition:.18s;z-index:30}
+  .atsbtn-hud b{font-size:12px;letter-spacing:.14em;color:#7f939f;font-weight:700}
+  .atsbtn-hud span{font-size:8.5px;letter-spacing:.06em;color:#5f7280}
+  .atsbtn-hud.on{border-color:var(--line);background:rgba(20,34,20,.8);box-shadow:0 0 18px var(--line-glow)}
+  .atsbtn-hud.on b{color:var(--line)}
+  .transfer-panel{position:absolute;left:50%;bottom:132px;transform:translateX(-50%);z-index:58;width:min(480px,86vw);
+    pointer-events:auto;background:linear-gradient(180deg,rgba(11,17,22,.96),rgba(7,11,15,.94));
+    border:1px solid var(--stroke-2);border-radius:14px;padding:14px 16px 12px;display:flex;flex-direction:column;gap:8px;
+    box-shadow:0 18px 50px rgba(0,0,0,.6);backdrop-filter:blur(18px)}
+  .transfer-panel.hidden{display:none}
+  .transfer-panel .tp-head{display:flex;align-items:baseline;justify-content:space-between;font-size:14px;font-weight:800;letter-spacing:.08em}
+  .transfer-panel .tp-head span{font-size:9px;color:#7f939f;letter-spacing:.2em;font-weight:600}
+  .transfer-panel .tp-sub{font-size:10px;color:#7f939f;margin-top:-4px}
+  .tp-list{display:flex;flex-wrap:wrap;gap:7px}
+  .tp-line{display:flex;align-items:center;gap:8px;border:1px solid var(--c);background:rgba(255,255,255,.045);
+    color:#eaf1f6;border-radius:9px;padding:8px 10px;cursor:pointer;font-family:inherit;transition:.15s}
+  .tp-line:hover{background:color-mix(in srgb,var(--c) 18%,transparent)}
+  .tp-line b{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;border-radius:6px;
+    background:var(--c);color:#08110a;font-size:12px;font-weight:800;padding:0 6px}
+  .tp-line span{font-size:12px;font-weight:700}
+  .tp-line i{font-style:normal;font-size:9px;color:#7f939f;letter-spacing:.08em}
+  .tp-back{align-self:flex-end;border:1px solid var(--stroke);background:rgba(255,255,255,.05);color:#b9ccd7;
+    font-family:inherit;font-size:10.5px;padding:5px 10px;border-radius:7px;cursor:pointer}
+  .tp-back:hover{color:#fff;border-color:var(--stroke-2)}
+
+  .station-banner{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;opacity:0;pointer-events:none}
+  .station-banner.show{animation:banner 4.2s ease both}
+  .station-banner .zh{font-size:40px;font-weight:800;letter-spacing:.04em;text-shadow:0 6px 40px rgba(0,0,0,.8)}
+  .station-banner .en{font-size:11px;letter-spacing:.4em;color:#b9c8d2;margin-top:8px;text-transform:uppercase}
+  @keyframes banner{0%{opacity:0;transform:translate(-50%,-42%)}12%{opacity:1;transform:translate(-50%,-50%)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-54%)}}
+
+  /* ============ 简报 / 暂停 / 结算 ============ */
+  .modal-mask{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,7,9,.72);backdrop-filter:blur(8px);padding:24px}
+  .modal{width:min(620px,92vw);max-height:88vh;overflow:auto;padding:26px 28px 22px;border-radius:18px}
+  .modal h3{margin:0;font-size:21px;font-weight:750;letter-spacing:-.01em}
+  .modal .sub{font-size:11px;color:#8294a1;margin-top:6px;letter-spacing:.06em}
+  .modal-rows{margin:20px 0;display:flex;flex-direction:column;gap:1px;border-radius:10px;overflow:hidden;border:1px solid var(--stroke)}
+  .m-row{display:flex;justify-content:space-between;gap:16px;padding:11px 14px;background:rgba(255,255,255,.028);font-size:12px}
+  .m-row span{color:#8fa2ae}
+  .m-row b{font-weight:600;color:#e6eef3;font-variant-numeric:tabular-nums}
+  .keys-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin:16px 0 22px}
+  .key-row{display:flex;align-items:center;gap:9px;font-size:11.5px;color:#93a5b1}
+  kbd{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;
+    border-radius:5px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
+    border-bottom-width:2px;font-size:10px;font-family:ui-monospace,Menlo,monospace;color:#dfe8ee;font-weight:600}
+  .modal-actions{display:flex;gap:10px;flex-wrap:wrap;position:sticky;bottom:-2px;
+    padding-top:12px;background:linear-gradient(180deg,rgba(10,14,18,0),rgba(10,14,18,.96) 32%)}
+  .btn{border:1px solid var(--stroke-2);background:rgba(255,255,255,.05);color:#dbe6ed;font-family:inherit;
+    font-size:12.5px;font-weight:600;padding:11px 18px;border-radius:9px;cursor:pointer;transition:.15s}
+  .btn:hover{background:rgba(255,255,255,.1)}
+  .btn.acc{background:var(--line);border-color:var(--line);color:#0a1206;font-weight:800;box-shadow:0 8px 24px -10px var(--line)}
+  .btn.acc:hover{filter:brightness(1.07)}
+
+  .grade{display:flex;align-items:center;gap:22px;margin:16px 0 8px}
+  .grade .letter{font-size:74px;font-weight:800;line-height:.9;letter-spacing:-.04em;
+    background:linear-gradient(180deg,#fff,#93a8b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .grade .g-meta{font-size:12px;color:#93a5b1;line-height:1.9}
+  .grade .g-meta b{font-size:27px;color:#fff;font-weight:750;font-variant-numeric:tabular-nums}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--stroke);border:1px solid var(--stroke);border-radius:10px;overflow:hidden;margin:14px 0 20px}
+  .stat-cell{background:rgba(13,18,23,.9);padding:12px 14px}
+  .stat-cell i{display:block;font-style:normal;font-size:9px;letter-spacing:.14em;color:#7f939f;text-transform:uppercase}
+  .stat-cell b{display:block;font-size:20px;font-weight:700;margin-top:5px;font-variant-numeric:tabular-nums}
+  .stat-cell b small{font-size:10px;color:#7f939f;font-weight:500;margin-left:3px}
+  .stop-table{max-height:190px;overflow:auto;border:1px solid var(--stroke);border-radius:10px;margin-bottom:18px}
+  .ob-text{font-size:12.5px;line-height:1.95;color:#b9ccd7;margin:12px 0 14px;min-height:76px}
+  .ob-dots{display:flex;gap:6px;margin-bottom:16px}
+  .ob-dots i{width:22px;height:4px;border-radius:3px;background:rgba(255,255,255,.14)}
+  .ob-dots i.on{background:var(--line);box-shadow:0 0 10px var(--line-glow)}
+  .energy-note{font-size:10px;color:#7f939f;letter-spacing:.03em;margin:-12px 0 14px;text-align:right}
+  .energy-note b{color:#3ddc97;font-weight:600}
+  .sess-result{border:1px solid rgba(140,198,63,.24);border-radius:10px;background:rgba(140,198,63,.05);
+    padding:10px 12px;margin:0 0 10px;font-size:11px;color:#b9ccd7}
+  .sess-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+  .sess-head b{font-size:12.5px;color:#dbe7ee;letter-spacing:.03em}
+  .sess-head span{font-size:9.5px;color:#7f939f}
+  .sess-parts{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:rgba(255,255,255,.07);
+    border-radius:8px;overflow:hidden;margin-bottom:8px}
+  .sess-parts div{background:#10161b;padding:7px 6px;text-align:center}
+  .sess-parts i{display:block;font-style:normal;font-size:9px;color:#7f939f;letter-spacing:.04em}
+  .sess-parts b{display:block;font-size:14px;color:#c9f07a;font-variant-numeric:tabular-nums;margin-top:2px}
+  .sess-next{font-size:10.5px;color:#ffd479;background:rgba(255,176,32,.08);border:1px solid rgba(255,176,32,.22);
+    border-radius:7px;padding:5px 8px;margin-bottom:8px}
+  .sess-legs{border:1px solid rgba(255,255,255,.07);border-radius:8px;overflow:hidden}
+  .sess-leg{display:grid;grid-template-columns:24px 1fr 40px 52px 56px 42px;gap:6px;padding:5px 7px;
+    border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums;color:#a9bcc8}
+  .sess-leg:last-child{border-bottom:0}
+  .sess-leg.head{background:rgba(255,255,255,.05);color:#7f939f;font-size:9px;letter-spacing:.04em}
+  .sess-leg .seg{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sess-foot{margin-top:7px;font-size:9px;color:#6b8290;text-align:right}
+  .resume-day{display:block;width:100%;margin-bottom:10px;padding:12px 16px;border-radius:12px;cursor:pointer;
+    font-family:inherit;font-size:13px;font-weight:700;color:#08110a;background:linear-gradient(180deg,#d6ff8a,#9bcf3e);
+    border:0;box-shadow:0 10px 26px rgba(140,198,63,.25);transition:.15s}
+  .resume-day span{display:block;margin-top:2px;font-size:9.5px;font-weight:500;color:#31421a;letter-spacing:.03em}
+  .resume-day:hover{transform:translateY(-1px);filter:brightness(1.06)}
+  .stop-line{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr;gap:8px;padding:8px 12px;font-size:11px;color:#9aacb8;
+    border-bottom:1px solid rgba(255,255,255,.05)}
+  .stop-line:last-child{border-bottom:0}
+  .stop-line.head{color:#63757f;font-size:9px;letter-spacing:.12em;background:rgba(255,255,255,.03)}
+  .stop-line b{font-weight:600;color:#e2ebf1;font-variant-numeric:tabular-nums}
+
+  .pause-title{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+  .pause-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0 22px}
+  .vol{display:flex;align-items:center;gap:10px;font-size:11px;color:#8fa2ae}
+  .vol input{width:110px;accent-color:var(--line)}
+
+  #reticle{position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;
+    background:rgba(255,255,255,.45);box-shadow:0 0 6px rgba(0,0,0,.6);display:none}
+
+  @media (max-height:820px){
+    .brand-sub{display:none}
+    .brand h1{font-size:clamp(36px,4.2vw,56px);margin-top:12px}
+    .brand .en{margin-top:8px}
+    .brand-stats{margin-top:16px}
+    .route-card{padding:8px 12px 8px 15px}
+    .rc-desc{display:none}
+    .rc-map{height:44px}
+    .rc-title{font-size:15px}
+    .rc-meta{margin-top:5px;font-size:9.5px}
+    .route-list{gap:5px}
+    #menu{padding-top:16px}
+  }
+  @media (max-width:1180px){
+    .menu-grid{grid-template-columns:1fr}
+    .rc-map{display:none}
+    .route-card{grid-template-columns:1fr}
+    .hud-right{display:none}
+  }
+  @media (max-width:760px){
+    .hud-left{width:158px;padding:11px}
+    .hud-left .next-zh{font-size:20px}
+    .hud-bottom{transform:translateX(-50%) scale(.86)}
+    .keys-hint{display:none}
+    .brand h1{font-size:42px}
+  }
+
+  /* ============ 存档导入导出 ============ */
+  .save-row{position:relative;z-index:2;display:flex;gap:8px;justify-content:center;margin-top:14px}
+  .save-row button{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#9fb2c0;
+    font:inherit;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .save-row button:hover{background:rgba(255,255,255,.1);color:#dbe6ed;border-color:rgba(140,198,63,.45)}
+  #saveFile{display:none}
+
+  .btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#b9c9d4;
+    font:inherit;font-size:12px;font-weight:600;padding:10px 16px;border-radius:10px;cursor:pointer;transition:.15s}
+  .btn-ghost:hover{background:rgba(255,255,255,.12);color:#e6eef4;border-color:rgba(140,198,63,.45)}
+
+  /* ============ 性能探针 ============ */
+  #perfBadge{position:absolute;right:14px;bottom:58px;z-index:45;font:600 11px/1.5 ui-monospace,monospace;
+    color:#7f939f;background:rgba(8,14,18,.72);border:1px solid rgba(255,255,255,.10);
+    border-radius:6px;padding:5px 9px;pointer-events:none;letter-spacing:.02em;display:none;white-space:pre}
+  #perfBadge.on{display:block}
+  #perfBadge b{color:#c9f07a;font-weight:700}
+
+  /* ============ 步行与乘车交互栏 & 列车接管面板 ============ */
+  .walk-bar{position:absolute;left:50%;bottom:112px;transform:translateX(-50%);z-index:36;
+    display:none;align-items:center;gap:10px;padding:8px 14px;border-radius:11px;
+    background:rgba(9,15,20,.88);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);
+    box-shadow:0 12px 32px rgba(0,0,0,.45);font-size:12px;color:#dbe6ed;white-space:nowrap}
+  .walk-bar.on{display:flex}
+  .walk-bar .wb-loc{font-weight:700;color:#8be9a8;padding-right:8px;border-right:1px solid rgba(255,255,255,.12)}
+  .walk-bar .wb-timer{color:#ffd479;font-variant-numeric:tabular-nums;padding-right:8px;border-right:1px solid rgba(255,255,255,.12)}
+  .walk-bar .wb-timer.ai{color:#65e6b3;font-weight:700}
+  .walk-bar button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#e6f0f5;
+    font:inherit;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;transition:.14s}
+  .walk-bar button:hover{background:rgba(140,198,63,.22);border-color:rgba(140,198,63,.6);color:#fff}
+  .walk-bar button kbd{display:inline-block;padding:1px 5px;margin-right:4px;border-radius:4px;
+    background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.2);font:700 10px ui-monospace,monospace;color:#c9f07a}
+  .takeover-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:58;
+    width:min(460px,92vw);padding:20px 22px;border-radius:16px;background:rgba(9,14,18,.95);
+    border:1px solid rgba(255,255,255,.14);box-shadow:0 24px 64px rgba(0,0,0,.65);backdrop-filter:blur(14px)}
+  .takeover-panel.hidden{display:none}
+  .tk-item{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:8px;
+    padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    color:#e2edf3;font:inherit;cursor:pointer;text-align:left;transition:.15s}
+  .tk-item:hover{background:rgba(140,198,63,.16);border-color:rgba(140,198,63,.55);transform:translateY(-1px)}
+  .tk-item b{font-size:14px;color:#fff}
+  .tk-item small{display:block;font-size:11px;color:#8fa6b5;margin-top:2px}
+  .tk-item .tk-tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--line,#8cc63f);color:#08110a}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="scene"></canvas>
+<div id="perfBadge">—</div>
+
+  <div id="reticle"></div>
+
+  <!-- ===================== 主菜单 ===================== -->
+  <div id="menu">
+    <div class="menu-grid">
+      <div class="brand">
+        <div class="brand-badge"><span class="roundel">M</span>SHANGHAI METRO</div>
+        <h1>模拟驾驶</h1>
+        <div class="en">DRIVER SIMULATOR</div>
+        <p class="brand-sub">1–18 号线、浦江线、市域机场线、磁浮线全网站序。<br>保留十条特色交路，牵引、制动、屏蔽门、ATP 全部手动操作，<br>把列车准确停在停车标前。</p>
+        <div class="brand-stats">
+          <div><b id="statDist">—</b><span>KILOMETERS</span></div>
+          <div><b id="statStops">—</b><span>STATIONS</span></div>
+          <div><b id="statRoutes">4</b><span>ROUTES</span></div>
+        </div>
+      </div>
+
+      <div class="picker">
+        <div class="section-head">
+          <div><span class="kicker">Select Service</span><h2>选择值乘区段</h2></div>
+          <div style="font-size:10px;color:#5f7280;letter-spacing:.08em">A 型车 · 6 辆编组 · 最高 120 km/h</div>
+        </div>
+        <div id="routeList" class="route-list"></div>
+      </div>
+    </div>
+
+    <div class="menu-bottom">
+      <div class="settings">
+        <div class="setting"><span class="kicker">时段</span>
+          <div class="seg" id="todGroup">
+            <button data-v="day">日间</button><button data-v="dusk" class="on">黄昏</button><button data-v="night">夜间</button>
+          </div>
+        </div>
+        <div class="setting"><span class="kicker">难度</span>
+          <div class="seg" id="diffGroup">
+            <button data-v="easy">新手</button><button data-v="normal" class="on">标准</button><button data-v="hard">硬核</button>
+          </div>
+        </div>
+        <div class="setting"><span class="kicker">天气</span>
+          <div class="seg" id="weatherGroup">
+            <button data-v="clear" class="on">晴</button><button data-v="rain">雨</button><button data-v="fog">雾</button>
+          </div>
+        </div>
+        <div class="setting"><span class="kicker">语音报站</span>
+          <div class="seg" id="voiceGroup">
+            <button data-v="on" class="on">开启</button><button data-v="off">关闭</button>
+          </div>
+        </div>
+        <div class="setting"><span class="kicker">自动限速</span>
+          <div class="seg" id="autoLimitGroup">
+            <button data-v="off" class="on">关闭</button><button data-v="on">开启</button>
+          </div>
+        </div>
+      </div>
+      <div class="start-wrap">
+        <button id="resumeDay" class="resume-day hidden">继续运营日 <span>—</span></button>
+        <button id="startBtn" class="btn-primary">开始值乘 <span>→</span></button>
+      </div>
+    </div>
+        <div class="save-row">
+      <button id="saveExport">导出存档</button>
+      <button id="saveImport">导入存档</button>
+      <input id="saveFile" type="file" accept="application/json,.json">
+    </div>
+<div class="fineprint">支持 ATO 自动驾驶：自动控速、精确停站、自动开关门与发车（参考上海地铁 15/18 号线全自动运行）。非官方模拟作品 · 线路走向与站名依据公开资料近似还原，不用于任何运营或培训用途。建议使用桌面浏览器与键盘操作。</div>
+  </div>
+
+
+  <!-- ===================== 加载 ===================== -->
+  <div id="loading" class="hidden">
+    <div class="load-mark">SHANGHAI METRO</div>
+    <div class="load-title">正在准备列车</div>
+    <div class="load-bar"><i id="loadFill"></i></div>
+    <div class="load-step" id="loadStep">初始化…</div>
+    <div class="load-pct" id="loadPct">0%</div>
+  </div>
+
+  <!-- ===================== HUD ===================== -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="line-pill"><span class="dot"></span><b id="hudLine">2号线</b><em id="hudSeg">浦东段</em><i class="hud-duty hidden" id="hudDuty"></i></div>
+      <div class="hud-clock"><b id="hudTime">08:12:00</b><span id="hudStatus">停站作业</span><i id="hudPunc">正点</i></div>
+    </div>
+
+    <div class="hud-left panel">
+      <span class="kicker">Next Station</span>
+      <div class="next-zh" id="hudNextZh">陆家嘴</div>
+      <div class="next-en" id="hudNextEn">Lujiazui</div>
+      <div class="dist-row"><b id="hudDist">1630</b><span>m</span><i class="arr" id="hudDwell">停站中</i></div>
+      <div class="stop-track"><i id="hudStopFill"></i><u style="left:92%"></u></div>
+      <div class="hud-sub"><span>停车标</span><b id="hudStopDelta">—</b></div>
+      <div class="hud-sub"><span>前车</span><b id="hudLeader">—</b></div>
+      <div class="hud-sub"><span>车钩</span><b id="hudCoupler">—</b></div>
+    </div>
+
+    <div class="hud-right panel">
+      <div class="tt-head"><b>时刻表</b><span class="kicker" id="hudService">上行</span></div>
+      <div class="tt-list" id="hudTT"></div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="gauge panel">
+        <div class="speed-wrap"><b id="hudSpeed">0</b><span>km/h</span></div>
+        <div class="lim-wrap"><i>LIMIT</i><b id="hudLimit">80</b></div>
+      </div>
+      <div class="lever-box panel">
+        <div class="lever-title"><span>主控手柄</span><b id="hudLeverTxt">0%</b></div>
+        <div class="lever-bar"><span class="zero"></span><i class="br" id="hudBrake"></i><i class="tr" id="hudTraction"></i></div>
+      </div>
+      <div class="door-box panel">
+        <div class="door-ind" id="hudDoorL"><div class="ic"><u></u><u></u></div><span>左侧</span></div>
+        <div class="door-ind" id="hudDoorR"><div class="ic"><u></u><u></u></div><span>右侧</span></div>
+      </div>
+    </div>
+
+    <div class="keys-hint">
+      <span><b>W/S</b> 牵引·制动</span><span><b>O/P</b> 开·关车门</span><span><b>空格</b> 紧急制动</span><span><b>A</b> ATO</span><span><b>L</b> 切除车门</span><span><b>K</b> 固定闭塞</span><span><b>Tab</b> 调度台</span><span><b>C</b> 视角</span><span><b>F</b> 下车步行</span><span><b>F3</b> 帧率</span><span><b>F4</b> 诊断</span>
+    </div>
+
+    <!-- 触屏手柄（P4-1）：body.touch-mode 时才显示 -->
+    <div id="touch">
+      <div class="touch-btns touch-card">
+        <button data-touch="door" id="tDoor">开门</button>
+        <button data-touch="ato" id="tAto">ATO</button>
+        <button data-touch="horn">鸣笛</button>
+        <button data-touch="eb" id="tEb">紧急</button>
+      </div>
+      <div class="touch-mid touch-card">
+        <div class="touch-track" id="tTrack">
+          <span class="zero"></span><i id="tFill"></i><b class="touch-knob" id="tKnob"></b>
+        </div>
+        <div class="touch-read">
+          <span id="tLeverTxt">0%</span>
+          <span><b id="tSpeed">0</b> km/h · 限 <b id="tLimit">80</b></span>
+          <button class="t-zero" data-touch="zero">回零</button>
+        </div>
+      </div>
+    </div>
+    <div class="exam-panel" id="examPanel"></div>
+    <div class="toast-area" id="toastArea"></div>
+    <div class="eb-banner" id="ebBanner"><b>紧急制动已施加</b><span>列车停稳后按 空格 或 R 缓解</span></div>
+    <div class="ato-btn" id="atoBtn"><b>ATO</b><span>自动驾驶</span></div>
+    <div class="atsbtn-hud" id="atsBtn"><b>ATS</b><span>调度</span></div>
+    <div class="station-banner" id="stationBanner"><div class="zh"></div><div class="en"></div></div>
+    <div class="walk-bar" id="walkHudBar">
+      <span class="wb-loc" id="wbLoc">站台步行</span>
+      <span class="wb-timer" id="wbTimer">离车 0s / 60s</span>
+      <button type="button" id="wbActSeat"><kbd>E</kbd><span id="wbSeatTxt">进入车厢</span></button>
+      <button type="button" id="wbActTakeover"><kbd>G</kbd>接管任意列车</button>
+      <button type="button" id="wbActCab"><kbd>F</kbd>返回驾驶室</button>
+    </div>
+  </div>
+
+  <!-- ===================== 换乘面板 ===================== -->
+  <div id="transferPanel" class="transfer-panel hidden">
+    <div class="tp-head">换乘 <span>TRANSFER</span></div>
+    <div class="tp-sub">选择要换乘的线路 · 当前为步行模式</div>
+    <div id="transferList" class="tp-list"></div>
+    <button class="tp-back" id="transferBack">留在本线</button>
+  </div>
+
+  <!-- ===================== 列车接管面板 ===================== -->
+  <div id="takeoverPanel" class="takeover-panel hidden">
+    <div class="tp-head">接管列车 <span>TAKEOVER ANY TRAIN</span></div>
+    <div class="tp-sub">选择本线任意正在运行或停站的列车立即接管驾驶</div>
+    <div id="takeoverList" class="tp-list"></div>
+    <button class="tp-back" id="takeoverBack">继续步行 / 乘车</button>
+  </div>
+
+  <!-- ===================== 出乘简报 ===================== -->
+  <div id="briefing" class="modal-mask hidden">
+    <div class="modal panel">
+      <div class="pause-title">
+        <div><h3 id="brTitle">出乘简报</h3><div class="sub" id="brSub">2号线 · 南京东路 → 张江高科</div></div>
+        <span class="kicker" id="brShift">SHIFT 0214</span>
+      </div>
+      <div class="modal-rows">
+        <div class="m-row"><span>担当车次</span><b id="brTrain">02014</b></div>
+        <div class="m-row"><span>编组</span><b>6 节 A 型车 · 定员 1860 人</b></div>
+        <div class="m-row"><span>计划发车</span><b id="brDepart">08:12:00</b></div>
+        <div class="m-row"><span>运行时分</span><b id="brTimes">上海地铁官方首末班车推导</b></div>
+        <div class="m-row"><span>运营时段</span><b id="brDay">单趟值乘</b></div>
+        <div class="m-row"><span>运营时长</span>
+          <div class="seg" id="shiftGroup"><button data-v="60">1 小时</button><button data-v="120" class="on">2 小时</button><button data-v="180">3 小时</button></div>
+        </div>
+        <div class="m-row"><span>区间里程</span><b id="brDist">11.5 km</b></div>
+        <div class="m-row"><span>停车站数</span><b id="brStops">7 站</b></div>
+        <div class="m-row"><span>自动驾驶</span><b>ATO 自动运行 · 自动停站开门（按 A）</b></div>
+        <div class="m-row"><span>值乘模式</span>
+          <div class="seg" id="modeGroup"><button data-v="day">运营日</button><button data-v="single" class="on">单趟</button><button data-v="exam">执照考试</button></div>
+        </div>
+      </div>
+      <div class="keys-grid">
+        <div class="key-row"><kbd>W</kbd><kbd>S</kbd> 主控手柄（牵引 / 制动）</div>
+        <div class="key-row"><kbd>空格</kbd> 紧急制动</div>
+        <div class="key-row"><kbd>O</kbd> 开启左侧车门</div>
+        <div class="key-row"><kbd>P</kbd> 关闭车门</div>
+        <div class="key-row"><kbd>A</kbd> ATO 自动驾驶</div>
+        <div class="key-row"><kbd>Tab</kbd> ATS 调度台</div>
+        <div class="key-row"><kbd>L</kbd> 切除故障车门</div>
+        <div class="key-row"><kbd>K</kbd> 切换固定闭塞</div>
+        <div class="key-row"><kbd>H</kbd> 鸣笛</div>
+        <div class="key-row"><kbd>C</kbd> 切换视角</div>
+        <div class="key-row"><kbd>F</kbd> 停稳开门后下车步行</div>
+        <div class="key-row"><kbd>鼠标拖拽</kbd> 司机室内环视</div>
+        <div class="key-row"><kbd>Esc</kbd> 暂停</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn acc" id="brGo">开始值乘</button>
+        <button class="btn" id="brBack">返回选择</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== ATS 调度 ===================== -->
+  <div id="ats">
+    <div class="ats-head"><b>调度中心 · ATS</b><span id="atsClock">08:12:00</span><button class="ats-close" id="atsClose">×</button></div>
+    <div class="ats-sub" id="atsSub">2号线 浦东段 · 上行</div>
+    <canvas id="atsCanvas" width="800" height="320"></canvas>
+    <div class="ats-ix" id="atsIx"></div>
+    <div class="ats-list" id="atsList"></div>
+    <div class="ats-foot"><span>按住列车可下达调度命令</span><span>Tab 关闭</span></div>
+  </div>
+
+  <!-- ===================== 新手引导（P4-2） ===================== -->
+  <div id="onboard" class="modal-mask hidden">
+    <div class="modal panel" style="width:min(520px,90vw)">
+      <span class="kicker">FIRST RUN</span>
+      <h3 id="obTitle" style="margin-top:6px">1 / 3 · 起步</h3>
+      <p class="ob-text" id="obText"></p>
+      <div class="ob-dots" id="obDots"><i class="on"></i><i></i><i></i></div>
+      <div class="modal-actions">
+        <button class="btn acc" id="obNext">下一步</button>
+        <button class="btn" id="obSkip">跳过引导</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 暂停 ===================== -->
+  <div id="pause" class="modal-mask hidden">
+    <div class="modal panel">
+      <div class="pause-title">
+        <div><h3>已暂停</h3><div class="sub" id="pauseSub">2号线 浦东段</div></div>
+        <span class="kicker">PAUSED</span>
+      </div>
+      <div class="pause-grid">
+        <div class="vol"><span>音量</span><input id="volRange" type="range" min="0" max="100" value="65"></div>
+        <div class="vol"><span>画质</span>
+          <div class="seg" id="qualGroup"><button data-v="low">流畅</button><button data-v="medium" class="on">标准</button><button data-v="high">精细</button></div>
+        </div>
+        <div class="vol"><span>司机室震动</span>
+          <div class="seg" id="shakeGroup"><button data-v="on" class="on">轻微</button><button data-v="off">关闭</button></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn acc" id="pResume">继续驾驶</button>
+        <button class="btn" id="pSaveQuit">保存并退出</button>
+        <button class="btn" id="pGuide">操作指引</button>
+        <button class="btn" id="pRestart">重新开始本次任务</button>
+        <button class="btn" id="pQuit">返回线路选择</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== 结算 ===================== -->
+  <div id="results" class="modal-mask hidden">
+    <div class="modal panel">
+      <span class="kicker">Service Complete</span>
+      <h3 style="margin-top:6px" id="resTitle">值乘结束</h3>
+      <div class="grade">
+        <div class="letter" id="resGrade">A</div>
+        <div class="g-meta"><span id="resScoreLabel">总评分</span><br><b id="resScore">0</b> <span style="font-size:11px;color:#7f939f">/ 100</span></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-cell"><i>停站精度</i><b id="resStop">—<small>m</small></b></div>
+        <div class="stat-cell"><i>准点率</i><b id="resPunc">—<small>%</small></b></div>
+        <div class="stat-cell"><i>牵引能耗</i><b id="resKwh">—<small>kWh</small></b></div>
+        <div class="stat-cell"><i>不当操作减分</i><b id="resPenalty">0<small>分</small></b></div>
+      </div>
+      <div class="energy-note" id="resEnergy"></div>
+      <div class="exam-result" id="resExam" style="display:none"></div>
+      <canvas id="resChart" width="900" height="200" style="width:100%;height:110px;display:block;margin:10px 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <canvas id="resDelay" width="900" height="170" style="width:100%;height:96px;display:block;margin:0 0 4px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></canvas>
+      <div id="resSession" class="sess-result" style="display:none"></div>
+      <div class="stop-table" id="resTable"></div>
+      <div class="modal-actions">
+        <button class="btn acc" id="resAgain">再次值乘</button>
+        <button class="btn" id="resReverse">终端折返 · 经渡线反向值乘</button>
+        <button class="btn" id="resMenu">返回线路选择</button>
+      </div>
+    </div>
+  </div>
+</div>

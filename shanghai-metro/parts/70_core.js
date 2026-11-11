@@ -1,0 +1,729 @@
+/* ================================================================
+   核心状态 / 渲染基础设施 / 主循环
+   （由 70_game.js 拆分而来，逻辑未改动）
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const G = {
+  mode: 'menu',
+  routeIdx: 0,
+  tod: 'dusk',
+  weather: 'clear',
+  diff: 'normal',
+  voice: 'on',
+  paused: false,
+  s: 0, v: 0, lever: 0, eb: false,
+  doorsOpen: false, doorT: 0,
+  clock: 0, targetIdx: 0, stopState: 'run',
+  stopErr: 0, stopScore: 0,
+  results: [], penalties: 0, atpViol: 0, ebCount: 0,
+  energy: 0, energyTraction: 0, regen: 0, regenOn: false,
+  slipping: false, _slipWarned: false,
+  couplerPeak: { tension: 0, compression: 0 }, trainNo: '02014',
+  lastSoundDoor: -1,
+  camMode: 0, yaw: 0, pitch: -0.02,
+  orbit: { az: 0.7, el: 0.26, dist: 34 },
+  dragging: false, lastX: 0, lastY: 0,
+  finishTimer: -1,
+  announced: {},
+  ready: false,
+  ato: false, atoState: 'run', atoTimer: 0,
+  shakeOn: true, shakeAmp: 0.0022,
+  fault: null, faultCount: 0, speedLog: [],
+  sigMode: 'cbtc', exam: false, examTasks: [], examDone: 0, doorAt: {},
+  stopPlan: null, walk: null, turnback: null,
+  /* 运营日（P2）：playMode 'single' | 'day'；session 由 66_session_game.js 维护 */
+  playMode: 'single', session: null, sessionSeed: null, sessionMinutes: 120,
+  sessionLegs: null, slowzone: null,
+  touchMode: false, onboardOpen: false, onboardStep: 0
+};
+
+let renderer, camera, scene, composer, bloomPass, fxaaPass, sun, skyMesh, hemi;
+let path = null, line = null, routeDef = null, theme = THEMES.dusk;
+let train = null, aiTrains = [], stationObjs = [], worldGroup = null, stationLights = [];
+let tunnelLights = [];   // 隧道照明跟随灯（建模提升）
+const SL_OFF = [[-8.2, 4.6, -40], [8.2, 4.6, -40], [-8.2, 4.6, 40], [8.2, 4.6, 40]];
+let hero = null;
+let clock = new THREE.Clock();
+let matInited = false;
+/* ---------------------------------------------------------------- 初始化 */
+/* ---------------- 渲染分辨率与像素预算 ----------------
+   性能目标硬件：780M 核显 + 2K 屏（2560×1440），要求 60 fps。
+   核显的瓶颈是填充率与内存带宽，不是顶点。所以像素数必须显式控制。
+
+   关键换算（2K 屏）：
+     pixelRatio 1.80 → 4608×2592 = 11.9 MP（当前默认，是 1080p 的 5.8 倍）
+     pixelRatio 1.00 → 2560×1440 =  3.7 MP
+     pixelRatio 0.75 → 1920×1080 =  2.1 MP  ← 「1080p 画质」的等价点
+
+   因此把画质档位改为「目标像素预算」，而不是 pixelRatio 倍数：
+   低 = 1.4 MP（约 720p）、中 = 2.1 MP（1080p）、高 = 3.7 MP（原生 2K）。
+   这样同一档在不同屏幕上表现一致，换屏不用重调。 */
+const PIXEL_BUDGET = {
+  low: 1.4e6,
+  medium: 2.1e6,
+  high: 3.7e6
+};
+
+/** 按目标像素预算算 pixelRatio。
+ *  three.js 里 setPixelRatio(pr) 的效果是「绘制缓冲 = CSS 尺寸 × pr」，
+ *  所以要达到目标像素数，pr = sqrt(预算 / CSS 像素数)。
+ *
+ *  上限必须取 devicePixelRatio，不能用 1.0：
+ *  Windows 显示缩放 150% 时，window.innerWidth 是 **CSS 像素**
+ *  （2560 物理宽 → 1707 CSS 宽），pr=1.0 意味着绘制缓冲只有 1707×960，
+ *  被拉伸到 2560×1440 显示 —— 所有 3D 里的文字（站名牌、PIS、
+ *  目的地屏）都会明显发虚。这正是「字体不清晰」的主因。
+ *  取 dpr 就正好落在原生物理分辨率上。 */
+function pixelRatioForBudget(budget) {
+  const cssPx = window.innerWidth * window.innerHeight;
+  if (cssPx <= 0) return 1;
+  const dpr = window.devicePixelRatio || 1;
+  const raw = Math.sqrt(budget / cssPx);
+  return clamp(raw, 0.5, Math.max(1, dpr));
+}
+
+function applyRenderScale() {
+  if (!renderer) return;
+  const baseBudget = PIXEL_BUDGET[G.quality] || PIXEL_BUDGET.medium;
+  const budget = G._diagHalf ? baseBudget * 0.25 : baseBudget;
+  /* 动态分辨率：在档位预算基础上再乘一个自适应系数。
+     实测（780M + 2K 屏）帧时间 ≈ 6.5 ms 固定 + 5.01 ms/MP，
+     要稳住 60fps 只能用约 2.03 MP —— 原生 3.69 MP 根本吃不下。
+     与其猜一个固定档位，不如让程序自己逼近：
+     慢了就缩、快了就涨，最终停在这台机器能维持 60fps 的最高分辨率。 */
+  const rscale = G.autoDRS === false ? 1 : (G.renderScale == null ? 1 : G.renderScale);
+  const pr = pixelRatioForBudget(budget) * rscale;
+  renderer.setPixelRatio(pr);
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  /* 关键：EffectComposer 在构造时把 renderer.getPixelRatio() 快照进
+     _pixelRatio，之后 setSize(w,h) 是按「w × _pixelRatio」算渲染目标尺寸的。
+     换档时只改 renderer 的 pixelRatio 而不告诉 composer，
+     后处理目标就一直是旧尺寸 —— 表现为「改档位后分辨率和画面都没变」，
+     以及最终 blit 多一次缩放。必须同步。 */
+  if (composer && composer.setPixelRatio) composer.setPixelRatio(pr);
+  G.renderPR = pr;
+  const w = Math.floor(window.innerWidth * pr);
+  const h = Math.floor(window.innerHeight * pr);
+  G.renderPx = w * h;
+  if (composer && composer.setSize) {
+    composer.setSize(window.innerWidth, window.innerHeight);
+    if (bloomPass && bloomPass.resolution) bloomPass.resolution.set(w, h);
+  }
+  /* FXAA 的采样步长按绘制缓冲尺寸算，换档/缩放后必须同步，否则抗锯齿失效 */
+  if (fxaaPass && fxaaPass.material && fxaaPass.material.uniforms.resolution) {
+    fxaaPass.material.uniforms.resolution.value.set(1 / Math.max(1, w), 1 / Math.max(1, h));
+  }
+}
+
+function initRenderer() {
+  const canvas = $('scene');
+  /* antialias 关掉：780M 上 4x MSAA 的填充率代价过高，
+     而本项目大量是硬边几何与自发光，锯齿可接受。
+     抗锯齿改由渲染分辨率 + 后处理的轻微模糊承担。 */
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.06, 5200);
+  camera.position.set(0, 3, 10);
+  /* 初始按「中」档（1080p 画质）定像素预算，之后 applySettings 会按用户档位覆盖 */
+  G.quality = 'medium';
+  applyRenderScale();
+  window.addEventListener('resize', onResize);
+}
+
+function onResize() {
+  if (!renderer) return;
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  applyRenderScale();
+}
+
+function makeComposer(targetScene) {
+  if (composer) { composer.dispose(); composer = null; }
+  if (G.quality === 'low') return;
+  /* 后期管线的构造会触发大量着色器编译（实测形成一个 4 s 长任务），
+     但它是「进入驾驶后第一帧」才需要的东西。
+     因此先填一张最简管线（只有 RenderPass），让玩家立刻能动；
+     Bloom 延迟到首个真实帧之后异步补装（见 updateGame 里的 _bloomPending）。
+     代价：开局头一两帧没有泛光，肉眼几乎看不出。
+
+     RT 必须是 HalfFloat：实测换成 UnsignedByte 会让自发光材质（站台灯带
+     color 1.6/2.4/3.2）在 ToneMapping 之前就被裁到 1.0，画面整体过曝发白。
+     HDR 缓冲是泛光与 ACES 的前提，不能为省带宽牺牲它。
+
+     MSAA：P0 阶段为了压帧时间关掉了（samples: 0），代价是几何边缘锯齿明显。
+     真机实测：MSAA 在这块核显上代价过高，且随分辨率非线性恶化
+       2.1 MP + 4x  = 100 fps（8.4M 采样）
+       3.69 MP + 4x =  39 fps（14.8M 采样）
+     采样数只涨 1.76 倍、帧时间涨 2.56 倍 —— 撞的是 UMA 带宽墙，
+     不是填充率。继续降 2x 也只敢保守估计 60 fps 上下。
+
+     所以换方案：**MSAA 全关，改用 FXAA 后处理**。
+     FXAA 是一次全屏 pass（十几次纹理采样），代价远低于 MSAA 的
+     多重采样缓冲；而分辨率保持原生，文字不会像降分辨率那样发虚。
+     对这块核显，「原生分辨率 + FXAA」是唯一同时满足
+     「文字锐利」和「跑得动」的组合。
+     流畅档不建 composer，直接出屏，靠低分辨率扛。 */
+  const MSAA = { high: 0, medium: 0, low: 0 };
+  const samples = MSAA[G.quality] != null ? MSAA[G.quality] : 2;
+  const pr = G.renderPR || 1;
+  const w = Math.max(1, Math.floor(window.innerWidth * pr));
+  const h = Math.max(1, Math.floor(window.innerHeight * pr));
+  const rt = new THREE.WebGLRenderTarget(w, h, {
+    type: THREE.HalfFloatType, samples
+  });
+  G.msaa = samples;
+  composer = new EffectComposer(renderer, rt);
+  composer.addPass(new RenderPass(targetScene, camera));
+  G._bloomPending = targetScene;      // 交给主循环延后补装
+}
+
+/* 真正把 Bloom + 暗角 + 输出 装上去。由 updateGame 在首帧后调用一次。 */
+function installBloomChain() {
+  const targetScene = G._bloomPending;
+  G._bloomPending = null;
+  if (!targetScene || G.quality === 'low') return;
+  if (!composer) { makeComposer(targetScene); return; }
+  /* 移除除 RenderPass 之外的旧 pass（重复调用时保持幂等） */
+  if (composer.passes.length > 1) composer.passes.length = 1;
+  /* Bloom 只在「中/高」档启用。
+     中档把 bloom 分辨率再降一半：UnrealBloomPass 内部 5 级 mip 都是
+     从这张基准分辨率继续减半，所以基准减半等于整条链路的像素成本降到 1/4，
+     而泛光本身是低频效果，减半肉眼几乎看不出。
+     低档直接跳过整个 composer。 */
+  if (G.quality === 'medium' || G.quality === 'high') {
+    const pr = G.renderPR || 1;
+    const w = Math.max(1, Math.floor(window.innerWidth * pr));
+    const h = Math.max(1, Math.floor(window.innerHeight * pr));
+    /* 泛光一律半分辨率：UnrealBloomPass 内部是 5 级 mip + 双向模糊，
+       整体片元量约为主画面的 1.33 倍。精细档原来用全分辨率，
+       在 3.69 MP 下这一项就要吃掉近 5 MP 的片元工作量 —— 是
+       「原生 2K 只有 40fps」的主要来源之一。
+       泛光本身是低频效果，半分辨率肉眼几乎看不出差别。 */
+    const bScale = 0.5;
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(Math.floor(w * bScale), Math.floor(h * bScale)),
+      theme.bloom * 0.20, 0.60, 1.35
+    );
+    composer.addPass(bloomPass);
+  } else {
+    bloomPass = null;
+  }
+  /* 暗角（vignette）不再单独占一个 pass：全屏 pass 在 3.69MP 下每个
+     就是 3.69 MP 的片元工作量，而暗角只是一次亮度乘法。
+     把它并到 FXAA 的着色器末尾，等于白拿 3.7 MP 的预算。 */
+  composer.addPass(new OutputPass());
+
+  /* FXAA 放在 OutputPass 之后：抗锯齿在 sRGB 空间做效果最好。
+     resolution 传的是「1 / 绘制缓冲尺寸」，resize 与换档时都要更新。 */
+  /* 把 FXAA 的输出改写成「先算颜色，再乘暗角」。
+     锚点用正则匹配，避免三份 three.js 源码的缩进差异导致替换失败。 */
+  const vigFrag = FXAAShader.fragmentShader
+    .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float vigStrength;')
+    /* FxaaPixelShader 返回的是 vec4，不是 vec3 */
+    .replace(/gl_FragColor\s*=\s*FxaaPixelShader\(/, 'vec4 fxaaRgba = FxaaPixelShader(')
+    .replace(/invEdgeDetectionQuality\s*\)\s*;/,
+      'invEdgeDetectionQuality);\n' +
+      '\t\t\tvec2 vp = vUv - 0.5;\n' +
+      '\t\t\tfloat vv = smoothstep(0.85, 0.18, length(vp) * 1.25);\n' +
+      '\t\t\tfxaaRgba.rgb *= mix(1.0 - vigStrength * 0.55, 1.0, vv);\n' +
+      '\t\t\tgl_FragColor = fxaaRgba;');
+  if (vigFrag === FXAAShader.fragmentShader) {
+    console.warn('[fxaa] 暗角注入未生效，保持原样');
+  }
+  const fxaaShader = {
+    uniforms: { tDiffuse: { value: null }, resolution: { value: new THREE.Vector2(1, 1) }, vigStrength: { value: 0.55 } },
+    vertexShader: FXAAShader.vertexShader,
+    fragmentShader: vigFrag
+  };
+  fxaaPass = new ShaderPass(fxaaShader);
+  const prNow = G.renderPR || 1;
+  fxaaPass.material.uniforms.resolution.value.set(
+    1 / Math.max(1, window.innerWidth * prNow),
+    1 / Math.max(1, window.innerHeight * prNow)
+  );
+  composer.addPass(fxaaPass);
+}
+
+/* 切换画质档位后重建后期链路。
+   低档要彻底拆掉 composer（走 renderer.render 直出），
+   中/高档重新建 RT 并把 bloom 挂上。 */
+/* ---------------- 动态分辨率（DRS） ----------------
+   每 1.2 秒看一次最近的平均帧时间：
+     超过 17.0 ms（< 59fps）-> 缩放 -0.06
+     低于 13.5 ms（> 74fps）-> 缩放 +0.03
+   其它区间不动（死区，避免来回抖）。
+   只在分辨率变化时重建 render target，不重编译着色器，所以代价很低。 */
+const DRS_TARGET = 16.67;
+const DRS_SLOW = 17.0;        // 超过这个就缩
+const DRS_FAST = 13.5;        // 低于这个才涨
+const DRS_MIN = 0.62;
+const DRS_MAX = 1.0;
+
+function tuneDRS(avgMs) {
+  if (G.autoDRS === false) return;
+  let s = G.renderScale == null ? 1 : G.renderScale;
+  let next = s;
+  if (avgMs > DRS_SLOW) next = s - 0.06;
+  else if (avgMs < DRS_FAST) next = s + 0.03;
+  next = clamp(next, DRS_MIN, DRS_MAX);
+  if (Math.abs(next - s) < 0.005) return;
+  G.renderScale = next;
+  applyRenderScale();
+  /* 缩放后重建 render target 会有一次小抖动，清空采样重新计 */
+  G._fpsBuf = null;
+  G._fpsSum = 0;
+}
+
+/* ---------------- F4 逐项诊断 ----------------
+   当「减掉 40% 片元量却完全没变化」时，说明瓶颈不在我以为的地方。
+   与其继续猜，不如把这台机器上的各项开销逐个关掉实测：
+     正常 -> 关泛光 -> 关阴影 -> 半分辨率 -> 关阴影+半分辨率
+   按 F4 循环，徽章会显示当前模式；对比各模式的 fps 就能定位。 */
+const DIAG_MODES = ['正常', '关泛光', '关阴影', '半分辨率', '关阴影+半分辨率'];
+function cycleDiag() {
+  G.diagIdx = ((G.diagIdx || 0) + 1) % DIAG_MODES.length;
+  applyDiag();
+  toast('诊断模式：' + DIAG_MODES[G.diagIdx], 'info', 1800);
+}
+
+function applyDiag() {
+  const i = G.diagIdx || 0;
+  const noBloom = i === 1;
+  const noShadow = i === 2 || i === 4;
+  const halfRes = i === 3 || i === 4;
+
+  if (bloomPass) bloomPass.enabled = !noBloom;
+  if (sun && sun.shadow) sun.castShadow = (G.quality !== 'low') && !noShadow;
+
+  if (!!G._diagHalf !== halfRes) {
+    G._diagHalf = halfRes;
+    if (typeof applyRenderScale === 'function') applyRenderScale();
+    G._fpsCooldown = 1.5;
+    G._fpsBuf = null; G._fpsSum = 0; G.fps = 0; G.frameMs = 0;
+  }
+}
+
+function rebuildPostChain() {
+  const targetScene = (G.mode === 'menu' && hero) ? hero.scene : scene;
+  if (!targetScene) return;
+  if (G.quality === 'low') {
+    if (composer) { composer.dispose(); composer = null; }
+    bloomPass = null;
+    G._bloomPending = null;
+    return;
+  }
+  makeComposer(targetScene);
+  installBloomChain();
+}
+/* ---------------------------------------------------------------- 主循环 */
+function updateGame(dt) {
+  if (!G.ready || G.mode !== 'driving') return;
+  if (G.paused) return;
+  if (G.onboardOpen) return;   // 新手引导期间冻结世界（P4-2）
+  let remain = Math.min(dt, 0.1);
+  while (remain > 0.0001) {
+    const h = Math.min(1 / 120, remain);
+    physics(h);
+    remain -= h;
+  }
+  G.clock += dt;
+  /* 运营日事件时间轴：到点触发故障/客流/限速/调度指令（P2-2） */
+  if (typeof sessionTick === 'function') sessionTick();
+  if (G.finishTimer > 0) {
+    G.finishTimer -= dt;
+    if (G.finishTimer <= 0) finishService();
+  }
+  // 手柄速率控制 / 站内步行与车厢内走动
+  if (G.walk && G.walk.active) {
+    if (!G.ato && !G.aiTakeover) G.lever = 0;
+    const fwd = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
+    const str = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
+    if (fwd || str) {
+      const spd = (keys['ShiftLeft'] || keys['ShiftRight'] ? 4.2 : 2.4) * dt;
+      const sy = Math.sin(G.walk.yaw), cy = Math.cos(G.walk.yaw);
+      const dx = -sy * fwd + cy * str;
+      const dz = -cy * fwd - sy * str;
+      const len = Math.hypot(dx, dz) || 1;
+      const wx = (dx / len) * spd, wz = (dz / len) * spd;
+      if (G.walk.inTrain) {
+        const it = G.walk.inTrain;
+        if (!it.seated) {
+          const tr = it.trainRef || train;
+          const car = tr.cars[clamp(it.carIdx | 0, 0, tr.cars.length - 1)];
+          const carRight = new THREE.Vector3(1, 0, 0).applyQuaternion(car.group.quaternion);
+          const carFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+          const moveVec = new THREE.Vector3(wx, 0, wz);
+          it.lx += moveVec.dot(carRight);
+          it.lz += moveVec.dot(carFwd);
+        }
+      } else {
+        G.walk.pos.x += wx;
+        G.walk.pos.z += wz;
+      }
+    }
+  } else {
+    const up = keys['KeyW'] || keys['ArrowUp'];
+    const dn = keys['KeyS'] || keys['ArrowDown'];
+    if (G.ato && (up || dn)) { G.ato = false; G.aiTakeover = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 3000); updateHUD(true); }
+    if (up && !dn) G.lever = clamp(G.lever + dt * 1.15, -1, 1);
+    if (dn && !up) G.lever = clamp(G.lever - dt * 1.15, -1, 1);
+    if (!up && !dn && Math.abs(G.lever) < 0.02) G.lever = 0;
+  }
+
+  train.setLever(G.lever);
+  train.update(G.s, G.v, dt);
+  /* 延后补装后期管线：首帧先让玩家能动，之后再把 Bloom 装上。
+     放在这里而不是 buildService 末尾，是因为那时玩家还在看加载条，
+     现在至少画面已经在动了。
+     按「时间」而不是「帧数」判定：软件渲染下帧率可能只有 1–2 fps，
+     按帧数会让 Bloom 迟迟不出现；500 ms 后必然装上。 */
+  if (G._bloomPending) {
+    if (!G._bloomAt) G._bloomAt = performance.now();
+    if (performance.now() - G._bloomAt > 500) installBloomChain();
+  }
+  G._frames = (G._frames || 0) + 1;
+  /* 手柄轮询（P3-2）：无手柄时立即返回，开销可忽略 */
+  if (typeof window !== 'undefined' && window.__pollGamepad) window.__pollGamepad(dt);
+  G.aiT = (G.aiT || 0) + dt;
+  for (const ai of aiTrains) ai.update(dt);
+  /* AI 车停靠玩家所在车站、且玩家在步行（可能透过车窗看进去）时，
+     把它的轻量内饰升级成完整内饰（座椅 + 乘客）。只做一次，之后保持。 */
+  if (G.walk && G.walk.active && G._interiorTick !== Math.floor(G.clock / 2)) {
+    G._interiorTick = Math.floor(G.clock / 2);
+    const wst = path.stations[G.walk.station];
+    if (wst) {
+      for (const ai of aiTrains) {
+        if (!ai || ai.dead || !ai.train) continue;
+        if (Math.abs(ai.s - wst.stopS) > 90) continue;
+        if (typeof ai.train.ensureFullInterior === 'function') ai.train.ensureFullInterior();
+      }
+    }
+  }
+  updateAiPsd();
+  if (G.walk && G.walk.active) clampWalk();
+  updateCamera(dt);
+  updateHUD();
+  if (train && train.cabDisplay) {
+    const st = path.stations[G.targetIdx];
+    /* 从运行图取本务计划时刻（planStopOf 内部已含旧字段回退） */
+    const plan = planStopOf(G.targetIdx);
+    const planArr = plan.arr, planDep = plan.dep;
+    const sig = nextSignalAhead();
+    train.cabDisplay.update(dt, {
+      signal: sig ? sig.state : 2,
+      signalDist: sig ? Math.max(0, sig.gap) : 0,
+      speedKmh: G.v * 3.6,
+      limit: G.limit || 80,
+      distToStop: Math.max(0, st.stopS - G.s),
+      doorOpen: G.doorT > 0.1,
+      eb: G.eb,
+      traction: G.eb ? 0 : Math.max(0, G.lever),
+      atpWarn: !!G.atpWarn,
+      overSpeed: !!G.atpWarn,
+      ato: G.ato,
+      sigMode: G.sigMode,
+      coupler: G.coupler || null,
+      lineColor: line.color,
+      lineBadge: line.badge,
+      lineName: line.name,
+      nextZh: st.zh, nextEn: st.en,
+      /* 时刻来源（P1-2）：优先用运行图里「本务那趟车」的计划到发。
+         运行图与旧的 st.schArr/schDep 逐站一致（交叉校验 0 秒偏差），
+         所以视觉上无变化；但换成运行图后，将来一局里跑多趟车、
+         或者车上绑定不同车次时，HMI 不需要再改。 */
+      schArr: planArr, schDep: planDep,
+      clock: G.clock,
+      /* 正晚点由 currentDelay() 统一计算（updateHUD 已写进 G.puncDelay） */
+      delay: G.puncDelay != null ? G.puncDelay : currentDelay(),
+      /* 发车余时：停稳在站时，距离计划发车还有多少秒（负值表示已晚点） */
+      depLeft: G.doorT > 0.1 || G.stopState === 'stop' ? (planDep - G.clock) : null,
+      progress: clamp((G.s - path.stations[0].stopS) / Math.max(1, path.stations[path.stations.length - 1].stopS - path.stations[0].stopS), 0, 1),
+      fromZh: path.stations[0].zh, toZh: path.stations[path.stations.length - 1].zh
+    });
+  }
+  if (AUDIO.ready) {
+    AUDIO.update(dt, {
+      speed: G.v,
+      traction: G.eb ? 0 : Math.max(0, G.lever),
+      brake: G.eb ? 1 : Math.max(0, -G.lever),
+      inTunnel: path.frameAt(G.s).pos.y < -2,
+      nearStation: path.stations.some(s => Math.abs(s.s - G.s) < 130)
+    });
+    if (G.atpWarn && !G.atpBeepT) { AUDIO.beep(); G.atpBeepT = setTimeout(() => { G.atpBeepT = null; }, 1800); }
+  }
+  // 阳光跟随 + 地下/地上光照过渡
+  if (sun) {
+    const f = path.frameAt(G.s);
+    sun.target.position.copy(f.pos);
+    sun.position.copy(f.pos).addScaledVector(theme.sunDir.clone().normalize(), 220);
+    sun.target.updateMatrixWorld();
+    const indoor = f.pos.y < -2.4;
+    const k = Math.min(1, dt * 1.6);
+    sun.intensity = lerp(sun.intensity, indoor ? 0.03 : theme.sunI, k);
+    hemi.intensity = lerp(hemi.intensity, indoor ? theme.hemi * 0.55 : theme.hemi, k);
+    // 站台补光
+    let ns = null, nd = 1e9;
+    for (const st of path.stations) {
+      const d = Math.abs(st.s - G.s);
+      if (d < nd) { nd = d; ns = st; }
+    }
+    const near = ns ? clamp(1 - (nd - 30) / 70, 0, 1) : 0;
+    stationLights.forEach((L, i) => {
+      if (!ns) { L.intensity = 0; return; }
+      const off = SL_OFF[i];
+      L.position.copy(ns.frame.pos)
+        .addScaledVector(ns.frame.right, off[0])
+        .addScaledVector(ns.frame.tan, off[2])
+        .addScaledVector(ns.frame.up, off[1]);
+      /* 620 是「为了让地下站台亮起来」拍脑袋定的，实际 4 盏灯挂在 4.6 m 高处、
+         离站台只有几米，反平方衰减后地面被推到接近纯白（实测站台截图 p90=222）。
+         降到 260，配合已经调低的材质自发光，站台恢复明暗层次。 */
+      /* 260 仍然偏亮：4 盏灯在 4.6 m 高处、距站台中心 8 m，反平方后地面照度很高。
+         再降到 150，并把衰减指数交给 PointLight 的 distance=85 / decay=2（已是物理值），
+         站台就能看出「灯下亮、远处暗」的层次，而不是整片均匀发白。 */
+      L.intensity = 210 * near;
+    });
+  }
+  if (skyMesh) skyMesh.position.copy(camera.position);
+  /* 城市 LOD：只遍历约 25 个块，不做矩阵运算，开销可忽略 */
+  if (typeof updateCityLOD === 'function') updateCityLOD(camera.position);
+
+  /* ---- 隧道照明跟随（建模提升）----
+     3 盏灯放在玩家前/中/后各一盏（间隔 22 m，与 buildTunnels 的灯具间距一致），
+     沿隧道拱顶布置。出隧道后立刻熄灭，不占无谓预算。
+     位置按里程取 frameAt，所以弯道里灯也会沿着洞顶走。 */
+  if (tunnelLights.length) {
+    const inTunnel = path.frameAt(G.s).pos.y < -2;
+    for (let i = 0; i < tunnelLights.length; i++) {
+      const L = tunnelLights[i];
+      if (!inTunnel) { L.intensity = 0; continue; }
+      const off = (i - 1) * 22;                 // 前 / 当前位置 / 后
+      const ss = clamp(G.s + off, 0, path.length - 1);
+      const f = path.frameAt(ss);
+      L.position.copy(f.pos).addScaledVector(f.up, TUNNEL_R - 0.7);
+      /* three.js r155+ 的 PointLight 用物理单位（坎德拉），衰减为 1/d²。
+         站台补光用的是 620，这里按洞顶到洞壁约 6–8 m 换算，
+         取 420 才能让洞壁出现明显亮斑。距离越远越暗，避免照亮洞口外的空气。 */
+      L.intensity = 420 * clamp(1 - Math.abs(off) / 60, 0, 1);
+    }
+  }
+
+  /* ---- 车站距离剔除（P1-2）----
+     实测 4 号线 1638 draw calls、3521 个普通 mesh，其中绝大部分是沿线车站。
+     按里程把远处车站整组隐藏，能砍掉一半以上 draw call，且玩家完全看不出
+     （隧道里与雾里的远处站台本来就看不见）。
+
+     阈值 260/420 m：上海地铁平均站距约 1.2 km，取 600 m 只能剔掉很少的站；
+     260 m 约等于两个站台的可见范围，既能省 draw call，又不会看到「站台凭空出现」。
+
+     不按时间节流：每帧遍历 30 个站只是 30 次减法，比维护计时器更简单可靠
+     （之前按 0.25 s 节流，在低帧率环境下会长期不触发）。 */
+  {
+    const NEAR = 260, FAR = 420;
+    let hidden = 0;
+    for (let i = 0; i < stationObjs.length; i++) {
+      const so = stationObjs[i];
+      if (!so || !so.group) continue;
+      const d = Math.abs((so.s || 0) - G.s);
+      /* 本务所在站、下一站及玩家当前步行所在站永远显示（停站、开门、PIS、换乘需要） */
+      const mustShow = i === G.targetIdx || i === G.targetIdx + 1 || (G.walk && G.walk.active && i === G.walk.station);
+      const vis = mustShow || d < NEAR ? true : d > FAR ? false : so.group.visible;
+      if (so.group.visible !== vis) so.group.visible = vis;
+      if (!so.group.visible) hidden++;
+    }
+    G.culledCount = hidden;
+  }
+
+  // 乘客乘降与换乘通道客流
+  G._crowdT = (G._crowdT || 0) + dt;
+  if (G._crowdT > 1 / 30) {
+    const h = Math.min(0.12, G._crowdT);
+    G._crowdT = 0;
+    let best = null, bd = 210;
+    for (const so of stationObjs) {
+      if (!so) continue;
+      const dd = Math.abs((so.s || 0) - G.s);
+      if (dd < bd) { bd = dd; best = so; }
+    }
+    const tgtSt = path.stations[G.targetIdx];
+    if (tgtSt && tgtSt.synthetic) best = stationObjFor(G.targetIdx) || best;
+    if (best && best.crowd) best.crowd.update(h, G.doorT);
+    if (G.walk && G.walk.active && G.walk.station != null) {
+      const wso = stationObjFor(G.walk.station);
+      if (wso && wso !== best && wso.crowd) {
+        const wDoorT = (wso._psd && wso._psd.t > 0) ? wso._psd.t : 0;
+        wso.crowd.update(h, wDoorT);
+      }
+    }
+  }
+  // 速度曲线采样（每 1.5 秒）
+  G._logT = (G._logT || 0) + dt;
+  if (G._logT > 1.5) {
+    G._logT = 0;
+    (G.speedLog || (G.speedLog = [])).push([G.s, G.v * 3.6]);
+    if (G.speedLog.length > 900) G.speedLog.shift();
+  }
+  // 每秒刷新时刻表
+  G._ttT = (G._ttT || 0) + dt;
+  if (G._ttT > 0.5) { G._ttT = 0; updateTimetable(); }
+  updateSignals(dt);
+  IX.update(dt);
+  updateWeather(dt);
+  if (typeof ATS !== 'undefined') ATS.update(dt);
+  // PIS 屏：每秒刷新当前与下一站
+  G._pisT = (G._pisT || 0) + dt;
+  if (G._pisT > 1.0) { G._pisT = 0; updatePisDisplays(); }
+}
+let lastFrame = 0;
+/* ---------------- 帧率探针与自适应降档 ----------------
+   目标硬件 780M + 2K 屏要求 60 fps（16.67 ms/帧）。
+   没有真实帧率数据时，所有画质取舍都是盲猜，所以这个必须做。
+
+   实现要点：
+   - 用性能计数器环形缓冲统计最近 N 帧的平均帧时间，避免瞬时抖动误判
+   - 只在 driving 模式下计入（菜单/加载的帧意义不同）
+   - 自适应只降不升：自动升档容易在临界点来回抖，体验更差 */
+const FPS_SAMPLE = 60;                 // 取 60 帧窗口
+const FPS_TARGET_MS = 1000 / 60;       // 60 fps
+
+function sampleFrame(dt) {
+  if (G.mode !== 'driving') { G._fpsBuf = null; return; }
+  /* 降档后必须先冷却：切换档位会重建 composer，触发一批着色器编译，
+     那一两帧会形成几百毫秒的长任务。如果不冷却，这个假尖峰会被
+     当成「还是很慢」，于是继续降档 —— 这正是「39fps 一路降到流畅」
+     的成因。冷却期内不采样、不判定。 */
+  if (G._fpsCooldown > 0) { G._fpsCooldown -= dt; G._fpsBuf = null; G._fpsSum = 0; return; }
+  if (!G._fpsBuf) { G._fpsBuf = []; G._fpsSum = 0; }
+  const ms = dt * 1000;
+  G._fpsBuf.push(ms);
+  G._fpsSum += ms;
+  if (G._fpsBuf.length > FPS_SAMPLE) G._fpsSum -= G._fpsBuf.shift();
+  /* 12 帧就开始估算：低帧率设备（或软件渲染）等不到 60 帧，
+     那样探针会永远显示 0，起不到诊断作用。 */
+  const MIN_SAMPLE = 12;
+  if (G._fpsBuf.length < MIN_SAMPLE) { updatePerfBadge(); return; }
+  const avg = G._fpsSum / G._fpsBuf.length;
+  G.frameMs = avg;
+  G.fps = 1000 / avg;
+  G.fpsProvisional = G._fpsBuf.length < FPS_SAMPLE;
+  updatePerfBadge();
+  /* 每满一个采样窗口尝试调一次渲染缩放（内部有死区与步长限制） */
+  if (G._fpsBuf.length >= FPS_SAMPLE) tuneDRS(avg);
+  /* 自适应降档（最后手段）：
+     1) 必须先让动态分辨率（DRS）缩到下限仍然跑不动，才允许降档 —— 以前 DRS 与降档
+        同时起作用，分辨率被缩、档位又被降，叠加后画质惨不忍睹；
+     2) 最低只降到「标准」，绝不自动降到「流畅」（流畅档会拆掉泛光/抗锯齿后期链路）；
+     3) 只影响本次游戏，不写入存档 —— 以前一次卡顿就把「流畅」永久存进设置，
+        之后每次启动都是最低画质。 */
+  const rsNow = G.renderScale == null ? 1 : G.renderScale;
+  if (G.autoQuality !== false && G.quality === 'high' && rsNow <= DRS_MIN + 0.011 && avg > FPS_TARGET_MS * 1.3) {
+    G._slowStreak = (G._slowStreak || 0) + 1;
+    if (G._slowStreak >= 3) {
+      G._slowStreak = 0;
+      const fpsBefore = G.fps;
+      G.quality = 'medium';
+      G.renderScale = 1.0;
+      if (typeof applyRenderScale === 'function') applyRenderScale();
+      if (typeof rebuildPostChain === 'function') rebuildPostChain();
+      /* 冷却 2.5 秒，跳过切换引起的编译尖峰 */
+      G._fpsCooldown = 2.5;
+      G._fpsBuf = null;
+      G._fpsSum = 0;
+      G.fps = 0;
+      toast(`帧率偏低（${fpsBefore.toFixed(0)} fps）· 本次游戏临时降到「标准」`, 'warn', 4200);
+    }
+  } else {
+    G._slowStreak = 0;
+  }
+}
+
+/* 性能徽章：F3 开关。显示 fps / 帧时间 / 渲染分辨率 / 档位，
+   让玩家（和我）能直接判断当前设备是否达到 60 fps 目标。 */
+/* 分辨率 + 档位文案，徽章里多处用到 */
+function res0() {
+  const w = Math.round(window.innerWidth * (G.renderPR || 1));
+  const h = Math.round(window.innerHeight * (G.renderPR || 1));
+  const names = { high: '精细', medium: '标准', low: '流畅' };
+  const dm = (typeof DIAG_MODES !== 'undefined' && G.diagIdx) ? '  [' + DIAG_MODES[G.diagIdx] + ']' : '';
+  const rs = G.renderScale == null ? 1 : G.renderScale;
+  const rsTxt = rs < 0.995 ? '  缩放 ' + rs.toFixed(2) : '';
+  return w + '×' + h + '  ' + (names[G.quality] || G.quality) + rsTxt + dm;
+}
+
+function updatePerfBadge() {
+  const el = $('perfBadge');
+  if (!el || !el.classList.contains('on')) return;
+  /* 换档后的冷却期：明确提示「预热中」，而不是显示一个看起来像
+     「0 fps」的采样进度，避免误以为性能掉了。 */
+  if (G._fpsCooldown > 0) {
+    el.innerHTML = '<b style="color:#7f939f">预热中…</b>  ' + G._fpsCooldown.toFixed(1) + 's\n' + res0();
+    return;
+  }
+  const n = G._fpsBuf ? G._fpsBuf.length : 0;
+  const w = Math.round(window.innerWidth * (G.renderPR || 1));
+  const h = Math.round(window.innerHeight * (G.renderPR || 1));
+  const names = { high: '精细', medium: '标准', low: '流畅' };
+  const res = `${w}×${h}  ${names[G.quality] || G.quality}`;
+  if (!G.fps || n < 12) {
+    el.innerHTML = `<b style="color:#7f939f">采样中…</b>  ${n}/12\n${res}`;
+    return;
+  }
+  const fps = G.fps;
+  const ms = G.frameMs;
+  const color = fps >= 55 ? '#c9f07a' : fps >= 40 ? '#ffb020' : '#ff6b5a';
+  const mark = G.fpsProvisional ? '~' : '';
+  el.innerHTML =
+    `<b style="color:${color}">${mark}${fps.toFixed(0)} fps</b>  ${ms.toFixed(1)} ms\n${res}`;
+}
+
+function togglePerfBadge() {
+  const el = $('perfBadge');
+  if (!el) return;
+  el.classList.toggle('on');
+  if (el.classList.contains('on')) updatePerfBadge();
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(0.06, clock.getDelta());
+  sampleFrame(dt);
+  if (G.mode === 'menu') {
+    if (hero) {
+      updateHero(dt);
+      if (composer && G.quality !== 'low') composer.render(); else renderer.render(hero.scene, camera);
+    }
+    return;
+  }
+  if (G.mode === 'loading') {
+    if (hero) renderer.render(hero.scene, camera);
+    return;
+  }
+  if (G.mode === 'turnback') {
+    updateTurnback(dt);
+    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
+    return;
+  }
+  if (G.mode === 'driving' || G.mode === 'paused' || G.mode === 'results') {
+    updateGame(dt);
+    if (composer && G.quality !== 'low') composer.render(); else renderer.render(scene, camera);
+  }
+}
+const keys = {};
+function togglePause(on) {
+  if (G.mode === 'driving' && on) {
+    G.mode = 'paused';
+    $('pause').classList.remove('hidden');
+    $('pauseSub').textContent = `${line.name} · ${routeDef.seg} · ${path.stations[G.targetIdx].zh}`;
+    const saveBtn = $('pSaveQuit');
+    if (saveBtn) saveBtn.classList.toggle('hidden', !(typeof sessionActive === 'function' && sessionActive()));
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  } else if (G.mode === 'paused' && !on) {
+    G.mode = 'driving';
+    $('pause').classList.add('hidden');
+    clock.getDelta();
+  }
+}
