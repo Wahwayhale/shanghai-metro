@@ -132,7 +132,10 @@ function importSave(text) {
 const SETTINGS_KEY = 'sm_settings';
 const SETTINGS_DEFAULTS = {
   tod: 'dusk', weather: 'clear', diff: 'normal',
-  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7
+  quality: 'high', voice: 'on', shakeOn: true, volume: 0.7,
+  /* 自动限速（ATP 超速防护）：默认关闭 —— 玩家要求「取消自动限速」，
+     想按真实限速自己控速的人可以在这里打开。 */
+  autoLimit: false
 };
 
 function loadSettings() {
@@ -146,8 +149,13 @@ function loadSettings() {
   if (typeof WEATHER !== 'undefined' && WEATHER[s.weather]) out.weather = s.weather;
   if (['easy', 'normal', 'hard'].includes(s.diff)) out.diff = s.diff;
   if (['high', 'medium', 'low'].includes(s.quality)) out.quality = s.quality;
+  /* 旧版本的「帧率偏低自动降档」会把「流畅」永久写进存档。没有「手动选择」标记的 low 一律视为
+     自动降档遗留，回到标准档；用户手动选的流畅（带 qualityManual 标记）则保留。 */
+  if (out.quality === 'low' && !s.qualityManual) out.quality = SETTINGS_DEFAULTS.quality === 'low' ? 'medium' : SETTINGS_DEFAULTS.quality;
+  if (s.qualityManual) out.qualityManual = true;
   if (['on', 'off'].includes(s.voice)) out.voice = s.voice;
   if (typeof s.shakeOn === 'boolean') out.shakeOn = s.shakeOn;
+  if (typeof s.autoLimit === 'boolean') out.autoLimit = s.autoLimit;
   if (typeof s.volume === 'number' && s.volume >= 0 && s.volume <= 1) out.volume = s.volume;
   return out;
 }
@@ -170,6 +178,7 @@ function applySettings() {
   G.quality = s.quality;
   G.voice = s.voice;
   G.shakeOn = s.shakeOn;
+  G.autoLimit = s.autoLimit !== false;
   theme = THEMES[G.tod];
 
   /* 关键：读档后必须按新档位重算像素预算。
@@ -191,6 +200,7 @@ function applySettings() {
   mark('diffGroup', s.diff);
   mark('qualGroup', s.quality);
   mark('voiceGroup', s.voice);
+  mark('autoLimitGroup', s.autoLimit ? 'on' : 'off');
   mark('shakeGroup', s.shakeOn ? 'on' : 'off');
   const vol = $('volRange');
   if (vol) vol.value = Math.round(s.volume * 100);
@@ -288,6 +298,16 @@ function bindMenu() {
       ? `运营日 · 约 ${G.sessionMinutes / 60} 小时 · 按图行车`
       : '单趟值乘';
   });
+  const alGroup = $('autoLimitGroup');
+  if (alGroup) alGroup.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    G.autoLimit = b.dataset.v === 'on';
+    saveSettings({ autoLimit: G.autoLimit });
+    [...alGroup.children].forEach(x => x.classList.toggle('on', x === b));
+    toast(G.autoLimit ? '自动限速已开启 · ATP 超速会施加制动' : '自动限速已关闭 · 仅提示超速，不强制制动', 'info', 3400);
+  });
+
   $('diffGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.diff = b.dataset.v;
@@ -370,7 +390,7 @@ function bindMenu() {
   $('qualGroup').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     G.quality = b.dataset.v;
-    saveSettings({ quality: G.quality });
+    saveSettings({ quality: G.quality, qualityManual: true });
     [...$('qualGroup').children].forEach(x => x.classList.toggle('on', x === b));
     if (sun) sun.castShadow = G.quality !== 'low';
     /* 换档要立刻重算像素预算与后期管线，否则要等下一次 resize 才生效 */
@@ -528,6 +548,7 @@ window.__sim = {
   get routes() { return ROUTES; },
   get lines() { return LINES; },
   showTransferPanel, clampWalk,
+  walkInteractE, enterTrainCar, takeOverTrain, findOpenTrainsAtStation,
   get signals() { return signals; },
   get IX() { return IX; },
   get interlockTable() { return IX.table || null; },
@@ -540,6 +561,20 @@ window.__sim = {
   },
   get sigMeshes() { return sigLampMeshes; },
   snapCam() { updateCamera(0, true); },
+  /* 调试：从相机沿视线打射线，返回前几个命中物体的概要（用于排查「看不到窗外」等遮挡问题） */
+  pickCenter(n = 8) {
+    const rc = new THREE.Raycaster();
+    rc.setFromCamera(new THREE.Vector2(0, 0), camera);
+    return rc.intersectObjects(scene.children, true).slice(0, n).map(h => {
+      const o = h.object, m = o.material || {};
+      return {
+        d: +h.distance.toFixed(2), type: o.type, geo: o.geometry ? o.geometry.type : '',
+        map: !!m.map, at: m.alphaTest || 0, tr: !!m.transparent, side: m.side,
+        inst: !!o.isInstancedMesh, parent: o.parent ? (o.parent.name || o.parent.type) : '',
+        uv: h.uv ? [+h.uv.x.toFixed(3), +h.uv.y.toFixed(3)] : null
+      };
+    });
+  },
   snapTrain() { if (train) train.update(G.s, G.v, 0); },
   advance(sec) {
     const h = 0.02; const n = Math.round(sec / h);

@@ -10,6 +10,7 @@ await new Promise(r=>setTimeout(r,2000));
 await p.click('#startBtn');await new Promise(r=>setTimeout(r,400));await p.click('#brGo');
 for(let i=0;i<90;i++){await new Promise(r=>setTimeout(r,1200));if(await p.evaluate(()=>window.__sim.G.mode)==='driving')break;}
 await new Promise(r=>setTimeout(r,1500));
+await p.evaluate(()=>{ const S=window.__sim; if(S.G.onboardOpen) S.onboardFinish(); });
 // 站台中央看向列车
 await p.evaluate(()=>{
   const S=window.__sim;const V=S.camera.position.constructor;
@@ -20,12 +21,12 @@ await p.evaluate(()=>{
 });
 await new Promise(r=>setTimeout(r,2600));
 await p.screenshot({path:base+'/shanghai-metro/shots/is_platform.png'});
-// 站台全景（从端部看）
+// 站台扶梯与站厅天井全景
 await p.evaluate(()=>{
   const S=window.__sim;const V=S.camera.position.constructor;
   const g=S.stationObjs[0].group; g.updateMatrixWorld(true);
-  const pos=g.localToWorld(new V(2.5,2.6,52));
-  const look=g.localToWorld(new V(0,1.9,-30));
+  const pos=g.localToWorld(new V(2.1,2.5,33));
+  const look=g.localToWorld(new V(-0.6,3.2,52));
   S.setFreeCam([pos.x,pos.y,pos.z],[look.x,look.y,look.z],66);
 });
 await new Promise(r=>setTimeout(r,2400));

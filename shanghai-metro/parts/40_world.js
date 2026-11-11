@@ -80,8 +80,8 @@ function initMaterials(renderer, theme) {
 
   MAT.rail = new THREE.MeshStandardMaterial({ color: 0xd7dade, roughness: 0.28, metalness: 0.92, envMapIntensity: 1.2 });
   MAT.sleeper = new THREE.MeshStandardMaterial({ color: 0x9a9d9c, roughness: 0.9, metalness: 0.05 });
-  MAT.platform = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.72, metalness: 0.06, color: 0xd7dade, emissive: new THREE.Color('#2e2e2a'), emissiveIntensity: 0.45 });
-  MAT.platform.map.repeat.set(2, 24);
+  MAT.platform = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.58, metalness: 0.08, envMapIntensity: 0.9, color: 0xe4e8ea, emissive: new THREE.Color('#343638'), emissiveIntensity: 0.1 });
+  MAT.platform.map.repeat.set(2, 28);
   /* 站台地面：地砖网格 + 轻微磨损。砖缝用 32px 周期，与基础色贴图对齐 */
   MAT.platform.normalMap = setAniso(texNormalMap('n_platform', 256, 256, (x, y) => {
     const gx = Math.abs((x % 32) - 0.5), gy = Math.abs((y % 32) - 0.5);
@@ -101,19 +101,27 @@ function initMaterials(renderer, theme) {
     return r;
   }));
   MAT.platform.roughness = 1.0;
-  MAT.tactile = new THREE.MeshStandardMaterial({ map: setAniso(texTactile()), roughness: 0.8, metalness: 0.02, color: 0xffffff });
-  MAT.tactile.map.repeat.set(2, 90);
-  MAT.safety = new THREE.MeshStandardMaterial({ color: 0xe8b93a, roughness: 0.7, metalness: 0.05 });
-  MAT.darkMetal = new THREE.MeshStandardMaterial({ color: 0x2b3237, roughness: 0.5, metalness: 0.7 });
-  MAT.metal = new THREE.MeshStandardMaterial({ color: 0x9aa4aa, roughness: 0.35, metalness: 0.85, envMapIntensity: 1.0 });
-  MAT.white = new THREE.MeshStandardMaterial({ color: 0xeef1f1, roughness: 0.5, metalness: 0.05 });
-  /* 玻璃：加一层清漆（clearcoat）制造真实玻璃特有的「双层高光」，
-     再用极弱的法线波纹打破完美平整（真实玻璃并不绝对平整）。
-     都是 GPU 侧开销，不新增 mesh、不新增 pass。 */
-  MAT.psdGlass = new THREE.MeshPhysicalMaterial({
-    color: 0xcfe6ee, roughness: 0.035, metalness: 0.10, transparent: true, opacity: 0.14,
-    envMapIntensity: 1.9, side: THREE.DoubleSide, depthWrite: false,
-    clearcoat: 1.0, clearcoatRoughness: 0.04, reflectivity: 0.55
+  MAT.tactile = new THREE.MeshStandardMaterial({ map: setAniso(texTactile()), roughness: 0.68, metalness: 0.04, color: 0xffffff, emissive: new THREE.Color('#4a3606'), emissiveIntensity: 0.1 });
+  MAT.tactile.map.repeat.set(1, 180);
+  MAT.safety = new THREE.MeshStandardMaterial({ color: 0xf0be32, roughness: 0.62, metalness: 0.05, emissive: new THREE.Color('#4a3808'), emissiveIntensity: 0.1 });
+  MAT.darkMetal = new THREE.MeshStandardMaterial({ color: 0x262d32, roughness: 0.44, metalness: 0.72, emissive: new THREE.Color('#121518'), emissiveIntensity: 0.08 });
+  MAT.metal = new THREE.MeshStandardMaterial({ color: 0xb4bec4, roughness: 0.30, metalness: 0.82, envMapIntensity: 1.1, emissive: new THREE.Color('#22272a'), emissiveIntensity: 0.08 });
+  /* 站台立柱专用：搪瓷钢板贴图 + 轻微自发光，避免纯白塑料感 */
+  MAT.column = new THREE.MeshStandardMaterial({
+    map: setAniso(texColumnEnamel()), roughness: 0.36, metalness: 0.12,
+    envMapIntensity: 0.9, emissive: new THREE.Color('#4a4f4e'), emissiveIntensity: 0.10
+  });
+  MAT.column.map.repeat.set(1, 2);
+  MAT.white = new THREE.MeshStandardMaterial({ color: 0xf0f3f4, roughness: 0.42, metalness: 0.08, envMapIntensity: 0.75, emissive: new THREE.Color('#3b3f42'), emissiveIntensity: 0.1 });
+  /* 吊顶：比墙面暗一档。真实站台吊顶（铝板/矿棉板）反射率低，
+     而且紧贴灯带，用白色会把灯光二次反射成一片亮斑。 */
+  MAT.ceiling = new THREE.MeshStandardMaterial({ color: 0xb9c0c2, roughness: 0.86, metalness: 0.04, envMapIntensity: 0.5, emissive: new THREE.Color('#22262a'), emissiveIntensity: 0.06 });
+  /* 玻璃：极弱的法线波纹打破完美平整（真实玻璃并不绝对平整），不新增 mesh、不新增 pass。 */
+  /* 屏蔽门玻璃用 Standard 材质：原 MeshPhysicalMaterial + clearcoat 每像素多算一套清漆 BRDF，
+     而玻璃铺满整个站台、层层叠加，是核显上的大头开销之一。 */
+  MAT.psdGlass = new THREE.MeshStandardMaterial({
+    color: 0xcfe6ee, roughness: 0.06, metalness: 0.10, transparent: true, opacity: 0.16,
+    envMapIntensity: 1.9, side: THREE.DoubleSide, depthWrite: false
   });
   MAT.psdGlass.normalMap = setAniso(texNormalMap('n_glass', 128, 128, (x, y) => {
     /* 极缓慢的起伏，幅度很小，只让反射略微扭曲 */
@@ -128,8 +136,11 @@ function initMaterials(renderer, theme) {
   MAT.asphalt = new THREE.MeshStandardMaterial({ color: 0x34383a, roughness: 0.96, metalness: 0.02 });
   MAT.sidewalk = new THREE.MeshStandardMaterial({ map: setAniso(texPlatformFloor()), roughness: 0.82, metalness: 0.04, color: 0xb9bfc0 });
 
-  MAT.strip = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.15, 1.08, 0.94), toneMapped: false, fog: false });
-  MAT.stripCool = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 1.26, 1.42), toneMapped: false, fog: false });
+  /* 灯带用 Basic 材质 + toneMapped:false，颜色值 >1 会直接溢到纯白并撑爆泛光。
+     原来是 (1.15,1.08,0.94)，配合 bloom 后整条灯带是一坨白斑。
+     压到 1.0 以下（不到 1 的亮度靠 ACES 也能保住「亮」的观感），泛光只留一圈柔光。 */
+  MAT.strip = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.86, 0.82, 0.72), toneMapped: false, fog: false });
+  MAT.stripCool = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.80, 0.96, 1.06), toneMapped: false, fog: false });
   MAT.lampWarm = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 2.6, 1.8), toneMapped: false });
   MAT.lampRed = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.0, 0.25, 0.2), toneMapped: false });
   MAT.lampGreen = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.3, 2.6, 1.1), toneMapped: false });
@@ -179,7 +190,13 @@ function texGround() {
 }
 
 /* ---------------- 沿线路挤出截面 ---------------- */
-function extrudeAlong(route, i0, i1, profile, mat, opts = {}) {
+/* 分块阈值：单段挤出几何超过这个长度（米）就切开，
+   让每块有自己的包围球，视锥外的块可以被 three.js 整体跳过。
+   1.3 km 的线路按 150 m 切 = 9 块，可见时通常只有 2–3 块在视野内。 */
+const EXTRUDE_CHUNK = 150;
+
+/* 原 extrudeAlong 的实现（生成单块）。extrudeAlong 会在它之上做分块。 */
+function extrudeAlongChunk(route, i0, i1, profile, mat, opts = {}) {
   const { step = 2, uScale = 6, vScale = 8, closed = true } = opts;
   const prof = profile.slice();
   if (closed) prof.push(prof[0]);
@@ -220,6 +237,31 @@ function extrudeAlong(route, i0, i1, profile, mat, opts = {}) {
   return new THREE.Mesh(g, mat);
 }
 
+/* 分块包装：按路线索引区间切成多段，每段一个 mesh，各自有包围球。
+   返回一个 Group（调用方一律 group.add(...)，兼容）。 */
+function extrudeAlong(route, i0, i1, profile, mat, opts = {}) {
+  const step = opts.step || 2;
+  /* 把「索引区间」换算成米数：route.S[i] 是累计里程 */
+  const sStart = route.S ? route.S[Math.max(0, Math.min(route.N, i0))] : 0;
+  const sEnd = route.S ? route.S[Math.max(0, Math.min(route.N, i1))] : 0;
+  const spanM = Math.abs(sEnd - sStart);
+  if (!(spanM > EXTRUDE_CHUNK * 1.6) || !route.S) {
+    return extrudeAlongChunk(route, i0, i1, profile, mat, opts);
+  }
+  const g = new THREE.Group();
+  const pieces = Math.max(1, Math.ceil(spanM / EXTRUDE_CHUNK));
+  const idxPerPiece = Math.max(1, Math.round((i1 - i0) / pieces));
+  for (let k = 0; k < pieces; k++) {
+    const a = i0 + k * idxPerPiece;
+    const b = k === pieces - 1 ? i1 : Math.min(i1, a + idxPerPiece + 1);   // +1 让相邻块共享一圈顶点，避免接缝
+    if (b - a < 2) continue;
+    const mesh = extrudeAlongChunk(route, a, b, profile, mat, opts);
+    mesh.frustumCulled = true;
+    g.add(mesh);
+  }
+  return g;
+}
+
 /* ---------------- 轨道 ---------------- */
 function buildTrack(route, group, quality) {
   const i0 = 0, i1 = route.N;
@@ -233,29 +275,52 @@ function buildTrack(route, group, quality) {
     const p = railProf.map(([a, b]) => [a + off, b]);
     group.add(extrudeAlong(route, i0, i1, p, MAT.rail, { step: 2, uScale: 1, vScale: 2 }));
   }
-  // 轨枕
-  const stepM = 1.35;
-  const count = Math.floor(route.length / stepM) * 2;
-  const sleepers = new THREE.InstancedMesh(new THREE.BoxGeometry(2.5, 0.16, 0.26), MAT.sleeper, count);
+  /* 轨枕：**这是整个场景里三角形最多的东西**（1.3 km × 2 股道，每 1.35 m 一根
+     = 4.9 万根 × 12 三角 ≈ 59 万三角形），而且原来 frustumCulled=false，
+     意味着不管相机看哪儿，每帧都要把 4.9 万根枕木全提交一遍。
+
+     两处改动：
+       1) 步距 1.35 → 1.75 m。真实轨枕间距 0.6 m，但在 60 km/h 的车速下
+          1.75 m 与 1.35 m 在视觉上完全无法区分，三角形直接少 23%。
+       2) 按 120 m 分块，每块一个 InstancedMesh 并开启 frustumCulled。
+          相机永远只看得到身前身后各一两块，实际提交量降到 ~2 块
+          （约 1400 根），比原来一次性 4.9 万根少 97%。
+     分块后 draw call 从 1 变成 ~11，但每块都能被视锥剔除，
+     净效果是「可见时几乎不增加成本，不可见时彻底省掉」。 */
+  const stepM = 1.75;
+  const CHUNK_LEN = 120;
+  const chunkCount = Math.max(1, Math.ceil(route.length / CHUNK_LEN));
+  const sleeperGeo = new THREE.BoxGeometry(2.5, 0.16, 0.26);
   const dummy = new THREE.Object3D();
-  let n = 0;
-  for (let tr = 0; tr < 2; tr++) {
-    const lat = tr === 0 ? -TRACK_LAT : TRACK_LAT;
-    for (let s = 1; s < route.length - 1; s += stepM) {
-      const f = route.frameAt(s);
-      dummy.position.copy(f.pos).addScaledVector(f.right, lat).addScaledVector(f.up, -0.3);
-      dummy.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      sleepers.setMatrixAt(n++, dummy.matrix);
-      if (n >= count) break;
+  for (let ci = 0; ci < chunkCount; ci++) {
+    const s0 = ci * CHUNK_LEN;
+    const s1 = Math.min(route.length - 1, s0 + CHUNK_LEN);
+    if (s1 - s0 < 2) continue;
+    const perTrack = Math.floor((s1 - s0) / stepM) + 1;
+    const cap = perTrack * 2;
+    const chunk = new THREE.InstancedMesh(sleeperGeo, MAT.sleeper, cap);
+    let n = 0;
+    for (let tr = 0; tr < 2; tr++) {
+      const lat = tr === 0 ? -TRACK_LAT : TRACK_LAT;
+      for (let s = s0 + 0.5; s < s1; s += stepM) {
+        const f = route.frameAt(s);
+        dummy.position.copy(f.pos).addScaledVector(f.right, lat).addScaledVector(f.up, -0.3);
+        dummy.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(f.right, f.up, f.tan));
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        chunk.setMatrixAt(n++, dummy.matrix);
+        if (n >= cap) break;
+      }
+      if (n >= cap) break;
     }
-    if (n >= count) break;
+    if (!n) { chunk.dispose(); continue; }
+    chunk.count = n;
+    chunk.instanceMatrix.needsUpdate = true;
+    /* 关键：允许视锥剔除（原来这里是 false） */
+    chunk.frustumCulled = true;
+    chunk.computeBoundingSphere();
+    group.add(chunk);
   }
-  sleepers.count = n;
-  sleepers.instanceMatrix.needsUpdate = true;
-  sleepers.frustumCulled = false;
-  group.add(sleepers);
 
   // 接触网（明线区段）；第三轨线路不架接触网
   const third = (typeof line !== 'undefined' && line && line.thirdRail);
@@ -724,6 +789,66 @@ function distToRiver(x, z, pts) {
 }
 
 /* ---------------- 城市 ---------------- */
+/* ----------------------------------------------------------------
+   静态世界合并（性能）
+   ----------------------------------------------------------------
+   世界里的路灯、桥墩、护栏、地标零件等大量一次性小网格，每个占 1 个 draw call。
+   它们全程不动，按「材质 + 是否投影」分桶后合并成大 mesh：
+     draw call 从「网格数」降到「材质种类数」（通常十几）。
+   只处理直接挂在 worldGroup 下、且不是 InstancedMesh / 不是挤出分块 Group 的网格，
+   避免破坏需要单独控制可见性的东西。
+   ---------------------------------------------------------------- */
+function mergeWorldStatics(group) {
+  if (!group || typeof BufferGeometryUtils === "undefined") return 0;
+  group.updateMatrixWorld(true);
+  const buckets = new Map();
+  const remove = [];
+  const meshes = [];
+  group.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh) return;
+    if (!o.geometry || !o.material || Array.isArray(o.material)) return;
+    if (o.material.transparent) return;              // 透明件顺序敏感，不合并
+    if (o.userData && o.userData.noMerge) return;    // 需要单独控制的跳过
+    if (!o.geometry.attributes || !o.geometry.attributes.position) return;
+    meshes.push(o);
+  });
+  for (const o of meshes) {
+    const key = o.material.uuid + "|" + (o.castShadow ? 1 : 0);
+    if (!buckets.has(key)) buckets.set(key, { mat: o.material, cast: !!o.castShadow, list: [] });
+    buckets.get(key).list.push(o);
+  }
+  let merged = 0;
+  buckets.forEach(b => {
+    if (b.list.length < 4) return;                   // 少于 4 个不值得合并
+    const geos = [];
+    for (const o of b.list) {
+      const g2 = o.geometry.clone();
+      g2.applyMatrix4(o.matrixWorld);
+      if (!g2.attributes.normal) g2.computeVertexNormals();
+      /* 合并要求属性一致：缺 uv 的补一个零 uv */
+      if (!g2.attributes.uv) {
+        const c = g2.attributes.position.count;
+        g2.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(c * 2), 2));
+      }
+      geos.push(g2);
+    }
+    let mg = null;
+    try { mg = BufferGeometryUtils.mergeGeometries(geos, false); } catch (e) { mg = null; }
+    geos.forEach(g2 => g2.dispose());
+    if (!mg) return;
+    const mesh = new THREE.Mesh(mg, b.mat);
+    mesh.castShadow = b.cast;
+    mesh.receiveShadow = false;
+    mesh.matrixAutoUpdate = false;
+    mesh.frustumCulled = true;
+    /* 挂回第一个被合并对象的父节点，保持世界坐标系一致（matrixWorld 已烘进几何） */
+    const parent = b.list[0].parent || group;
+    parent.add(mesh);
+    b.list.forEach(o => { if (o.parent) o.parent.remove(o); });
+    merged += b.list.length;
+  });
+  return merged;
+}
 function buildCity(route, group, riverPts) {
   /* ---- P5：分区驱动的城市 ----
      原来是把沿线走廊按高度分 3 桶、每桶一个 InstancedMesh 铺方盒子。
@@ -957,7 +1082,7 @@ function buildLandmarks(route, group, theme) {
       const shaft = new THREE.Mesh(new THREE.CylinderGeometry(7, 11, 300, 16), concreteMat);
       shaft.position.y = 150; g.add(shaft);
       for (const [y, r] of [[112, 28], [263, 23], [350, 14]]) {
-        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshStandardMaterial({
+        const s = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 10), new THREE.MeshStandardMaterial({
           color: 0xd94a63, roughness: 0.25, metalness: 0.5, emissive: 0xb01f3a, emissiveIntensity: 0.9
         }));
         s.position.y = y; g.add(s);
@@ -1012,7 +1137,7 @@ function buildLandmarks(route, group, theme) {
         b.position.set(0, b.geometry.parameters.height / 2, -180 + i * 44);
         b.rotation.y = PI / 2;
         g.add(b);
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(7, 12, 8), new THREE.MeshStandardMaterial({ color: 0x5b6158, roughness: 0.5, metalness: 0.5 }));
+        const dome = new THREE.Mesh(new THREE.SphereGeometry(7, 10, 6), new THREE.MeshStandardMaterial({ color: 0x5b6158, roughness: 0.5, metalness: 0.5 }));
         dome.position.set(0, b.geometry.parameters.height + 5, -180 + i * 44);
         g.add(dome);
       }
@@ -1033,7 +1158,7 @@ function buildLandmarks(route, group, theme) {
     } else if (lm.kind === 'museum') {
       const base = new THREE.Mesh(new THREE.BoxGeometry(120, 22, 90), new THREE.MeshStandardMaterial({ color: 0xb9bdbd, roughness: 0.5, metalness: 0.4 }));
       base.position.y = 11; g.add(base);
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(38, 24, 16, 0, TAU, 0, PI / 2), new THREE.MeshPhysicalMaterial({
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(38, 16, 8, 0, TAU, 0, PI / 2), new THREE.MeshPhysicalMaterial({
         color: 0x9fc6d8, roughness: 0.08, metalness: 0.5, transparent: true, opacity: 0.55, envMapIntensity: 1.3
       }));
       dome.position.y = 22; g.add(dome);
@@ -1115,7 +1240,7 @@ function buildLandmarks(route, group, theme) {
       });
       for (let i = 0; i < 3; i++) {
         const s = new THREE.Mesh(
-          new THREE.SphereGeometry(34 + i * 6, 22, 12, 0, TAU, 0, PI * 0.42),
+          new THREE.SphereGeometry(34 + i * 6, 16, 8, 0, TAU, 0, PI * 0.42),
           shellM
         );
         s.position.set((i - 1) * 44, 6, (i - 1) * 16);
@@ -1132,7 +1257,7 @@ function buildLandmarks(route, group, theme) {
         color: 0xa8b0b3, roughness: 0.65, metalness: 0.25, side: THREE.DoubleSide
       }));
       baseRing.position.y = 8; g.add(baseRing);
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 32, 14, 0, TAU, 0, PI * 0.34), new THREE.MeshPhysicalMaterial({
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(118, 20, 9, 0, TAU, 0, PI * 0.34), new THREE.MeshPhysicalMaterial({
         color: 0xcfd8dc, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.62, envMapIntensity: 1.4,
         side: THREE.DoubleSide
       }));
@@ -1149,7 +1274,7 @@ function buildLandmarks(route, group, theme) {
         emissive: new THREE.Color(0x2a4a66), emissiveIntensity: 0.8,
         transparent: true, opacity: 0.78, envMapIntensity: 1.6
       });
-      const egg = new THREE.Mesh(new THREE.SphereGeometry(15, 24, 18), eggMat);
+      const egg = new THREE.Mesh(new THREE.SphereGeometry(15, 16, 11), eggMat);
       egg.position.y = 22; egg.scale.set(1, 1.35, 1);
       g.add(egg);
       const ring = new THREE.Mesh(new THREE.CylinderGeometry(24, 26, 4, 28), new THREE.MeshStandardMaterial({

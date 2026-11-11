@@ -192,21 +192,29 @@ function texBallast() {
 function texPlatformFloor() {
   if (TEX_CACHE.has('pfloor')) return TEX_CACHE.get('pfloor');
   const [c, x] = cv2d(512, 512);
-  x.fillStyle = '#a3a8ab'; x.fillRect(0, 0, 512, 512);
-  const tw = 128, th = 128;
-  for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
-    const v = 138 + Math.random() * 22;
-    x.fillStyle = `rgb(${v},${v + 3},${v + 6})`;
-    x.fillRect(gx * tw + 2, gy * th + 2, tw - 4, th - 4);
-    x.fillStyle = `rgba(255,255,255,${0.02 + Math.random() * 0.04})`;
-    x.fillRect(gx * tw + 2, gy * th + 2, tw - 4, 6);
+  x.fillStyle = '#adb4b8'; x.fillRect(0, 0, 512, 512);
+  /* 8×8 花岗岩地砖网格，与 256² 法线贴图的 32px 周期（8×8）严格对齐 */
+  const tw = 64, th = 64;
+  for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
+    const v = 186 + ((gx * 7 + gy * 13) % 5) * 3 + Math.random() * 8;
+    x.fillStyle = `rgb(${v | 0},${(v + 3) | 0},${(v + 6) | 0})`;
+    x.fillRect(gx * tw + 1.5, gy * th + 1.5, tw - 3, th - 3);
+    // 砖面微弱高光边与斜向抛光光泽
+    x.fillStyle = 'rgba(255,255,255,.10)';
+    x.fillRect(gx * tw + 2, gy * th + 2, tw - 4, 3);
+    x.fillRect(gx * tw + 2, gy * th + 2, 3, th - 4);
+    x.fillStyle = 'rgba(0,0,0,.06)';
+    x.fillRect(gx * tw + 2, (gy + 1) * th - 4, tw - 4, 2);
   }
-  x.strokeStyle = 'rgba(0,0,0,.22)'; x.lineWidth = 2;
-  for (let i = 0; i <= 4; i++) {
+  // 花岗岩矿物细斑点
+  noiseFill(x, 512, 512, 5500, '#2b3136', 0.025, 0.075);
+  noiseFill(x, 512, 512, 4200, '#ffffff', 0.03, 0.08);
+  // 砖缝
+  x.strokeStyle = 'rgba(42,48,54,.34)'; x.lineWidth = 2;
+  for (let i = 0; i <= 8; i++) {
     x.beginPath(); x.moveTo(i * tw, 0); x.lineTo(i * tw, 512); x.stroke();
     x.beginPath(); x.moveTo(0, i * th); x.lineTo(512, i * th); x.stroke();
   }
-  noiseFill(x, 512, 512, 3000, '#000', 0.02, 0.06);
   const t = toTex(c, 1, 1);
   TEX_CACHE.set('pfloor', t);
   return t;
@@ -216,14 +224,17 @@ function texPlatformFloor() {
 function texTactile() {
   if (TEX_CACHE.has('tactile')) return TEX_CACHE.get('tactile');
   const [c, x] = cv2d(128, 128);
-  x.fillStyle = '#d8a520'; x.fillRect(0, 0, 128, 128);
-  x.fillStyle = 'rgba(0,0,0,.18)';
+  x.fillStyle = '#e0ab1b'; x.fillRect(0, 0, 128, 128);
+  x.strokeStyle = 'rgba(90,62,0,.35)'; x.lineWidth = 3;
+  x.strokeRect(1.5, 1.5, 125, 125);
   for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
-    x.beginPath(); x.arc(16 + gx * 32, 16 + gy * 32, 8, 0, TAU); x.fill();
-  }
-  x.fillStyle = 'rgba(255,255,255,.22)';
-  for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
-    x.beginPath(); x.arc(15 + gx * 32, 15 + gy * 32, 6, 0, TAU); x.fill();
+    const cx = 16 + gx * 32, cy = 16 + gy * 32;
+    x.fillStyle = 'rgba(0,0,0,.24)';
+    x.beginPath(); x.arc(cx + 1.5, cy + 1.5, 8.5, 0, TAU); x.fill();
+    x.fillStyle = '#f2c138';
+    x.beginPath(); x.arc(cx, cy, 8, 0, TAU); x.fill();
+    x.fillStyle = 'rgba(255,250,210,.45)';
+    x.beginPath(); x.arc(cx - 2, cy - 2, 4.2, 0, TAU); x.fill();
   }
   const t = toTex(c, 1, 1);
   TEX_CACHE.set('tactile', t);
@@ -278,9 +289,41 @@ function texBuilding(variant = 0, floors = 16) {
 
 /* ---------------- 车厢侧面涂装 ---------------- */
 function doorOffsetsOf(line) {
+  if (line && line.doors === 5) return [-9.5, -4.75, 0, 4.75, 9.5];   // 15 号线 sh15 模型：5 门/侧
   return (line && line.doors === 3) ? [-7.6, 0, 7.6] : [-7.6, -2.6, 2.6, 7.6];
 }
 
+/* 车窗沿车长的排布（米，相对车厢中心）：只在「门与门之间」的区段里排窗，
+   这样窗洞永远不会被门洞吃掉。内外壁共用同一套位置，视线才对得上。 */
+const CAR_WIN_W = 1.30, CAR_WIN_GAP = 0.34, CAR_DOOR_HALF = 0.70;
+function carWinSlots(doorList) {
+  const doors = doorList || [-7.6, -2.6, 2.6, 7.6];
+  const HALF = 11.4;
+  const edges = [];
+  for (const z of doors) edges.push([z - CAR_DOOR_HALF, z + CAR_DOOR_HALF]);
+  /* 车长区段：[起, 止] */
+  const gaps = [];
+  let cur = -HALF;
+  for (const [a, b] of edges) {
+    if (a - cur > 1.2) gaps.push([cur, a]);
+    cur = Math.max(cur, b);
+  }
+  if (HALF - cur > 1.2) gaps.push([cur, HALF]);
+  const out = [];
+  for (const [a, b] of gaps) {
+    const L = b - a;
+    /* 每个区段按 1.3 m 窗 + 0.34 m 间隔尽量均分，两侧留 0.30 m 边距 */
+    const usable = L - 0.6;
+    let n = Math.max(1, Math.floor((usable + CAR_WIN_GAP) / (CAR_WIN_W + CAR_WIN_GAP)));
+    let w = (usable - CAR_WIN_GAP * (n - 1)) / n;
+    if (w > 1.5) { n += 1; w = (usable - CAR_WIN_GAP * (n - 1)) / n; }
+    if (w < 0.95) { n = Math.max(1, n - 1); w = (usable - CAR_WIN_GAP * (n - 1)) / n; }
+    const step = w + CAR_WIN_GAP;
+    const x0 = a + (L - (n * w + (n - 1) * CAR_WIN_GAP)) / 2;
+    for (let i = 0; i < n; i++) out.push({ z: x0 + w / 2 + i * step, w });
+  }
+  return out;
+}
 function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList, color2 = null) {
   const key = `car_${color}_${color2 || ''}_${open}_${mirror}_${lineNo}`;
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
@@ -302,19 +345,19 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
   x.fillStyle = 'rgba(255,255,255,.28)'; x.fillRect(0, 402, W, 3);
   // 窗带
   x.fillStyle = '#141a1f'; x.fillRect(20, 128, W - 40, 214);
-  // 窗
-  const winW = 138, gap = 46;
-  for (let i = 0; i < 12; i++) {
-    const px = 34 + i * (winW + gap);
-    if (px + winW > W - 20) break;
-    const wg = x.createLinearGradient(px, 140, px + winW, 330);
+  // 车窗（按门间区段排布，与内壁窗洞同一套位置）
+  const zToPx = (z) => ((z + 11.4) / 22.8) * W;
+  const slots = carWinSlots(doorList);
+  for (const sl of slots) {
+    const pw = (sl.w / 22.8) * W, px = zToPx(sl.z) - pw / 2;
+    const wg = x.createLinearGradient(px, 140, px + pw, 330);
     wg.addColorStop(0, '#2b3d4b'); wg.addColorStop(0.45, '#101820'); wg.addColorStop(1, '#1b2a35');
     x.fillStyle = wg;
-    x.beginPath(); x.roundRect(px, 140, winW, 190, 12); x.fill();
+    x.beginPath(); x.roundRect(px, 140, pw, 190, 12); x.fill();
     x.strokeStyle = 'rgba(255,255,255,.16)'; x.lineWidth = 2;
-    x.beginPath(); x.roundRect(px, 140, winW, 190, 12); x.stroke();
+    x.beginPath(); x.roundRect(px, 140, pw, 190, 12); x.stroke();
     x.fillStyle = 'rgba(180,215,235,.10)';
-    x.beginPath(); x.moveTo(px + 10, 330); x.lineTo(px + 62, 140); x.lineTo(px + 96, 140); x.lineTo(px + 44, 330); x.closePath(); x.fill();
+    x.beginPath(); x.moveTo(px + 8, 330); x.lineTo(px + pw * 0.42, 140); x.lineTo(px + pw * 0.66, 140); x.lineTo(px + pw * 0.30, 330); x.closePath(); x.fill();
   }
   // 车门（门洞 1.15m~3.05m 高）
   const doorCenters = doorList || [-7.6, -2.6, 2.6, 7.6];
@@ -340,11 +383,14 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
   }
   // 开孔：车窗与门洞（仅玩家列车使用 open 版本）
   if (open) {
-    x.globalCompositeOperation = 'destination-out';
-    for (let i = 0; i < 12; i++) {
-      const px = 34 + i * (winW + gap);
-      if (px + winW > W - 20) break;
-      x.beginPath(); x.roundRect(px + 2, 142, winW - 4, 186, 10); x.fill();
+    /* destination-out 按「源 alpha」擦除：必须先把 fillStyle 设成不透明纯色。
+     否则沿用上一段的半透明色（rgba(0,0,0,.10)）只会擦掉一点点，
+     窗洞/门洞的 alpha 仍是 229 > alphaTest 0.45，等于根本没开孔 —— 车厢内看不到窗外就是这个原因。 */
+  x.fillStyle = '#000';
+  x.globalCompositeOperation = 'destination-out';
+    for (const sl of slots) {
+      const pw = (sl.w / 22.8) * W, px = zToPx(sl.z) - pw / 2;
+      x.beginPath(); x.roundRect(px + 2, 142, pw - 4, 186, 10); x.fill();
     }
     for (const zc of doorCenters) {
       const px = ((zc + 11.4) / 22.8) * W;
@@ -368,47 +414,92 @@ function texCarSide(color, open = false, mirror = false, lineNo = '02', doorList
   return t;
 }
 
+/* ---------------- 站台立柱搪瓷板 ---------------- */
+function texColumnEnamel() {
+  if (TEX_CACHE.has('colenamel')) return TEX_CACHE.get('colenamel');
+  const W = 256, H = 256;
+  const [c, x] = cv2d(W, H);
+  /* 米白搪瓷底 + 极细颗粒 */
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#f2f4f3'); g.addColorStop(0.55, '#e9eceb'); g.addColorStop(1, '#dfe3e2');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  noiseFill(x, W, H, 2200, '#8b9490', 0.02, 0.05);
+  /* 4 条竖向分缝（每块搪瓷板一条） */
+  for (let i = 1; i < 4; i++) {
+    const px = (i / 4) * W;
+    x.fillStyle = 'rgba(120,130,128,.42)';
+    x.fillRect(px - 1.5, 0, 3, H);
+    x.fillStyle = 'rgba(255,255,255,.55)';
+    x.fillRect(px + 1.5, 0, 1.5, H);
+  }
+  /* 上下收边 */
+  x.fillStyle = 'rgba(110,120,118,.35)';
+  x.fillRect(0, 0, W, 3);
+  x.fillRect(0, H - 3, W, 3);
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set('colenamel', t);
+  return t;
+}
+
 /* ---------------- 站名牌 ---------------- */
 function texStationSign(station, line, dirTo) {
-  const key = 'sign_' + line.id + '_' + station.zh;
+  const key = 'sign_' + line.id + '_' + station.zh + '_' + (dirTo || '');
   if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
-  /* 曾经为省 canvas 光栅化时间降到 768×192（P1-1）。但玩家反馈站名牌
-     文字发虚 —— 吊挂牌在场景里约 4.4 m 宽，近距离占了屏幕很大一块，
-     768 宽对应到 2K 屏上每个字只有几个像素。
-     现在 GPU 有余量，提到 1152×288（1.5 倍），排版系数按同一基准缩放。 */
-  /* 排版基准一直是 1536×384，但 P1 阶段把画布降到 768×192 时
-     只改了 W/H，没有缩放坐标系 —— 结果 x=1520 处的「上海地铁」字样
-     直接画在画布外，静默丢失。这里改用 ctx.scale 整体缩放，
-     让绝对坐标始终按 1536×384 基准书写，与画布实际尺寸解耦。 */
   const BASE_W = 1536, BASE_H = 384;
   const W = 1152, H = 288;
   const S = W / BASE_W;                  // 0.75
   const [c, x] = cv2d(W, H);
   x.scale(S, S);
-  x.fillStyle = '#f6f7f6'; x.fillRect(0, 0, BASE_W, BASE_H);
-  x.fillStyle = '#e9ebe9'; x.fillRect(0, BASE_H - 13, BASE_W, 13);
-  // 线路色块（共线段用双色）
-  x.fillStyle = line.color; x.fillRect(0, 0, 105, BASE_H);
-  if (line.color2) { x.fillStyle = line.color2; x.fillRect(52, 0, 53, H); }
-  x.fillStyle = '#fff'; x.font = `800 ${132}px "Microsoft YaHei",sans-serif`;
-  x.textAlign = 'center'; x.fillText(line.badge, 52, 104);
-  x.font = `600 ${34}px "Microsoft YaHei",sans-serif`;
-  x.fillText(line.name, 52, 141);
-  // 站名
+  // 灯箱底板（顶部深灰金属檐 + 柔白灯箱面 + 底部线路色条）
+  const bg = x.createLinearGradient(0, 0, 0, BASE_H);
+  bg.addColorStop(0, '#f8faf9'); bg.addColorStop(0.88, '#eef1f0'); bg.addColorStop(1, '#dfe4e6');
+  x.fillStyle = bg; x.fillRect(0, 0, BASE_W, BASE_H);
+  x.fillStyle = '#1c2328'; x.fillRect(0, 0, BASE_W, 18);
+  x.fillStyle = line.color; x.fillRect(0, BASE_H - 22, BASE_W, 22);
+  if (line.color2) x.fillRect(0, BASE_H - 10, BASE_W, 10);
+
+  // 左侧线路色块与徽标
+  x.fillStyle = line.color; x.fillRect(0, 18, 220, BASE_H - 40);
+  if (line.color2) { x.fillStyle = line.color2; x.fillRect(110, 18, 110, BASE_H - 40); }
+  const isLightLine = ['#fcd600', '#FFD100', '#8cc220', '#8CC63F', '#98d1c0', '#c8b38e', '#cccccc'].includes(line.color);
+  x.fillStyle = isLightLine ? '#101619' : '#ffffff';
+  x.font = `800 ${line.badge.length > 1 ? 116 : 142}px "Microsoft YaHei",sans-serif`;
+  x.textAlign = 'center';
+  x.fillText(line.badge, 110, 195);
+  x.font = '700 38px "Microsoft YaHei",sans-serif';
+  x.fillText(line.name, 110, 272);
+  x.font = '600 24px "Segoe UI",sans-serif';
+  x.fillText((line.en || ('LINE ' + line.badge)).toUpperCase(), 110, 312);
+
+  // 中部大号站名（中英双语居中对齐）
   x.textAlign = 'left';
-  x.fillStyle = '#15181a';
-  x.font = `800 ${132}px "PingFang SC","Microsoft YaHei",sans-serif`;
-  x.fillText(station.zh, 130, 95);
-  x.fillStyle = '#586468';
-  x.font = `500 ${40}px "Segoe UI",Helvetica,sans-serif`;
-  x.fillText(station.en.toUpperCase(), 132, 129);
-  // 方向
-  x.fillStyle = '#2b3236'; x.font = `600 ${40}px "Microsoft YaHei",sans-serif`;
-  x.textAlign = 'right';
-  x.fillText(`往 ${dirTo}`, W - 35, 75);
-  x.fillStyle = '#7a868b'; x.font = `500 ${32}px "Microsoft YaHei",sans-serif`;
-  x.fillText('TO ' + dirTo, W - 35, 105);
-  x.strokeStyle = '#c9cfd1'; x.lineWidth = 2; x.strokeRect(1, 1, W - 2, H - 2);
+  x.fillStyle = '#111619';
+  const zhLen = (station.zh || '').length;
+  const zhSize = zhLen > 6 ? 92 : zhLen > 4 ? 112 : 132;
+  x.font = `800 ${zhSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.fillText(station.zh, 268, 196);
+  x.fillStyle = '#4a565d';
+  x.font = '600 42px "Segoe UI",Helvetica,sans-serif';
+  x.fillText((station.en || station.zh).toUpperCase(), 272, 276);
+
+  // 右侧开往方向 + 指示箭头
+  if (dirTo) {
+    x.fillStyle = '#eef2f4';
+    x.beginPath(); x.roundRect(BASE_W - 470, 56, 430, 256, 18); x.fill();
+    x.strokeStyle = '#cfd6da'; x.lineWidth = 3;
+    x.beginPath(); x.roundRect(BASE_W - 470, 56, 430, 256, 18); x.stroke();
+    x.fillStyle = '#5c6a72'; x.font = '600 34px "Microsoft YaHei",sans-serif';
+    x.textAlign = 'right';
+    x.fillText('开往 · TO', BASE_W - 148, 126);
+    x.fillStyle = '#151b1f'; x.font = '800 54px "Microsoft YaHei",sans-serif';
+    x.fillText(dirTo, BASE_W - 148, 198);
+    x.fillStyle = line.color;
+    x.beginPath(); x.arc(BASE_W - 92, 184, 38, 0, TAU); x.fill();
+    x.fillStyle = isLightLine ? '#101619' : '#ffffff';
+    x.font = '800 48px sans-serif'; x.textAlign = 'center';
+    x.fillText('→', BASE_W - 92, 201);
+  }
+  x.strokeStyle = '#333b40'; x.lineWidth = 6; x.strokeRect(3, 3, BASE_W - 6, BASE_H - 6);
   const t = toTex(c, 1, 1);
   TEX_CACHE.set(key, t);
   return t;
@@ -504,20 +595,20 @@ const THEMES = {
   day: {
     top: new THREE.Color('#3f7fc4'), horizon: new THREE.Color('#cfe3f0'), ground: new THREE.Color('#9fb0bb'),
     sun: new THREE.Color('#fff3d6'), sunDir: new THREE.Vector3(-0.45, 0.72, 0.52), sunSize: 0.9993,
-    amb: 1.15, hemi: 1.0, sunI: 2.3, fog: '#bcd3e2', fogD: 0.00028,
-    bloom: 0.18, exposure: 1.0, windowGlow: 0.06, headlight: 0.35
+    amb: 1.05, hemi: 0.95, sunI: 2.1, fog: '#bcd3e2', fogD: 0.00028,
+    bloom: 0.14, exposure: 0.94, windowGlow: 0.06, headlight: 0.35
   },
   dusk: {
     top: new THREE.Color('#101d33'), horizon: new THREE.Color('#e79a63'), ground: new THREE.Color('#4a4a4e'),
     sun: new THREE.Color('#ffb473'), sunDir: new THREE.Vector3(-0.88, 0.10, 0.46), sunSize: 0.9989,
-    amb: 0.72, hemi: 0.85, sunI: 1.45, fog: '#6d6a70', fogD: 0.00042,
-    bloom: 0.62, exposure: 1.02, windowGlow: 0.85, headlight: 1.0
+    amb: 0.68, hemi: 0.80, sunI: 1.35, fog: '#6d6a70', fogD: 0.00042,
+    bloom: 0.44, exposure: 0.95, windowGlow: 0.85, headlight: 1.0
   },
   night: {
     top: new THREE.Color('#02050d'), horizon: new THREE.Color('#0e1a28'), ground: new THREE.Color('#05080c'),
     sun: new THREE.Color('#a9c4e0'), sunDir: new THREE.Vector3(0.4, 0.6, -0.5), sunSize: 0.9995,
-    amb: 0.16, hemi: 0.18, sunI: 0.28, fog: '#05090f', fogD: 0.0005,
-    bloom: 0.95, exposure: 1.1, windowGlow: 1.5, headlight: 1.4
+    amb: 0.13, hemi: 0.15, sunI: 0.26, fog: '#05090f', fogD: 0.0005,
+    bloom: 0.70, exposure: 1.0, windowGlow: 1.5, headlight: 1.4
   }
 };
 
@@ -614,13 +705,16 @@ function texCarInterior(mirror = false, doorList) {
   x.fillStyle = 'rgba(0,0,0,.15)'; x.fillRect(0, 424, W, 4);
   x.fillStyle = '#eef1f1'; x.fillRect(0, 356, W, 10);
   x.fillStyle = 'rgba(0,0,0,.10)'; x.fillRect(0, 366, W, 3);
-  // 开窗洞
-  const winW = 138, gap = 46;
+  // 开窗洞（与外壳同一套窗位，视线才能穿出去）
+  /* destination-out 按「源 alpha」擦除：必须先把 fillStyle 设成不透明纯色。
+     否则沿用上一段的半透明色（rgba(0,0,0,.10)）只会擦掉一点点，
+     窗洞的 alpha 仍是 229 > alphaTest 0.45，等于根本没开孔 —— 车厢内看不到窗外就是这个原因。 */
+  x.fillStyle = '#000';
   x.globalCompositeOperation = 'destination-out';
-  for (let i = 0; i < 12; i++) {
-    const px = 34 + i * (winW + gap);
-    if (px + winW > W - 20) break;
-    x.beginPath(); x.roundRect(px + 2, 142, winW - 4, 186, 10); x.fill();
+  const zToPxI = (z) => ((z + 11.4) / 22.8) * W;
+  for (const sl of carWinSlots(doorList)) {
+    const pw = (sl.w / 22.8) * W, px = zToPxI(sl.z) - pw / 2;
+    x.beginPath(); x.roundRect(px + 1, 142, pw - 2, 186, 10); x.fill();
   }
   const DW = 126, DH = 341, DY = 143;
   for (const zc of (doorList || [-7.6, -2.6, 2.6, 7.6])) {
@@ -715,5 +809,206 @@ function texRainGlass() {
   const t = toTex(c, 1, 1);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   TEX_CACHE.set('rainglass', t);
+  return t;
+}
+
+/* ---------------- 站台门前地面排队候车标线 ---------------- */
+function texQueueDecal(line) {
+  const key = 'qdecal_' + (line && line.color || '');
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const W = 512, H = 256;
+  const [c, x] = cv2d(W, H);
+  x.clearRect(0, 0, W, H);
+  // 顶部紧靠安全门黄色警示带
+  x.fillStyle = '#f0bc2e';
+  x.fillRect(10, 4, W - 20, 18);
+  x.fillStyle = '#14181b';
+  for (let s = 14; s < W - 20; s += 36) {
+    x.beginPath();
+    x.moveTo(s, 4); x.lineTo(s + 18, 4);
+    x.lineTo(s + 8, 22); x.lineTo(s - 10, 22);
+    x.closePath(); x.fill();
+  }
+  // 中央下车通道（红橙底框 + 双向箭头朝站台内）
+  x.fillStyle = 'rgba(205, 52, 42, 0.85)';
+  x.beginPath(); x.roundRect(184, 30, 144, 188, 8); x.fill();
+  x.strokeStyle = '#ffd8cf'; x.lineWidth = 3;
+  x.beginPath(); x.roundRect(188, 34, 136, 180, 6); x.stroke();
+  x.fillStyle = '#ffffff';
+  x.font = '800 22px "Microsoft YaHei",sans-serif';
+  x.textAlign = 'center';
+  x.fillText('先下后上', 256, 66);
+  x.font = '700 13px "Segoe UI",sans-serif';
+  x.fillText('ALIGHT FIRST', 256, 86);
+  // 下车大箭头（朝下，即朝站台内侧）
+  for (const ax of [226, 286]) {
+    x.fillStyle = '#fff5f2';
+    x.fillRect(ax - 7, 102, 14, 62);
+    x.beginPath();
+    x.moveTo(ax - 20, 158); x.lineTo(ax + 20, 158); x.lineTo(ax, 194);
+    x.closePath(); x.fill();
+  }
+  // 两侧排队候车区（绿/黄导流框 + 斜向朝车门箭头）
+  for (const side of [-1, 1]) {
+    const bx = side < 0 ? 18 : 340;
+    x.fillStyle = 'rgba(22, 118, 72, 0.82)';
+    x.beginPath(); x.roundRect(bx, 30, 154, 196, 8); x.fill();
+    x.strokeStyle = '#f2c138'; x.lineWidth = 4;
+    x.beginPath(); x.roundRect(bx + 4, 34, 146, 188, 6); x.stroke();
+    const cx = bx + 77;
+    x.fillStyle = '#f9d45c';
+    x.font = '800 22px "Microsoft YaHei",sans-serif';
+    x.fillText('排队候车', cx, 188);
+    x.fillStyle = '#d7f5e4';
+    x.font = '700 12px "Segoe UI",sans-serif';
+    x.fillText('QUEUE HERE', cx, 208);
+    // 朝向车门中央的斜箭头
+    x.save();
+    x.translate(cx, 108);
+    x.rotate(side < 0 ? 0.36 : -0.36);
+    x.fillStyle = '#ffffff';
+    x.fillRect(-8, -24, 16, 62);
+    x.beginPath();
+    x.moveTo(-24, -18); x.lineTo(24, -18); x.lineTo(0, -54);
+    x.closePath(); x.fill();
+    x.restore();
+  }
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set(key, t);
+  return t;
+}
+
+/* ---------------- 轨行区侧墙大字站名牌 ---------------- */
+function texTrackWallSign(station, line, dirTo) {
+  const key = 'twall_' + line.id + '_' + station.zh + '_' + (dirTo || '');
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const W = 1024, H = 256;
+  const [c, x] = cv2d(W, H);
+  // 深灰蓝搪瓷底板 + 线路色上下腰线
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#161d22'); g.addColorStop(0.5, '#1d262d'); g.addColorStop(1, '#12181c');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = line.color;
+  x.fillRect(0, 0, W, 18);
+  x.fillRect(0, H - 24, W, 24);
+  if (line.color2) x.fillRect(0, H - 10, W, 10);
+  x.fillStyle = 'rgba(255,255,255,.16)';
+  x.fillRect(0, 20, W, 2);
+  x.fillRect(0, H - 27, W, 2);
+
+  // 左侧线路徽章
+  const isLight = ['#fcd600', '#FFD100', '#8cc220', '#8CC63F', '#98d1c0', '#c8b38e', '#cccccc'].includes(line.color);
+  x.fillStyle = line.color;
+  x.beginPath(); x.roundRect(36, 48, 128, 152, 16); x.fill();
+  x.fillStyle = isLight ? '#101518' : '#ffffff';
+  x.textAlign = 'center';
+  x.font = `800 ${line.badge.length > 1 ? 66 : 82}px "Microsoft YaHei",sans-serif`;
+  x.fillText(line.badge, 100, 134);
+  x.font = '700 24px "Microsoft YaHei",sans-serif';
+  x.fillText(line.name, 100, 178);
+
+  // 中央大字站名
+  x.textAlign = 'center';
+  x.fillStyle = '#f5f8fa';
+  const zhLen = (station.zh || '').length;
+  const fSize = zhLen > 6 ? 68 : zhLen > 4 ? 84 : 98;
+  x.font = `800 ${fSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  x.fillText(station.zh, 520, 134);
+  x.fillStyle = '#9bb0bc';
+  x.font = '600 30px "Segoe UI",Helvetica,sans-serif';
+  x.fillText((station.en || station.zh).toUpperCase(), 520, 188);
+
+  // 右侧前方到站方向
+  if (dirTo) {
+    x.textAlign = 'right';
+    x.fillStyle = '#90a4b0';
+    x.font = '600 24px "Microsoft YaHei",sans-serif';
+    x.fillText('下一站 · NEXT', W - 42, 96);
+    x.fillStyle = '#ffffff';
+    x.font = '700 38px "Microsoft YaHei",sans-serif';
+    x.fillText(dirTo + ' →', W - 38, 154);
+  }
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set(key, t);
+  return t;
+}
+
+/* ---------------- 屏蔽门门楣单元贴图（车门号 + 导向条） ---------------- */
+function texPsdDoorCap(line, station, dirTo) {
+  const key = 'psdcap_' + line.id + '_' + station.zh + '_' + (dirTo || '');
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const W = 1024, H = 192;
+  const [c, x] = cv2d(W, H);
+  // 浅灰白铝塑门楣底面
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#eef1f2'); g.addColorStop(0.82, '#e2e7e9'); g.addColorStop(1, '#cfd6d9');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  // 顶部深灰压条 + 底部线路色带
+  x.fillStyle = '#22282d'; x.fillRect(0, 0, W, 18);
+  x.fillStyle = line.color; x.fillRect(0, H - 30, W, 30);
+  if (line.color2) x.fillRect(0, H - 12, W, 12);
+  // 左侧本站名与线路标
+  const isLight = ['#fcd600', '#FFD100', '#8cc220', '#8CC63F', '#98d1c0', '#c8b38e', '#cccccc'].includes(line.color);
+  x.fillStyle = line.color;
+  x.beginPath(); x.roundRect(24, 34, 86, 86, 12); x.fill();
+  x.fillStyle = isLight ? '#101619' : '#ffffff';
+  x.textAlign = 'center';
+  x.font = '800 48px "Microsoft YaHei",sans-serif';
+  x.fillText(line.badge, 67, 92);
+  x.textAlign = 'left';
+  x.fillStyle = '#182024';
+  x.font = '800 46px "Microsoft YaHei",sans-serif';
+  x.fillText(station.zh, 128, 84);
+  x.fillStyle = '#5a6870';
+  x.font = '600 22px "Segoe UI",sans-serif';
+  x.fillText((station.en || station.zh).toUpperCase(), 130, 116);
+  // 中部安全提示
+  x.textAlign = 'center';
+  x.fillStyle = '#283238';
+  x.font = '700 28px "Microsoft YaHei",sans-serif';
+  x.fillText('安全门自动开启 · 请勿倚靠 · 先下后上', 556, 78);
+  x.fillStyle = '#68767e';
+  x.font = '600 18px "Segoe UI",sans-serif';
+  x.fillText('AUTOMATIC PLATFORM DOORS · DO NOT LEAN · ALIGHT FIRST', 556, 110);
+  // 右侧开往方向胶囊标
+  if (dirTo) {
+    x.fillStyle = '#1d252a';
+    x.beginPath(); x.roundRect(W - 246, 36, 222, 84, 14); x.fill();
+    x.fillStyle = '#9bb0bc';
+    x.font = '600 18px "Microsoft YaHei",sans-serif';
+    x.textAlign = 'left';
+    x.fillText('开往 TO', W - 226, 64);
+    x.fillStyle = '#ffffff';
+    x.font = '800 30px "Microsoft YaHei",sans-serif';
+    x.fillText(dirTo + ' →', W - 226, 102);
+  }
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set(key, t);
+  return t;
+}
+
+/* ---------------- 无障碍电梯与站厅导向灯箱 ---------------- */
+function texElevatorSign(isConcourse = false) {
+  const key = isConcourse ? 'esc_sign_conc' : 'elev_sign_acc';
+  if (TEX_CACHE.has(key)) return TEX_CACHE.get(key);
+  const W = 512, H = 128;
+  const [c, x] = cv2d(W, H);
+  x.fillStyle = '#0e171d'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = '#3b4c56'; x.lineWidth = 4; x.strokeRect(2, 2, W - 4, H - 4);
+  x.fillStyle = isConcourse ? '#0e6b3a' : '#145da0';
+  x.beginPath(); x.roundRect(14, 14, 100, 100, 12); x.fill();
+  x.fillStyle = '#ffffff';
+  x.textAlign = 'center';
+  x.font = '800 54px "Microsoft YaHei",sans-serif';
+  x.fillText(isConcourse ? '↑' : '♿', 64, 82);
+  x.textAlign = 'left';
+  x.fillStyle = '#f0f6fa';
+  x.font = '800 42px "Microsoft YaHei",sans-serif';
+  x.fillText(isConcourse ? '站厅 · 出入口' : '无障碍电梯', 134, 62);
+  x.fillStyle = '#8fa6b5';
+  x.font = '600 22px "Segoe UI",sans-serif';
+  x.fillText(isConcourse ? 'CONCOURSE & EXITS' : 'ACCESSIBLE LIFT · TO CONCOURSE', 136, 98);
+  const t = toTex(c, 1, 1);
+  TEX_CACHE.set(key, t);
   return t;
 }

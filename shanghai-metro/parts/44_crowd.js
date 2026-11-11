@@ -1,5 +1,5 @@
 /* ================================================================
-   乘客系统：低模人体 + 行走动画 + 上下车乘降
+   乘客系统：低模人体 + 行走动画 + 上下车乘降 + 换乘通道真实客流
    ================================================================ */
 const AXIS_X = new THREE.Vector3(1, 0, 0);
 const CROWD_UP = new THREE.Vector3(0, 1, 0);
@@ -11,7 +11,9 @@ class StationCrowd {
   constructor(parent, st, underground, pt, doorsZ) {
     this.pt = pt;
     this.doors = doorsZ.slice().sort((a, b) => a - b);
-    this.N = 54;
+    this.hasTransfer = !!(st && st.tr && st.tr.length);
+    this.trCount = this.hasTransfer ? 14 : 0;
+    this.N = 54 + this.trCount;
     this.waitingCount = G.tod === 'night' ? 13 : G.tod === 'day' ? 30 : 24;
     this.rng = mulberry32(9001 + st.index * 137);
     this.exchanged = false;
@@ -83,7 +85,34 @@ class StationCrowd {
     this.exchanged = false;
     const rng = this.rng;
     this.people = [];
+    const baseN = this.N - this.trCount;
     for (let i = 0; i < this.N; i++) {
+      if (i >= baseN) {
+        // 换乘通道双向真实客流（往返于站台 z∈[35,70] 与换乘分流大厅 z∈[70,100]）
+        const k = i - baseN;
+        const toHall = (k % 2) === 0;
+        const laneMag = 0.82 + (k % 4) * 0.45;
+        const x = toHall ? laneMag : -laneMag;
+        const z = 54 + (k / Math.max(1, this.trCount)) * 44;
+        const portalX = (k % 3 === 0) ? -3.6 : (k % 3 === 1 ? 3.6 : (k % 4 === 0 ? -2.3 : 2.3));
+        this.people.push({
+          x, z,
+          tx: toHall ? portalX : (-2.9 + (k % 5) * 0.55),
+          tz: toHall ? (96.8 + (k % 3) * 1.4) : (12 + (k % 6) * 8.5),
+          laneX: laneMag,
+          portalX,
+          role: 'transfer',
+          state: toHall ? 'tr_to_hall' : 'tr_to_plat',
+          rot: toHall ? 0 : PI,
+          phase: rng() * TAU,
+          speed: 1.32 + (k % 4) * 0.14,
+          h: 0.9 + rng() * 0.12,
+          scale: 1,
+          fade: 0,
+          moving: true
+        });
+        continue;
+      }
       const spare = i >= this.waitingCount;
       let x = -3.4 + rng() * 6.6;
       let z = (rng() - 0.5) * 128;
@@ -107,6 +136,14 @@ class StationCrowd {
       if (this.people[i].state === 'spare') this.zeroInstance(i);
     }
     this.update(0, 0, true);
+  }
+
+  transferringCount() {
+    let c = 0;
+    for (const p of this.people) {
+      if (p.state === 'tr_to_hall' || p.state === 'tr_to_plat' || p.z > 68) c++;
+    }
+    return c;
   }
 
   zeroInstance(i) {
@@ -137,8 +174,58 @@ class StationCrowd {
       if (p.state === 'spare') continue;
       if (p.scale <= 0.001 && p.state === 'gone') continue;
 
-      // 行走
-      if (p.state === 'board' || p.state === 'alight' || p.state === 'leave') {
+      // 换乘通道客流：右侧通道走向换乘大厅门洞（tr_to_hall），左侧通道走回站台（tr_to_plat）
+      if (p.state === 'tr_to_hall') {
+        const targetX = p.z < 91.0 ? (p.laneX || 1.25) : (p.portalX || 2.4);
+        const targetZ = p.z < 91.0 ? 92.0 : p.tz;
+        const dx = targetX - p.x, dz = targetZ - p.z;
+        const dist = Math.hypot(dx, dz);
+        if (p.z >= 91.0 && dist < 0.35) {
+          p.state = 'tr_to_plat';
+          p.x = -(0.85 + (i % 4) * 0.42);
+          p.z = 98.0 + (i % 3) * 1.1;
+          p.laneX = Math.abs(p.x);
+          p.tx = -2.9 + (i % 5) * 0.5;
+          p.tz = 10 + (i % 7) * 8.2;
+          p.rot = PI;
+          p.moving = true;
+        } else if (dist > 0.01) {
+          const sp = p.speed * dt;
+          p.x += dx / dist * Math.min(sp, dist);
+          p.z += dz / dist * Math.min(sp, dist);
+          const targetRot = Math.atan2(dx, dz);
+          let dr = targetRot - p.rot;
+          while (dr > PI) dr -= TAU;
+          while (dr < -PI) dr += TAU;
+          p.rot += dr * Math.min(1, dt * 7);
+          p.phase += dt * 8.4;
+          p.moving = true;
+        }
+      } else if (p.state === 'tr_to_plat') {
+        const targetX = p.z > 69.5 ? -(p.laneX || 1.25) : p.tx;
+        const targetZ = p.z > 69.5 ? 68.5 : p.tz;
+        const dx = targetX - p.x, dz = targetZ - p.z;
+        const dist = Math.hypot(dx, dz);
+        if (p.z <= 69.5 && dist < 0.35) {
+          p.state = 'tr_to_hall';
+          p.laneX = 0.85 + (i % 4) * 0.42;
+          p.portalX = (i % 2 === 0 ? -3.4 : 3.4);
+          p.tz = 97.2 + (i % 3) * 1.3;
+          p.moving = true;
+        } else if (dist > 0.01) {
+          const sp = p.speed * dt;
+          p.x += dx / dist * Math.min(sp, dist);
+          p.z += dz / dist * Math.min(sp, dist);
+          const targetRot = Math.atan2(dx, dz);
+          let dr = targetRot - p.rot;
+          while (dr > PI) dr -= TAU;
+          while (dr < -PI) dr += TAU;
+          p.rot += dr * Math.min(1, dt * 7);
+          p.phase += dt * 8.4;
+          p.moving = true;
+        }
+      } else if (p.state === 'board' || p.state === 'alight' || p.state === 'leave') {
+        // 站台上下车行走
         const dx = p.tx - p.x, dz = p.tz - p.z;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.28) {
@@ -155,7 +242,17 @@ class StationCrowd {
         } else {
           p.moving = false;
           if (p.state === 'board') { p.state = 'gone'; p.fade = 0.32; }
-          else if (p.state === 'alight') { p.state = 'leave'; p.tx = -0.9; p.tz = p.z > 0 ? 44 : -44; }
+          else if (p.state === 'alight') {
+            if (this.hasTransfer && (i % 2 === 0)) {
+              p.state = 'tr_to_hall';
+              p.laneX = 0.85 + (i % 4) * 0.4;
+              p.portalX = (i % 3 === 0) ? -3.2 : 3.2;
+              p.tz = 97.2 + (i % 3) * 1.2;
+              p.moving = true;
+            } else {
+              p.state = 'leave'; p.tx = -0.9; p.tz = p.z > 0 ? 44 : -44;
+            }
+          }
           else if (p.state === 'leave') { p.state = 'gone'; p.fade = 0.35; }
         }
       } else {

@@ -34,9 +34,11 @@ class AiTrain {
     this.dead = false;
     this.seed = (parseInt(this.carNo, 10) || 7) % 13;
     this.dest = opts.dest || line.stations[line.stations.length - 1];
+    /* AI 车先只建轻量内饰：玩家看不到时不必付座椅/乘客的 draw call。
+       停靠玩家所在车站且玩家在步行时，由 ensureAiInterior 现场补齐。 */
     this.train = new Train(line, path, {
       cars: this.cars, player: false, lateral: this.lateral,
-      dir: this.dir, dest: this.dest
+      dir: this.dir, dest: this.dest, liteInterior: true
     });
     this.train.ai = this;
     this.phase = 0;

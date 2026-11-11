@@ -6,6 +6,14 @@ node_modules/
 _backup*.html
 _archive/
 
+# 一次性脚本（scratch_*.js / 调试探针，用完即删）
+shanghai-metro/scratch_*.js
+shanghai-metro/_archive-*/
+deploy-test/
+
+# 回归截图（数量多、体积大，仅本地保留）
+shanghai-metro/shots/
+
 # 构建中间产物（build2.js 每次生成，不入库）
 shanghai-metro/entry.js
 shanghai-metro/dist.js
@@ -22,9 +30,6 @@ Thumbs.db
 # 临时文件
 _msg.txt
 /_*.js
-
-# DLC 参考图：仅本地比对，不随仓库分发
-dlc/jinghu/refs/
 
 # 会议临时目录
 .roundtable/

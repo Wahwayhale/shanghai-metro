@@ -23,7 +23,9 @@ function resetService() {
   G.fault = null; G.faultCount = 0; G.speedLog = [];
   G.sigMode = 'cbtc'; G.examTasks = []; G.examDone = 0; G.doorAt = {};
   G.walk = null; G.turnback = null; G.slowzone = null;
+  G.aiTakeover = false; G.carNo = line.badge + '014';
   hideTransferPanel();
+  if (typeof hideTakeoverPanel === 'function') hideTakeoverPanel();
   if (G.exam) examInit();
 
   train.carLag.fill(0);
@@ -56,7 +58,7 @@ function beginDriving() {
   updateCamera(0, true);
   if (typeof maybeShowOnboard === 'function') maybeShowOnboard(false);
 }
-/* ---------------- 站内步行 ---------------- */
+/* ---------------- 站内步行 / 自由进出车厢 / 就座与乘车 / AI 接管 ---------------- */
 function enterWalk(idx) {
   const st = path.stations[idx], f = st.frame;
   const pos = f.pos.clone()
@@ -65,42 +67,282 @@ function enterWalk(idx) {
     .addScaledVector(f.tan, 60);
   G.walk = {
     active: true, station: idx, pos,
-    yaw: Math.atan2(-f.tan.x, -f.tan.z), pitch: 0, tip: false, tpHidden: false
+    yaw: Math.atan2(-f.tan.x, -f.tan.z), pitch: 0,
+    tip: false, tpHidden: false,
+    awayTimer: 0, _warned30: false,
+    inTrain: null
   };
+  G.aiTakeover = false;
   hideTransferPanel();
+  hideTakeoverPanel();
 }
 
 function toggleWalk() {
   if (G.mode !== 'driving' || G.paused) return;
   if (G.walk && G.walk.active) {
+    if (G.walk.inTrain && G.walk.inTrain.aiRef) {
+      takeOverTrain(G.walk.inTrain.aiRef);
+      return;
+    }
     G.walk.active = false;
+    G.walk.inTrain = null;
+    G.aiTakeover = false;
+    if (G.ato) G.ato = false;
     hideTransferPanel();
+    hideTakeoverPanel();
     updateCamera(0, true);
-    toast('已返回司机室', 'info', 2600);
+    updateHUD(true);
+    toast('已返回司机室 · 手动接管本列车', 'info', 2600);
     return;
   }
   if (G.stopState !== 'dwell' || !G.doorsOpen) { toast('停稳并开门后才能下车', 'warn', 3000); return; }
   if (isLastServed(G.targetIdx)) { toast('终到站请结束值乘', 'warn', 3000); return; }
   if (G.ato) toggleATO(false);
   enterWalk(G.targetIdx);
-  toast('步行模式 · WASD 移动，鼠标环视，F 返回司机室；换乘通道尽头可换乘', 'info', 5200);
+  toast('步行模式 · 可自由走进车厢（按 E 就座/站立）、前往换乘通道，或按 G 接管任意列车', 'info', 5200);
+}
+
+/* 查找当前在指定车站停靠且开门的列车（本务或 AI 列车） */
+function findOpenTrainsAtStation(stIdx) {
+  const st = path.stations[stIdx];
+  if (!st) return [];
+  const out = [];
+  if (train && Math.abs(G.s - st.stopS) < 16 && G.doorT > 0.45) {
+    out.push({ trainRef: train, aiRef: null, s: G.s, side: (train.lateral || -TRACK_LAT) < 0 ? -1 : 1 });
+  }
+  if (typeof aiTrains !== 'undefined') {
+    for (const ai of aiTrains) {
+      if (!ai || ai.dead || !ai.train) continue;
+      if (Math.abs(ai.s - st.stopS) < 18 && ai.doorT > 0.45) {
+        out.push({ trainRef: ai.train, aiRef: ai, s: ai.s, side: (ai.lateral || TRACK_LAT) < 0 ? -1 : 1 });
+      }
+    }
+  }
+  return out;
+}
+
+/* 进入指定列车的某节车厢 */
+function enterTrainCar(trainObj, carIdx = 0, lzOpt = 0, lxOpt = 0) {
+  if (!G.walk || !G.walk.active || !trainObj || !trainObj.cars || !trainObj.cars.length) return false;
+  const idx = clamp(carIdx | 0, 0, trainObj.cars.length - 1);
+  const car = trainObj.cars[idx];
+  const zMax = idx === 0 ? 6.65 : 10.9;
+  const lz = clamp(lzOpt || 0, -10.9, zMax);
+  const lx = clamp(lxOpt || 0, -0.78, 0.78);
+  const carFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+  G.walk.inTrain = {
+    trainRef: trainObj,
+    aiRef: trainObj.ai || null,
+    carIdx: idx,
+    lx,
+    lz,
+    seated: false,
+    seatSide: 0,
+    _lastCarYaw: Math.atan2(carFwd.x, carFwd.z)
+  };
+  const eyeY = 1.15 + 1.66;
+  G.walk.pos.copy(car.group.localToWorld(new THREE.Vector3(lx, eyeY, lz)));
+  hideTransferPanel();
+  const label = trainObj.ai ? `${trainObj.ai.carNo} 次列车` : '本务列车';
+  toast(`已进入${label} ${idx + 1} 号车厢 · 按 E 就座/站立，可穿过贯通道前往其它车厢`, 'good', 3600);
+  return true;
+}
+
+/* 在车厢内切换就座 / 站立，或在站台上按键快速进入最近车厢 */
+function walkInteractE() {
+  if (!G.walk || !G.walk.active) return false;
+  const w = G.walk;
+  if (w.inTrain) {
+    const it = w.inTrain;
+    const tr = it.trainRef || train;
+    const car = tr.cars[clamp(it.carIdx, 0, tr.cars.length - 1)];
+    if (it.seated) {
+      it.seated = false;
+      it.lx = (it.seatSide || -1) * 0.36;
+      const p = car.group.localToWorld(new THREE.Vector3(it.lx, 1.15 + 1.66, it.lz));
+      w.pos.copy(p);
+      toast(`已在 ${it.carIdx + 1} 号车厢站起 · 可在车厢及贯通道内自由走动`, 'info', 2600);
+      return true;
+    } else {
+      // 寻找当前车厢内最近的空余座位点
+      let bestSpot = null, bd = 1e9;
+      if (car && car.seatSpots && car.seatSpots.length) {
+        for (const sp of car.seatSpots) {
+          const d = Math.hypot(sp.x - it.lx, sp.z - it.lz);
+          if (d < bd) { bd = d; bestSpot = sp; }
+        }
+      }
+      if (!bestSpot) {
+        const sSide = it.lx < 0 ? -1 : 1;
+        bestSpot = { x: sSide * 1.02, z: clamp(it.lz, -6.2, 6.2), side: sSide };
+      }
+      it.seated = true;
+      it.seatSide = bestSpot.side;
+      it.lx = bestSpot.x;
+      it.lz = bestSpot.z;
+      // 朝向车厢过道对面（与同排坐姿乘客一致）
+      const across = new THREE.Vector3(-bestSpot.side, 0, 0).applyQuaternion(car.group.quaternion);
+      w.yaw = Math.atan2(-across.x, -across.z);
+      w.pitch = -0.03;
+      const p = car.group.localToWorld(new THREE.Vector3(it.lx, 1.15 + 1.16, it.lz));
+      w.pos.copy(p);
+      toast(`已在 ${it.carIdx + 1} 号车厢就座 · 按 E 可站起，列车开行时可乘车观景`, 'good', 3400);
+      return true;
+    }
+  }
+  // 在站台上按 E：直接步入当前停站开门列车的最近车厢
+  const openList = findOpenTrainsAtStation(w.station);
+  if (!openList.length) {
+    toast('当前站台无开门列车 · 可等待后车进站或按 G 接管任意列车', 'warn', 3000);
+    return false;
+  }
+  let bestTr = openList[0].trainRef, bestCar = 0, bestZ = 0, bestD = 1e9;
+  for (const item of openList) {
+    item.trainRef.cars.forEach((c, ci) => {
+      const loc = c.group.worldToLocal(w.pos.clone());
+      const d = Math.hypot(loc.x, loc.z);
+      if (d < bestD) { bestD = d; bestTr = item.trainRef; bestCar = ci; bestZ = loc.z; }
+    });
+  }
+  const dList = doorOffsetsOf(bestTr.line);
+  let nearDoorZ = dList[0];
+  for (const dz of dList) if (Math.abs(dz - bestZ) < Math.abs(nearDoorZ - bestZ)) nearDoorZ = dz;
+  return enterTrainCar(bestTr, bestCar, nearDoorZ, 0);
 }
 
 function clampWalk() {
   if (!G.walk || !G.walk.active) return;
-  const w = G.walk, st = path.stations[w.station], f = st.frame;
+  const w = G.walk;
+
+  // 1. 若玩家当前在车厢内（支持站立走动、跨车厢贯通道穿行、就座乘车、开门时走出车门回站台）
+  if (w.inTrain) {
+    const it = w.inTrain;
+    const tr = it.trainRef || train;
+    if (!tr || !tr.cars || !tr.cars.length) { w.inTrain = null; return; }
+    it.carIdx = clamp(it.carIdx | 0, 0, tr.cars.length - 1);
+    let car = tr.cars[it.carIdx];
+    const carFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+    const curCarYaw = Math.atan2(carFwd.x, carFwd.z);
+    if (it._lastCarYaw != null) {
+      let dy = curCarYaw - it._lastCarYaw;
+      while (dy > PI) dy -= TAU;
+      while (dy < -PI) dy += TAU;
+      w.yaw += dy;
+    }
+    it._lastCarYaw = curCarYaw;
+
+    if (it.seated) {
+      it.lx = (it.seatSide || -1) * 1.02;
+      const eyeY = 1.15 + 1.16;
+      w.pos.copy(car.group.localToWorld(new THREE.Vector3(it.lx, eyeY, it.lz)));
+      return;
+    }
+
+    // 站立在车厢内：检查是否穿过前后贯通道进入相邻车厢
+    if (it.lz < -11.32 && it.carIdx < tr.cars.length - 1 && Math.abs(it.lx) < 0.72) {
+      it.carIdx++;
+      it.lz = 11.18;
+      car = tr.cars[it.carIdx];
+      const f2 = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+      it._lastCarYaw = Math.atan2(f2.x, f2.z);
+      toast(`已穿过贯通道进入 ${it.carIdx + 1} 号车厢`, 'info', 2000);
+    } else if (it.lz > 11.32 && it.carIdx > 0 && Math.abs(it.lx) < 0.72) {
+      it.carIdx--;
+      it.lz = -11.18;
+      car = tr.cars[it.carIdx];
+      const f2 = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+      it._lastCarYaw = Math.atan2(f2.x, f2.z);
+      toast(`已穿过贯通道进入 ${it.carIdx + 1} 号车厢`, 'info', 2000);
+    }
+
+    const zMin = it.carIdx < tr.cars.length - 1 ? -11.36 : -10.85;
+    const zMax = it.carIdx === 0 ? 6.72 : 11.36;
+    it.lz = clamp(it.lz, zMin, zMax);
+
+    // 检查是否从开启的车门走出车厢回到站台
+    const dSide = tr.doorSide || 1;
+    const dList = doorOffsetsOf(tr.line);
+    const atDoor = tr.doorT > 0.55 && dList.some(dz => Math.abs(it.lz - dz) < 0.88);
+    if (atDoor) {
+      if (dSide > 0) it.lx = clamp(it.lx, -0.86, 1.72);
+      else it.lx = clamp(it.lx, -1.72, 0.86);
+      if (it.lx * dSide > 1.48) {
+        // 走出车门，切换到当前最近车站的站台坐标
+        const trS = it.aiRef ? it.aiRef.s : G.s;
+        let nearIdx = w.station || 0, bd = 1e9;
+        path.stations.forEach((s, idx) => {
+          const d = Math.abs(s.stopS - trS);
+          if (d < bd) { bd = d; nearIdx = idx; }
+        });
+        w.station = nearIdx;
+        const stNow = path.stations[nearIdx], fNow = stNow.frame;
+        const worldDoor = car.group.localToWorld(new THREE.Vector3(dSide * 1.95, 1.15 + 1.66, it.lz));
+        const invNow = new THREE.Matrix4().makeBasis(fNow.right, fNow.up, fNow.tan).invert();
+        const locNow = worldDoor.sub(fNow.pos).applyMatrix4(invNow);
+        locNow.x = (tr.lateral || -TRACK_LAT) < 0 ? -3.52 : 3.52;
+        locNow.z = clamp(locNow.z, -68, 68);
+        locNow.y = 1.06 + 1.7;
+        w.inTrain = null;
+        w.pos.copy(fNow.pos)
+          .addScaledVector(fNow.right, locNow.x)
+          .addScaledVector(fNow.up, locNow.y)
+          .addScaledVector(fNow.tan, locNow.z);
+        toast(`已步出车厢 · 当前位于 ${stNow.zh} 站台`, 'info', 2600);
+        return;
+      }
+    } else {
+      it.lx = clamp(it.lx, -0.86, 0.86);
+    }
+
+    const eyeY = 1.15 + 1.66;
+    w.pos.copy(car.group.localToWorld(new THREE.Vector3(it.lx, eyeY, it.lz)));
+    return;
+  }
+
+  // 2. 站台与换乘通道内步行（若走向开启的屏蔽门/车门，则自然步入车厢！）
+  const st = path.stations[w.station], f = st.frame;
   const inv = new THREE.Matrix4().makeBasis(f.right, f.up, f.tan).invert();
   const local = w.pos.clone().sub(f.pos).applyMatrix4(inv);
+
+  if (Math.abs(local.x) > 3.68 && local.z >= -68 && local.z <= 69) {
+    const sideWanted = local.x < 0 ? -1 : 1;
+    const openList = findOpenTrainsAtStation(w.station).filter(o => o.side === sideWanted);
+    for (const item of openList) {
+      const tr = item.trainRef;
+      const dList = doorOffsetsOf(tr.line);
+      for (let ci = 0; ci < tr.cars.length; ci++) {
+        const cLoc = tr.cars[ci].group.worldToLocal(w.pos.clone());
+        if (Math.abs(cLoc.z) > CAR_LEN / 2 + 0.3) continue;
+        const nearDoor = dList.find(dz => Math.abs(cLoc.z - dz) < 1.15);
+        if (nearDoor !== undefined) {
+          // 允许穿过屏蔽门与车门门槛（|local.x| > 4.20 即进入车厢内部）
+          if (Math.abs(local.x) > 4.18) {
+            enterTrainCar(tr, ci, nearDoor, (tr.doorSide || 1) * 0.72);
+            return;
+          }
+          local.z = lerp(local.z, local.z + (nearDoor - cLoc.z) * 0.35, 0.5);
+          local.y = 1.06 + 1.7;
+          w.pos.copy(f.pos)
+            .addScaledVector(f.right, local.x)
+            .addScaledVector(f.up, local.y)
+            .addScaledVector(f.tan, local.z);
+          return;
+        }
+      }
+    }
+  }
+
   local.x = clamp(local.x, -3.75, 3.75);
   local.z = Math.max(local.z, -69);
   const hasTr = st.tr && st.tr.length;
   if (hasTr) {
     if (local.z > 69) {
-      local.x = clamp(local.x, -3.0, 3.0);
-      local.z = Math.min(local.z, 94);
+      const maxX = local.z > 91 ? 5.1 : 3.0;
+      local.x = clamp(local.x, -maxX, maxX);
+      local.z = Math.min(local.z, 101);
       if (!w.tip) {
         w.tip = true;
-        toast('换乘通道 · 走到尽头选择要换乘的线路', 'info', 4200);
+        toast('换乘通道 · 有乘客正在双向换乘，走到尽头可换乘其它线路', 'info', 4200);
       }
     }
     if (local.z < 82) w.tpHidden = false;
@@ -115,6 +357,261 @@ function clampWalk() {
     .addScaledVector(f.right, local.x)
     .addScaledVector(f.up, local.y)
     .addScaledVector(f.tan, local.z);
+}
+
+/* ---------------- 离开列车 1 分钟后 AI 自动接管 & 允许接管任意列车 ---------------- */
+function triggerAiTakeover() {
+  if (G.aiTakeover) return;
+  G.aiTakeover = true;
+  G.ato = true;
+  G.atoState = G.doorsOpen ? 'dwell' : (G.stopState === 'run' ? 'run' : 'stopped');
+  G.atoTimer = 99;
+  if (G.eb) releaseEB();
+  /* 玩家不在车上（在站台/换乘通道）时，本务列车由 AI 直接开走：
+     不再原地「托管」——把本务状态交给一列真正的 AI 车，
+     玩家从此是站台上的乘客，等下一列进站再接管。 */
+  const playerOffBoard = G.walk && G.walk.active && !G.walk.inTrain;
+  if (playerOffBoard) {
+    scheduleNextTrainForPlayer(G.walk.station);
+  }
+  AUDIO.beep();
+  toast(playerOffBoard
+    ? '离开驾驶室已满 1 分钟 · AI 已接管并驶离本列车，你已成为乘客（按 G 接管下一列进站列车）'
+    : '离开驾驶室已满 1 分钟 · AI 已自动接管本列车（按 G 可随时接管任意列车）', 'good', 5600);
+  updateHUD(true);
+}
+
+/* 给站台上的玩家调一列车：优先复用前方同向 AI 车（把它拉到本站上游 170 m 进站），
+   没有可用 AI 车时，用「本务车的副本」新造一列，避免玩家永远等不到车。 */
+function scheduleNextTrainForPlayer(stationIdx) {
+  if (stationIdx == null) return null;
+  const st = path.stations[stationIdx];
+  if (!st || typeof aiTrains === 'undefined') return null;
+  /* 已经有一列同向车正在本站附近进站，就别重复调度 */
+  for (const a of aiTrains) {
+    if (!a || a.dead || a.dir !== 1) continue;
+    if (Math.abs(a.s - st.stopS) < 200 && a.stops) return a;
+  }
+  const free = aiTrains.find(a => !a.dead && a.dir === 1 && a.stops);
+  if (free) {
+    free.s = Math.max(0, st.stopS - 170);
+    free.v = Math.max(8, free.v);
+    free.idx = stationIdx;
+    free.state = 'run';
+    free.doorT = 0;
+    free.dwellT = 0;
+    free.holdT = 0;
+    free.lateral = -TRACK_LAT;
+    free.train.lateral = free.lateral;
+    free.train.setDoorT(0);
+    free.train.update(free.s, free.v, 0);
+    G.nextTrainNo = free.carNo;
+    G.nextTrainEta = 170 / Math.max(4, free.v);
+    return free;
+  }
+  return null;
+}
+
+function updateWalkTimer(dt) {
+  if (!G.walk || !G.walk.active) return;
+  G.walk.awayTimer = (G.walk.awayTimer || 0) + dt;
+  const limit = G.aiTakeoverDelay != null ? G.aiTakeoverDelay : 60;
+  if (!G.walk._warned30 && G.walk.awayTimer >= limit * 0.5 && !G.aiTakeover) {
+    G.walk._warned30 = true;
+    toast(`离开驾驶室已 ${Math.round(G.walk.awayTimer)} 秒 · 满 1 分钟 AI 将自动接管车辆`, 'warn', 3600);
+  }
+  if (!G.aiTakeover && G.walk.awayTimer >= limit) {
+    triggerAiTakeover();
+  }
+}
+
+/* 接管任意一辆列车：支持 'self'（本务车）、AiTrain 实例、车号字符串或索引 */
+function takeOverTrain(target) {
+  if (!path || !train) return false;
+  hideTakeoverPanel();
+  hideTransferPanel();
+
+  // 未传参时：若在某列车厢内则接管该车，否则优先接管距离最近的列车
+  if (target === undefined || target === null) {
+    if (G.walk && G.walk.active && G.walk.inTrain && G.walk.inTrain.aiRef) {
+      target = G.walk.inTrain.aiRef;
+    } else if (G.walk && G.walk.active && !G.walk.inTrain && typeof aiTrains !== 'undefined' && aiTrains.length) {
+      const refS = path.stations[G.walk.station] ? path.stations[G.walk.station].stopS : G.s;
+      let best = 'self', bd = Math.abs(G.s - refS);
+      for (const a of aiTrains) {
+        if (a && !a.dead && Math.abs(a.s - refS) < bd) { bd = Math.abs(a.s - refS); best = a; }
+      }
+      target = best;
+    } else {
+      target = 'self';
+    }
+  }
+
+  let ai = null;
+  if (target === 'self' || target === train || target === 0) {
+    ai = null;
+  } else if (typeof target === 'object' && target.train) {
+    ai = target;
+  } else if (typeof target === 'string' && typeof aiTrains !== 'undefined') {
+    ai = aiTrains.find(a => a && !a.dead && String(a.carNo) === target) || null;
+  } else if (typeof target === 'number' && typeof aiTrains !== 'undefined') {
+    ai = aiTrains[target - 1] || aiTrains[target] || null;
+  }
+
+  if (!ai) {
+    // 接管本务列车
+    if (G.walk) { G.walk.active = false; G.walk.inTrain = null; }
+    G.aiTakeover = false;
+    G.ato = false;
+    G.eb = false;
+    G.lever = 0;
+    updateCamera(0, true);
+    updateHUD(true);
+    toast(`已接管本务列车（${G.carNo || (line.badge + '014')} 次）· 手动驾驶已就绪`, 'good', 3800);
+    return true;
+  }
+
+  /* 接管选中的 AI 列车：玩家直接成为它的司机。
+     原来的「交换控制权」会让玩家那列 AI 车凭空跳到本务位置，玩家看不到
+     「我的车被开走了」这件事。现在改为：
+       - 目标列车 → 本务（玩家接手）
+       - 原来的本务车 → 完全交给 AI，按它自己的位置继续跑（不瞬移）
+     这样玩家在站台上等下一列车、再接管，整个过程是连续的。 */
+  const prevPlayer = {
+    s: G.s,
+    v: G.v,
+    idx: G.targetIdx,
+    doorT: G.doorT,
+    doorsOpen: G.doorsOpen,
+    carNo: G.carNo || (line.badge + '014'),
+    keepRunning: !!G.aiTakeover
+  };
+
+  const newS = clamp(ai.s, 0, path.stations[path.stations.length - 1].stopS - 2);
+  let nextIdx = clamp(ai.idx != null ? ai.idx : ai.nearestStationIdx(), 0, path.stations.length - 1);
+  for (let i = 0; i < path.stations.length; i++) {
+    if (path.stations[i].stopS >= newS - 6) { nextIdx = i; break; }
+  }
+  const stTarget = path.stations[nextIdx];
+  const atStop = Math.abs(stTarget.stopS - newS) < 8 && ai.v < 0.15;
+  const openNow = (ai.state === 'dwell' || ai.doorT > 0.35) && atStop;
+
+  G.s = newS;
+  G.v = openNow ? 0 : ai.v;
+  G.targetIdx = nextIdx;
+  G.doorsOpen = openNow;
+  G.doorT = openNow ? Math.max(0.85, ai.doorT) : 0;
+  G.stopState = openNow ? 'dwell' : (atStop ? 'stop' : 'run');
+  G.carNo = ai.carNo || (line.badge + '021');
+  G.lever = 0;
+  G.eb = false;
+  G.ato = false;
+  G.aiTakeover = false;
+  if (G.walk) { G.walk.active = false; G.walk.inTrain = null; }
+
+  /* 目标列车已经从 aiTrains 里被玩家接手：把它标成 dead 并从列表移除，
+     避免它继续按 AI 逻辑跑、跟本务车重影。 */
+  ai.dead = true;
+  if (ai.train && ai.train.group && ai.train.group.parent) {
+    ai.train.group.parent.remove(ai.train.group);
+  }
+  const aiPos = aiTrains.indexOf(ai);
+  if (aiPos >= 0) aiTrains.splice(aiPos, 1);
+
+  /* 原来那列本务车：如果玩家已经是「乘客」状态（AI 已接管），
+     就补一列 AI 车在原位继续运营，让线路不至于少一列车。 */
+  if (prevPlayer.keepRunning && typeof AiTrain === 'function') {
+    try {
+      const ghost = new AiTrain(path, line, {
+        dir: 1, lateral: -TRACK_LAT, s: prevPlayer.s, v: prevPlayer.v,
+        idx: clamp(prevPlayer.idx, 0, path.stations.length - 1),
+        carNo: prevPlayer.carNo, stops: true, dest: line.stations[line.stations.length - 1]
+      });
+      ghost.state = prevPlayer.doorsOpen ? 'dwell' : 'run';
+      ghost.doorT = prevPlayer.doorT;
+      ghost.dwellT = 0;
+      ghost.dwellNeed = 8;
+      ghost.train.lateral = ghost.lateral;
+      ghost.train.setDoorT(ghost.doorT);
+      ghost.train.update(ghost.s, ghost.v, 0);
+      if (typeof scene !== 'undefined' && scene) scene.add(ghost.train.group);
+      aiTrains.push(ghost);
+    } catch (e) { /* 造车失败不影响接管 */ }
+  }
+
+  if (train.chain) train.chain.reset(G.s, G.v, 1);
+  train.lateral = -TRACK_LAT;
+  train.dir = 1;
+  train.setDoorT(G.doorT);
+  train.update(G.s, G.v, 0);
+  const so = stationObjFor(G.targetIdx);
+  if (so && so.psdL) so.psdL.setOpen(G.doorT);
+  updateTimetable();
+  updateCamera(0, true);
+  updateHUD(true);
+  toast(`已成功接管 ${G.carNo} 次列车 · 当前位于 ${stTarget.zh} 区段`, 'good', 4200);
+  return true;
+}
+
+function showTakeoverPanel() {
+  const box = $('takeoverPanel'), list = $('takeoverList');
+  if (!box || !list || !path || !train) return;
+  const items = [];
+  const nearStOf = (sVal) => {
+    let best = path.stations[0], bd = 1e9;
+    for (const st of path.stations) {
+      const d = Math.abs(st.stopS - sVal);
+      if (d < bd) { bd = d; best = st; }
+    }
+    return best ? best.zh : '区间';
+  };
+  const selfNo = G.carNo || (line.badge + '014');
+  items.push({
+    id: 'self',
+    title: `${selfNo} 次（本务列车${G.aiTakeover ? ' · AI 托管中' : ''}）`,
+    sub: `位置：${nearStOf(G.s)} 附近 · 速度 ${Math.round(G.v * 3.6)} km/h · ${G.doorsOpen ? '停站开门' : '运行/待发'}`,
+    tag: '接管本务'
+  });
+  if (typeof aiTrains !== 'undefined') {
+    aiTrains.forEach((ai, idx) => {
+      if (!ai || ai.dead) return;
+      const dirTxt = ai.dir > 0 ? '上行同向' : '下行对向';
+      items.push({
+        id: String(ai.carNo),
+        idx,
+        title: `${ai.carNo} 次（${dirTxt}列车）`,
+        sub: `位置：${nearStOf(ai.s)} 附近 · 速度 ${Math.round(ai.v * 3.6)} km/h · ${ai.state === 'dwell' ? '停站开门' : '区间运行'}`,
+        tag: '立即接管'
+      });
+    });
+  }
+  list.innerHTML = items.map(it => `
+    <button type="button" class="tk-item" data-tk="${it.id}">
+      <div><b>${it.title}</b><small>${it.sub}</small></div>
+      <span class="tk-tag">${it.tag}</span>
+    </button>`).join('');
+  list.querySelectorAll('.tk-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tk = btn.dataset.tk;
+      takeOverTrain(tk === 'self' ? 'self' : tk);
+    });
+  });
+  box.classList.remove('hidden');
+}
+
+function hideTakeoverPanel() {
+  const box = $('takeoverPanel');
+  if (box) box.classList.add('hidden');
+}
+
+function toggleTakeoverPanel() {
+  const box = $('takeoverPanel');
+  if (!box) return;
+  if (!box.classList.contains('hidden')) {
+    hideTakeoverPanel();
+  } else {
+    showTakeoverPanel();
+  }
 }
 
 function transferRouteFor(name) {

@@ -7,12 +7,19 @@ const b=await puppeteer.launch({executablePath:EDGE,headless:'new',args:['--use-
 const p=await b.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));
 await p.goto(file,{waitUntil:'load',timeout:90000});
 await new Promise(r=>setTimeout(r,2000));
+await p.evaluate(()=>{
+  const cards=[...document.querySelectorAll('.route-card')];
+  const c3=cards.find(c=>c.textContent.includes('3号线'));
+  if(c3) c3.click();
+});
+await new Promise(r=>setTimeout(r,400));
 await p.click('#startBtn');await new Promise(r=>setTimeout(r,400));await p.click('#brGo');
 for(let i=0;i<90;i++){await new Promise(r=>setTimeout(r,1200));if(await p.evaluate(()=>window.__sim.G.mode)==='driving')break;}
 await new Promise(r=>setTimeout(r,1500));
 await p.evaluate(()=>{
   const S=window.__sim;
-  const idx=S.stationObjs.findIndex(o=>o.s>11000);
+  if(S.G.onboardOpen) S.onboardFinish();
+  const idx=0;
   const st=S.path.stations[idx];
   S.G.s=st.stopS; S.G.targetIdx=idx; S.G.stopState='stop'; S.G.doorsOpen=true; S.G.doorT=1;
   S.snapTrain();

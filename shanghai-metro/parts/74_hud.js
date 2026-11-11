@@ -228,9 +228,54 @@ function updateHUD(force = false) {
   else if (G.stopState === 'stop') status = '停稳';
   else if (G.atpWarn) status = '超速警告';
   else if (isLastServed(G.targetIdx) && G.stopState === 'dwell') status = '终到';
-  if (G.walk && G.walk.active) status = '站内步行 · F 返回';
+  if (G.walk && G.walk.active) {
+    if (G.walk.inTrain) {
+      const it = G.walk.inTrain;
+      status = `${it.carIdx + 1}号车厢${it.seated ? '就座' : '站立'} · ${G.aiTakeover ? 'AI托管运行' : 'F返回驾驶'}`;
+    } else {
+      status = G.aiTakeover ? '站内步行 · AI已接管列车' : '站内步行 · F 返回';
+    }
+  }
   $('hudStatus').textContent = status;
   $('hudStatus').className = (G.eb || G.atpWarn) ? 'late' : '';
+  /* 步行交互栏按钮：只绑一次（updateHUD 每帧都会调用，重复 addEventListener 会累积） */
+  if (!G._wbBound) {
+    G._wbBound = true;
+    const seatBtn = $('wbActSeat'), tkBtn = $('wbActTakeover'), cabBtn = $('wbActCab');
+    if (seatBtn) seatBtn.addEventListener('click', () => { if (typeof walkInteractE === 'function') walkInteractE(); });
+    if (tkBtn) tkBtn.addEventListener('click', () => { if (typeof toggleTakeoverPanel === 'function') toggleTakeoverPanel(); });
+    if (cabBtn) cabBtn.addEventListener('click', () => {
+      if (G.walk && G.walk.inTrain && G.walk.inTrain.aiRef && typeof takeOverTrain === 'function') takeOverTrain(G.walk.inTrain.aiRef);
+      else if (typeof toggleWalk === 'function') toggleWalk();
+    });
+    const backBtn = $('takeoverBack');
+    if (backBtn) backBtn.addEventListener('click', () => { if (typeof hideTakeoverPanel === 'function') hideTakeoverPanel(); });
+  }
+  const wb = $('walkHudBar');
+  if (wb) {
+    const onWalk = !!(G.walk && G.walk.active);
+    wb.classList.toggle('on', onWalk);
+    if (onWalk) {
+      const it = G.walk.inTrain;
+      const locEl = $('wbLoc'), timEl = $('wbTimer'), seatEl = $('wbSeatTxt');
+      if (locEl) {
+        locEl.textContent = it
+          ? `${it.carIdx + 1}号车厢 · ${it.seated ? '已就座' : '站立中'}`
+          : `站台步行 · ${(path.stations[G.walk.station] && path.stations[G.walk.station].zh) || ''}`;
+      }
+      if (seatEl) {
+        seatEl.textContent = it ? (it.seated ? '站起活动' : '在座位就座') : '进入车厢';
+      }
+      if (timEl) {
+        const lim = G.aiTakeoverDelay != null ? G.aiTakeoverDelay : 60;
+        const away = Math.min(lim, Math.floor(G.walk.awayTimer || 0));
+        timEl.textContent = G.aiTakeover
+          ? 'AI 已自动接管列车运行'
+          : `离车 ${away}s / ${lim}s`;
+        timEl.classList.toggle('ai', !!G.aiTakeover);
+      }
+    }
+  }
   // 停车误差
   if (G.stopState === 'stop' || G.stopState === 'dwell') {
     const e = G.s - st.stopS;

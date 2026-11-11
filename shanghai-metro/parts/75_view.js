@@ -182,7 +182,15 @@ function bindInput() {
     if (G.mode === 'driving') {
       if (G.walk && G.walk.active) {
         if (e.code === 'KeyF') toggleWalk();
-        if (e.code === 'Escape') togglePause(true);
+        /* E：车厢内就座/站起；站台上就近进入开门列车 */
+        if (e.code === 'KeyE') { walkInteractE(); return; }
+        /* G：接管任意列车（打开面板，列车进站后可直接接管） */
+        if (e.code === 'KeyG') { toggleTakeoverPanel(); return; }
+        if (e.code === 'Escape') {
+          const tp = $('takeoverPanel');
+          if (tp && !tp.classList.contains('hidden')) { hideTakeoverPanel(); return; }
+          togglePause(true);
+        }
         return;
       }
       if (e.code === 'KeyF') toggleWalk();

@@ -10,25 +10,52 @@ const CAB_CFG = {
   AC04: { desk: 0x1c2225, wall: 0x9ea6a9, lever: -1, screens: 3, speedo: 1, seat: 0x241f1c },
   AC05: { desk: 0x212832, wall: 0xa6aeb4, lever: -1, screens: 2, speedo: 1, seat: 0x1d2432 },
   AC06: { desk: 0x272b2d, wall: 0xa8b0b3, lever: -1, screens: 2, speedo: -1, seat: 0x20262c },
-  AC16: { desk: 0x1f2a2a, wall: 0xaebbb8, lever: 1, screens: 3, speedo: 1, seat: 0x1c2a28 }
+  AC16: { desk: 0x1f2a2a, wall: 0xaebbb8, lever: 1, screens: 3, speedo: 1, seat: 0x1c2a28 },
+  SH15: { desk: 0x212832, wall: 0xa6aeb4, lever: -1, screens: 2, speedo: 1, seat: 0x1d2432 }
 };
 const INT_MAT = {};
-function intMats() {
+const PAX_MATS = {};
+function paxMats() {
+  if (!PAX_MATS.coats) {
+    const mk = (c, e = '#101418') => new THREE.MeshStandardMaterial({
+      color: c, roughness: 0.82, metalness: 0.04, emissive: new THREE.Color(e), emissiveIntensity: 0.10
+    });
+    PAX_MATS.coats = [
+      mk(0x283c52, '#101a24'),
+      mk(0x6b2d34, '#240d10'),
+      mk(0x2d5446, '#0e1f19'),
+      mk(0xb8ad98, '#2b2822'),
+      mk(0x3e4a59, '#151a20'),
+      mk(0x7a5638, '#24180e')
+    ];
+    PAX_MATS.pants = [mk(0x1f252d, '#0b0e12'), mk(0x2e343d, '#101317')];
+    PAX_MATS.skin = mk(0xdca884, '#2d1f16');
+    PAX_MATS.hair = mk(0x1b1816, '#080706');
+  }
+  return PAX_MATS;
+}
+function intMats(lineArg) {
+  const curLine = lineArg || line;
   if (!INT_MAT.floor) {
-    INT_MAT.floor = new THREE.MeshStandardMaterial({ color: 0x4a4f52, roughness: 0.92, metalness: 0.05, emissive: new THREE.Color('#22262a'), emissiveIntensity: 1.0 });
-    INT_MAT.ceil = new THREE.MeshStandardMaterial({ color: 0xd6dadb, roughness: 0.86, metalness: 0.02, emissive: new THREE.Color('#6a6f70'), emissiveIntensity: 1.15 });
-    INT_MAT.seat = new THREE.MeshStandardMaterial({ color: 0x2f4a63, roughness: 0.9, metalness: 0.03, emissive: new THREE.Color('#2a3d52'), emissiveIntensity: 1.1 });
-    INT_MAT.panel = new THREE.MeshStandardMaterial({ color: 0xb9c0c2, roughness: 0.8, metalness: 0.05, emissive: new THREE.Color('#3a3e40'), emissiveIntensity: 0.85 });
+    INT_MAT.floor = new THREE.MeshStandardMaterial({ color: 0x4a4f52, roughness: 0.92, metalness: 0.05, emissive: new THREE.Color('#22262a'), emissiveIntensity: 0.16 });
+    INT_MAT.ceil = new THREE.MeshStandardMaterial({ color: 0xd6dadb, roughness: 0.86, metalness: 0.02, emissive: new THREE.Color('#6a6f70'), emissiveIntensity: 0.14 });
+    INT_MAT.seat = new THREE.MeshStandardMaterial({ color: 0x2f4a63, roughness: 0.9, metalness: 0.03, emissive: new THREE.Color('#2a3d52'), emissiveIntensity: 0.14 });
+    INT_MAT.panel = new THREE.MeshStandardMaterial({ color: 0xb9c0c2, roughness: 0.8, metalness: 0.05, emissive: new THREE.Color('#3a3e40'), emissiveIntensity: 0.12 });
     INT_MAT.lcd = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.9, 1.5, 1.2), toneMapped: false });
-    const mkWall = (m, dl) => new THREE.MeshStandardMaterial({
+    INT_MAT.walls = {};
+  }
+  const dl = doorOffsetsOf(curLine);
+  const wKey = dl.join('_');
+  if (!INT_MAT.walls[wKey]) {
+    const mkWall = (m) => new THREE.MeshStandardMaterial({
       map: texCarInterior(m, dl), transparent: false, alphaTest: 0.45,
       roughness: 0.78, metalness: 0.04, side: THREE.FrontSide,
-      emissive: new THREE.Color('#3c4142'), emissiveIntensity: 0.7
+      emissive: new THREE.Color('#3c4142'), emissiveIntensity: 0.10
     });
-    const dl = doorOffsetsOf(line);
-    INT_MAT.wallL = mkWall(true, dl);
-    INT_MAT.wallR = mkWall(false, dl);
+    INT_MAT.walls[wKey] = { L: mkWall(true), R: mkWall(false) };
   }
+  INT_MAT.wallL = INT_MAT.walls[wKey].L;
+  INT_MAT.wallR = INT_MAT.walls[wKey].R;
   return INT_MAT;
 }
 function mergeLocalBoxes(group) {
@@ -365,7 +392,18 @@ class Train {
       this.headlight = this.buildHeadlight(this.cars[0]);
     }
   }
+  /* 15 号线：整节车体来自移植的 sh15_pth 模型（parts/51_sh15.js） */
+  buildCarSH15(i, isLead) {
+    const g = new THREE.Group();
+    const built = sh15BuildCar(g, i, this.carCount, true, isLead && this.isPlayer);
+    this.doorSets.push({ sh15: built });
+    if (isLead && built.nose) this.noseGlass = built.nose;
+    this.updateDoorSet(this.doorSets[this.doorSets.length - 1], 0);
+    const pax = this.buildCarPassengers(g, isLead, i);
+    return { group: g, right: null, left: null, index: i, length: CAR_LEN, seatSpots: pax.seatSpots, passengerCount: pax.count };
+  }
   buildCar(i, isLead, opts) {
+    if (this.line && this.line.model === 'SH15') return this.buildCarSH15(i, isLead);
     const g = new THREE.Group();
     const line = this.line;
     const mats = this.sideMats;
@@ -415,28 +453,36 @@ class Train {
     };
     const right = sideMesh(1);
     const left = sideMesh(-1);
+    /* 标记为「车壳」：71_scene 只给带这个标记的网格开 castShadow，见那里的注释 */
+    right.userData.carShell = true; left.userData.carShell = true;
     g.add(right, left);
 
     // 车顶
     const roof = new THREE.Mesh(new RoundedBoxGeometry(CAR_W, 0.42, CAR_LEN, 3, 0.14), new THREE.MeshStandardMaterial({ color: 0xb9bfc1, roughness: 0.62, metalness: 0.3 }));
     roof.position.y = 3.72;
+    roof.userData.carShell = true;
     g.add(roof);
     // 车顶设备
     const ac = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.34, 5.6), new THREE.MeshStandardMaterial({ color: 0x8f979a, roughness: 0.7, metalness: 0.2 }));
     ac.position.set(0, 3.98, i % 2 ? 3.4 : -3.4);
     g.add(ac);
-    // 端部
+    // 端部与车厢贯通道（镂空可自由通行，不再用实心面封死）
     const endMat = new THREE.MeshStandardMaterial({ color: 0xdfe3e2, roughness: 0.5, metalness: 0.1 });
-    const gang = new THREE.Mesh(new THREE.BoxGeometry(1.9, 2.6, 0.5), new THREE.MeshStandardMaterial({ color: 0x2e3438, roughness: 0.85 }));
-    gang.position.set(0, 2.3, -CAR_LEN / 2 - 0.16);
-    g.add(gang);
-    const endFace = new THREE.Mesh(new THREE.PlaneGeometry(CAR_W - 0.1, 2.85), endMat);
-    endFace.position.set(0, 2.42, -CAR_LEN / 2 - 0.02);
-    endFace.rotation.y = PI;
-    g.add(endFace);
+    const bellowMat = new THREE.MeshStandardMaterial({ color: 0x2e3438, roughness: 0.85 });
+    const endZs = isLead ? [-CAR_LEN / 2] : [-CAR_LEN / 2, CAR_LEN / 2];
+    for (const ez of endZs) {
+      const sgn = Math.sign(ez);
+      for (const sx of [-1, 1]) {
+        pbox(g, 0.72, 2.58, 0.08, endMat, sx * 1.06, 2.38, ez);
+        pbox(g, 0.16, 2.36, 0.46, bellowMat, sx * 0.78, 2.28, ez + sgn * 0.16);
+      }
+      pbox(g, 1.44, 0.38, 0.08, endMat, 0, 3.48, ez);
+      pbox(g, 1.72, 0.14, 0.46, bellowMat, 0, 3.42, ez + sgn * 0.16);
+      pbox(g, 1.44, 0.06, 0.56, INT_MAT.floor || MAT.darkMetal, 0, 1.15, ez + sgn * 0.18);
+    }
     // 底部
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.12, 0.55, CAR_LEN - 0.3), new THREE.MeshStandardMaterial({ color: 0x33393d, roughness: 0.8, metalness: 0.2 }));
-    skirt.position.y = 0.92; g.add(skirt);
+    skirt.position.y = 0.92; skirt.userData.carShell = true; g.add(skirt);
     const under = new THREE.Mesh(new THREE.BoxGeometry(CAR_W - 0.5, 0.5, CAR_LEN - 1.4), new THREE.MeshStandardMaterial({ color: 0x1c2124, roughness: 0.9 }));
     under.position.y = 0.55; g.add(under);
     // 转向架
@@ -484,11 +530,19 @@ class Train {
       }
     }
     if (isLead) this.buildNose(g, line, opts);
-    if (this.isPlayer) this.buildInterior(g, isLead);
-    else this.buildSimpleInterior(g);
+    /* AI 车默认只建「轻量内饰」：地板 + 顶灯 + 内壁（够从车窗外看进去），
+       不建座椅与乘客。玩家靠近时由 ensureAiInterior() 现场补齐。 */
+    if (opts && opts.liteInterior) {
+      this.buildLiteInterior(g, isLead);
+    } else {
+      this.buildInterior(g, isLead);
+    }
+    const pax = (opts && opts.liteInterior)
+      ? { seatSpots: [], count: { seated: 0, standing: 0, total: 0 } }
+      : this.buildCarPassengers(g, isLead, i);
     this.buildDoors(g);
     mergeLocalBoxes(g);
-    const car = { group: g, right, left, index: i, length: CAR_LEN };
+    const car = { group: g, right, left, index: i, length: CAR_LEN, seatSpots: pax.seatSpots, passengerCount: pax.count };
     return car;
   }
   buildNose(g, line, opts) {
@@ -819,6 +873,7 @@ class Train {
     for (const set of this.doorSets) this.updateDoorSet(set, t);
   }
   updateDoorSet(set, t) {
+    if (set.sh15) { sh15UpdateDoors(set.sh15, t, this.doorSide); return; }
     const d = this._doorDummy || (this._doorDummy = new THREE.Object3D());
     for (let i = 0; i < set.list.length; i++) {
       const L = set.list[i];
@@ -846,7 +901,7 @@ class Train {
     mesh.frustumCulled = false;
     g.add(mesh);
     // 内侧饰板（避免车内侧看到外部门贴）
-    const panelMat = new THREE.MeshStandardMaterial({ color: 0xd8dddd, roughness: 0.72, metalness: 0.05, emissive: new THREE.Color('#3a3f40'), emissiveIntensity: 0.6 });
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0xd8dddd, roughness: 0.72, metalness: 0.05, emissive: new THREE.Color('#3a3f40'), emissiveIntensity: 0.10 });
     const panel = new THREE.InstancedMesh(new THREE.BoxGeometry(0.02, 1.89, 0.7), panelMat, list.length);
     panel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     panel.frustumCulled = false;
@@ -855,8 +910,55 @@ class Train {
     this.doorSets.push(set);
     this.updateDoorSet(set, 0);
   }
+  /* 轻量内饰：只有地板、顶板、两条灯带与内壁。目的是「从外面看进来不是空壳」，
+     同时把每节车的网格数压到个位数。 */
+  buildLiteInterior(g, isLead) {
+    const M = intMats(this.line);
+    const z0 = -11.15, z1 = isLead ? 6.85 : 11.15;
+    const len = z1 - z0, zc = (z0 + z1) / 2;
+    const yF = 1.15;
+    for (const side of [-1, 1]) {
+      const wmat = side < 0 ? M.wallL : M.wallR;
+      const wg = new THREE.Mesh(new THREE.PlaneGeometry(CAR_LEN, 2.85), wmat);
+      wg.position.set(side * 1.468, 2.42, 0);
+      wg.rotation.y = side > 0 ? -PI / 2 : PI / 2;
+      g.add(wg);
+    }
+    pbox(g, 2.7, 0.06, len, M.floor, 0, yF, zc);
+    pbox(g, 2.7, 0.05, len, M.ceil, 0, 3.44, zc);
+    pbox(g, 0.16, 0.035, len - 0.8, MAT.strip, -0.62, 3.405, zc);
+    pbox(g, 0.16, 0.035, len - 0.8, MAT.strip, 0.62, 3.405, zc);
+    this._liteInterior = true;
+  }
+
+  /* 把轻量内饰升级为完整内饰（座椅 + 乘客）。只对「玩家可能看得到」的 AI 车调用。 */
+  ensureFullInterior() {
+    if (!this._liteInterior || this._fullInterior) return false;
+    this._fullInterior = true;
+    this._liteInterior = false;
+    this.cars.forEach((car, i) => {
+      const g = car.group;
+      /* 清掉轻量内饰留下的内壁/地板/顶板/灯带（靠标记识别） */
+      const kill = [];
+      g.traverse(o => { if (o.userData && o.userData.liteInt) kill.push(o); });
+      /* 旧版本没有标记，用几何特征兜底：内壁 Plane(22.8×2.85) 且贴图为车内贴图 */
+      g.traverse(o => {
+        if (!o.isMesh || !o.geometry) return;
+        const p = o.geometry.parameters;
+        if (o.geometry.type === 'PlaneGeometry' && p && Math.abs(p.width - CAR_LEN) < 0.01 && Math.abs(p.height - 2.85) < 0.01) kill.push(o);
+      });
+      kill.forEach(o => { if (o.parent) o.parent.remove(o); });
+      this.buildInterior(g, i === 0);
+      const pax = this.buildCarPassengers(g, i === 0, i);
+      car.seatSpots = pax.seatSpots;
+      car.passengerCount = pax.count;
+      mergeLocalBoxes(g);
+    });
+    return true;
+  }
+
   buildInterior(g, isLead) {
-    const M = intMats();
+    const M = intMats(this.line);
     const z0 = -11.15, z1 = isLead ? 6.85 : 11.15;
     const len = z1 - z0, zc = (z0 + z1) / 2;
     const yF = 1.15;
@@ -875,17 +977,41 @@ class Train {
     pbox(g, 0.16, 0.035, len - 0.8, MAT.strip, -0.62, 3.405, zc);
     pbox(g, 0.16, 0.035, len - 0.8, MAT.strip, 0.62, 3.405, zc);
     // 长条座椅（两侧，门区断开）
+    /* 长条座椅：原来只是两块平板（坐面 + 靠背），没有任何分格与结构，
+       远看像悬空的黑色板。真实地铁纵向长椅是：
+         不锈钢骨架 + 玻璃钢坐垫（每 0.62 m 一格，格间有缝）+ 靠背带弧度 + 底部支腿。
+       这里补齐：坐垫分格、靠背上沿收边、座椅下的不锈钢支腿与横梁、坐面下的裙板。 */
+    const SEAT_PITCH = 0.62;
     const seats = [[3.45, 6.85], [-6.85, -3.45], [8.3, 10.95], [-10.95, -8.3]];
     for (const side of [-1, 1]) {
       for (const [a, b] of seats) {
         if (b > z1 - 0.1 || a < z0 + 0.1) continue;
         const L = b - a, c = (a + b) / 2;
-        pbox(g, 0.44, 0.1, L, M.seat, side * 1.12, yF + 0.42, c);
-        pbox(g, 0.12, 0.58, L, M.seat, side * 1.32, yF + 0.66, c);
+        /* 座椅骨架横梁（不锈钢） */
+        pbox(g, 0.46, 0.05, L, MAT.metal, side * 1.12, yF + 0.36, c);
+        /* 坐垫：按 0.62 m 分格，格间留 3 cm 缝 */
+        const nSeat = Math.max(1, Math.round(L / SEAT_PITCH));
+        const pitch = L / nSeat;
+        for (let k = 0; k < nSeat; k++) {
+          const sz = a + (k + 0.5) * pitch;
+          pbox(g, 0.42, 0.10, pitch - 0.03, M.seat, side * 1.12, yF + 0.44, sz);
+        }
+        /* 靠背：下段竖直 + 上段微前倾，上沿有不锈钢收边 */
+        pbox(g, 0.10, 0.46, L, M.seat, side * 1.31, yF + 0.72, c);
+        const backTop = pbox(g, 0.09, 0.12, L, M.seat, side * 1.285, yF + 0.99, c);
+        backTop.rotation.z = side * 0.18;
+        pbox(g, 0.06, 0.035, L, MAT.metal, side * 1.255, yF + 1.05, c);
+        /* 座椅下的不锈钢支腿（每 2 m 一根）与裙板 */
+        const nLeg = Math.max(2, Math.round(L / 2));
+        for (let k = 0; k <= nLeg; k++) {
+          const sz = a + (k / nLeg) * L;
+          pbox(g, 0.055, 0.36, 0.055, MAT.metal, side * 1.16, yF + 0.18, sz);
+          pbox(g, 0.30, 0.035, 0.05, MAT.metal, side * 1.24, yF + 0.02, sz);
+        }
       }
-      // 座椅下部裙板
-      pbox(g, 0.1, 0.34, len - 3.6, M.panel, side * 1.36, yF + 0.17, zc);
-      // 扶手（顶棚纵向）
+      // 座椅下部裙板（车门区断开，这里用整段即可，被座椅挡住看不见）
+      pbox(g, 0.1, 0.30, len - 3.6, M.panel, side * 1.36, yF + 0.15, zc);
+      // 扶手（顶棚纵向）+ 竖直扶手立柱
       pbox(g, 0.035, 0.035, len - 2.2, MAT.metal, side * 0.52, 2.86, zc);
     }
     // 立柱
@@ -900,6 +1026,76 @@ class Train {
       if (z > z1 - 0.6 || z < z0 + 0.6) continue;
       pbox(g, 0.9, 0.22, 0.03, M.lcd, 0, 3.05, z);
     }
+  }
+  /* 车厢内乘客：纵向长椅坐姿乘客 + 立柱旁站姿乘客 + 空余可就座座位点 */
+  buildCarPassengers(g, isLead, carIdx) {
+    const PM = paxMats();
+    const isSh15 = !!(this.line && this.line.model === 'SH15');
+    const yF = 1.15;
+    const z1 = isLead ? 6.85 : 11.15;
+    const benchSegs = isSh15
+      ? [[-7.6, -6.1], [-3.0, -1.5], [1.5, 3.0], [6.1, 7.6]]
+      : [[-10.4, -8.5], [-6.5, -3.7], [3.7, 6.5], [8.5, 10.4]];
+    const seatSpots = [];
+    let seated = 0, standing = 0, slotIdx = 0;
+
+    for (const side of [-1, 1]) {
+      for (const [za, zb] of benchSegs) {
+        if (zb > z1 - 0.15) continue;
+        const nSlots = Math.max(2, Math.floor((zb - za) / 0.68));
+        const step = (zb - za) / nSlots;
+        for (let s = 0; s < nSlots; s++) {
+          const sz = za + (s + 0.5) * step;
+          slotIdx++;
+          const occupy = ((carIdx * 13 + slotIdx * 7 + (side > 0 ? 3 : 0)) % 10) < 5;
+          if (!occupy) {
+            seatSpots.push({ x: side * 1.02, z: +sz.toFixed(2), side });
+            continue;
+          }
+          seated++;
+          const coat = PM.coats[(carIdx + slotIdx) % PM.coats.length];
+          const pants = PM.pants[(carIdx + slotIdx) % PM.pants.length];
+          // 坐姿：上身靠背、大腿平置座面、小腿垂至车厢地板、双手置于膝上/看手机
+          pbox(g, 0.22, 0.48, 0.36, coat, side * 1.18, yF + 0.80, sz);
+          pbox(g, 0.14, 0.34, 0.10, coat, side * 1.15, yF + 0.78, sz - 0.20);
+          pbox(g, 0.14, 0.34, 0.10, coat, side * 1.15, yF + 0.78, sz + 0.20);
+          pbox(g, 0.24, 0.09, 0.09, coat, side * 0.99, yF + 0.60, sz - 0.14);
+          pbox(g, 0.24, 0.09, 0.09, coat, side * 0.99, yF + 0.60, sz + 0.14);
+          pbox(g, 0.38, 0.13, 0.33, pants, side * 1.03, yF + 0.49, sz);
+          pbox(g, 0.13, 0.44, 0.13, pants, side * 0.86, yF + 0.24, sz - 0.09);
+          pbox(g, 0.13, 0.44, 0.13, pants, side * 0.86, yF + 0.24, sz + 0.09);
+          pbox(g, 0.19, 0.07, 0.13, MAT.darkMetal, side * 0.81, yF + 0.04, sz - 0.09);
+          pbox(g, 0.19, 0.07, 0.13, MAT.darkMetal, side * 0.81, yF + 0.04, sz + 0.09);
+          pbox(g, 0.20, 0.22, 0.20, PM.skin, side * 1.15, yF + 1.16, sz);
+          pbox(g, 0.21, 0.10, 0.21, PM.hair, side * 1.16, yF + 1.24, sz);
+          if ((slotIdx + carIdx) % 3 === 0) {
+            pbox(g, 0.03, 0.10, 0.07, MAT.strip, side * 0.88, yF + 0.69, sz);
+          }
+        }
+      }
+    }
+
+    // 站姿乘客（靠侧扶手立柱站立，留出中央过道 x∈[-0.36,0.36] 供玩家穿行）
+    const standSpots = [
+      { x: -0.48, z: -4.85 },
+      { x: 0.48, z: -0.35 },
+      { x: -0.48, z: 4.65 }
+    ];
+    standSpots.forEach((sp, k) => {
+      if (sp.z > z1 - 0.8) return;
+      standing++;
+      const coat = PM.coats[(carIdx * 3 + k + 2) % PM.coats.length];
+      const pants = PM.pants[(carIdx + k) % PM.pants.length];
+      pbox(g, 0.24, 0.56, 0.34, coat, sp.x, yF + 1.08, sp.z);
+      pbox(g, 0.11, 0.46, 0.11, coat, sp.x, yF + 1.04, sp.z - 0.21);
+      pbox(g, 0.11, 0.46, 0.11, coat, sp.x, yF + 1.04, sp.z + 0.21);
+      pbox(g, 0.14, 0.74, 0.14, pants, sp.x, yF + 0.41, sp.z - 0.09);
+      pbox(g, 0.14, 0.74, 0.14, pants, sp.x, yF + 0.41, sp.z + 0.09);
+      pbox(g, 0.20, 0.22, 0.20, PM.skin, sp.x, yF + 1.49, sp.z);
+      pbox(g, 0.21, 0.10, 0.21, PM.hair, sp.x, yF + 1.57, sp.z);
+    });
+
+    return { seatSpots, count: { seated, standing, total: seated + standing } };
   }
   updateRainDrops(dt, tw, rainAmt) {
     if (!this.rainDropCtx) return;

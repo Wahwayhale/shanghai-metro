@@ -89,7 +89,7 @@ function chooseDirection(n) {
 }
 
 /* 线路元数据 */
-const models = { 1: 'AC04', 2: 'AC02', 3: 'AC03', 4: 'AC05', 11: 'AC06', 16: 'AC16', 41: 'AC04' };
+const models = { 15: 'SH15', 1: 'AC04', 2: 'AC02', 3: 'AC03', 4: 'AC05', 11: 'AC06', 16: 'AC16', 41: 'AC04' };
 const vvvfs = { 1: 'GTO', 16: 'PM' };
 const vmaxs = { 16: 120, 17: 100, 51: 120 };
 const ys = { 3: 10, 5: 10, 11: 10, 16: 9.5, 17: 10, 41: 10, 51: -14 };
@@ -156,7 +156,7 @@ for (let i = 0; i < defs.length; i++) {
     id: 'F' + n, badge: String(n), name: ln, en: lineEn(n), color: colors[n] || '#888888',
     depot: `${ln}车辆段`, stock: models[n] || 'AC-05', cars: 6,
     model: models[n] || 'AC05', vvvf: vvvfs[n] || 'IGBT',
-    vmax: vmaxs[n] || 80, thirdRail: n === 16, doors: n === 16 ? 3 : 4,
+    vmax: vmaxs[n] || 80, thirdRail: n === 16, doors: n === 16 ? 3 : n === 15 ? 5 : 4,
     stations: d.stations
   });
   const id = 'full' + n;

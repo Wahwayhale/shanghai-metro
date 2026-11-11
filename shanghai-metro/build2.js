@@ -72,8 +72,7 @@ const ENTRIES = [
   'three/examples/jsm/postprocessing/ShaderPass.js',
   'three/examples/jsm/postprocessing/OutputPass.js',
   'three/examples/jsm/shaders/FXAAShader.js',
-  'three/examples/jsm/utils/BufferGeometryUtils.js',
-  'three/examples/jsm/loaders/GLTFLoader.js'
+  'three/examples/jsm/utils/BufferGeometryUtils.js'
 ];
 
 const cache = new Map();
@@ -136,7 +135,7 @@ function load(file) {
 for (const e of ENTRIES) load(path.join(NM, e));
 
 const jsmSrc = order.map(o => `/* ${path.basename(o.file)} */\n${o.src}`).join('\n');
-const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'FXAAShader', 'BufferGeometryUtils', 'GLTFLoader'];
+const want = ['RoundedBoxGeometry', 'EffectComposer', 'RenderPass', 'UnrealBloomPass', 'ShaderPass', 'OutputPass', 'FXAAShader', 'BufferGeometryUtils'];
 const bguFile = path.join(NM, 'three/examples/jsm/utils/BufferGeometryUtils.js');
 const bguNames = exportsByName.get(bguFile) || [];
 const jsmBlock = `const { ${want.join(', ')} } = (function(){
@@ -166,41 +165,10 @@ if (READABLE) {
 }
 
 /* ---------- 5. 输出 ---------- */
-/* DLC 资产：京沪高铁头车 GLB 以 base64 内联，保持单文件离线。
-   没有资产时仍能构建（预览按钮会提示资产缺失）。 */
-const hsrGlbFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-lod-v011.glb');
-const hsrMiddleFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-middle-lod-v003.glb');
-const hsrHeadMergedFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-bs-head-merged-v001.glb');
-const hsrCabinFile = path.join(dir, '..', 'dlc', 'jinghu', 'assets', 'cr400af-passenger-cabin-v001.glb');
-let hsrAsset = 'const HSR_TRAIN_GLB_B64 = "";\nconst HSR_MIDDLE_GLB_B64 = "";\nconst HSR_HEAD_MERGED_GLB_B64 = "";\nconst HSR_CABIN_GLB_B64 = "";\n';
-if (fs.existsSync(hsrGlbFile)) {
-  const headB64 = JSON.stringify(fs.readFileSync(hsrGlbFile).toString('base64'));
-  const midB64 = fs.existsSync(hsrMiddleFile)
-    ? JSON.stringify(fs.readFileSync(hsrMiddleFile).toString('base64'))
-    : '""';
-  const headMergedB64 = fs.existsSync(hsrHeadMergedFile)
-    ? JSON.stringify(fs.readFileSync(hsrHeadMergedFile).toString('base64'))
-    : '""';
-  const cabinB64 = fs.existsSync(hsrCabinFile)
-    ? JSON.stringify(fs.readFileSync(hsrCabinFile).toString('base64'))
-    : '""';
-  hsrAsset = `const HSR_TRAIN_GLB_B64 = ${headB64};\nconst HSR_MIDDLE_GLB_B64 = ${midB64};\nconst HSR_HEAD_MERGED_GLB_B64 = ${headMergedB64};\nconst HSR_CABIN_GLB_B64 = ${cabinB64};\n`;
-  console.log('[dlc] 高铁头车 LOD GLB 内联', (fs.statSync(hsrGlbFile).size / 1024).toFixed(0) + ' KB');
-  if (fs.existsSync(hsrMiddleFile)) {
-    console.log('[dlc] 高铁中间车 LOD GLB 内联', (fs.statSync(hsrMiddleFile).size / 1024).toFixed(0) + ' KB');
-  }
-  if (fs.existsSync(hsrHeadMergedFile)) {
-    console.log('[dlc] 高铁尾车 LOD GLB 内联', (fs.statSync(hsrHeadMergedFile).size / 1024).toFixed(0) + ' KB');
-  }
-} else {
-  console.warn('[dlc] 未找到高铁 GLB，预览按钮会提示缺失：' + hsrGlbFile);
-}
-
 const bundle = `(function(){
 'use strict';
 ${threeBlock}
 ${jsmBlock}
-${hsrAsset}
 ${code}
 })();`;
 

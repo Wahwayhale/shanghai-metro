@@ -206,7 +206,7 @@ function installBloomChain() {
     const bScale = 0.5;
     bloomPass = new UnrealBloomPass(
       new THREE.Vector2(Math.floor(w * bScale), Math.floor(h * bScale)),
-      theme.bloom * 0.34, 0.55, 1.08
+      theme.bloom * 0.20, 0.60, 1.35
     );
     composer.addPass(bloomPass);
   } else {
@@ -260,7 +260,7 @@ function installBloomChain() {
 const DRS_TARGET = 16.67;
 const DRS_SLOW = 17.0;        // 超过这个就缩
 const DRS_FAST = 13.5;        // 低于这个才涨
-const DRS_MIN = 0.42;
+const DRS_MIN = 0.62;
 const DRS_MAX = 1.0;
 
 function tuneDRS(avgMs) {
@@ -337,9 +337,9 @@ function updateGame(dt) {
     G.finishTimer -= dt;
     if (G.finishTimer <= 0) finishService();
   }
-  // 手柄速率控制 / 站内步行
+  // 手柄速率控制 / 站内步行与车厢内走动
   if (G.walk && G.walk.active) {
-    G.lever = 0;
+    if (!G.ato && !G.aiTakeover) G.lever = 0;
     const fwd = (keys['KeyW'] || keys['ArrowUp'] ? 1 : 0) - (keys['KeyS'] || keys['ArrowDown'] ? 1 : 0);
     const str = (keys['KeyD'] || keys['ArrowRight'] ? 1 : 0) - (keys['KeyA'] || keys['ArrowLeft'] ? 1 : 0);
     if (fwd || str) {
@@ -348,14 +348,27 @@ function updateGame(dt) {
       const dx = -sy * fwd + cy * str;
       const dz = -cy * fwd - sy * str;
       const len = Math.hypot(dx, dz) || 1;
-      G.walk.pos.x += dx / len * spd;
-      G.walk.pos.z += dz / len * spd;
+      const wx = (dx / len) * spd, wz = (dz / len) * spd;
+      if (G.walk.inTrain) {
+        const it = G.walk.inTrain;
+        if (!it.seated) {
+          const tr = it.trainRef || train;
+          const car = tr.cars[clamp(it.carIdx | 0, 0, tr.cars.length - 1)];
+          const carRight = new THREE.Vector3(1, 0, 0).applyQuaternion(car.group.quaternion);
+          const carFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(car.group.quaternion);
+          const moveVec = new THREE.Vector3(wx, 0, wz);
+          it.lx += moveVec.dot(carRight);
+          it.lz += moveVec.dot(carFwd);
+        }
+      } else {
+        G.walk.pos.x += wx;
+        G.walk.pos.z += wz;
+      }
     }
-    clampWalk();
   } else {
     const up = keys['KeyW'] || keys['ArrowUp'];
     const dn = keys['KeyS'] || keys['ArrowDown'];
-    if (G.ato && (up || dn)) { G.ato = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 3000); updateHUD(true); }
+    if (G.ato && (up || dn)) { G.ato = false; G.aiTakeover = false; G.atoState = 'run'; toast('司机接管 · ATO 已退出', 'info', 3000); updateHUD(true); }
     if (up && !dn) G.lever = clamp(G.lever + dt * 1.15, -1, 1);
     if (dn && !up) G.lever = clamp(G.lever - dt * 1.15, -1, 1);
     if (!up && !dn && Math.abs(G.lever) < 0.02) G.lever = 0;
@@ -377,7 +390,21 @@ function updateGame(dt) {
   if (typeof window !== 'undefined' && window.__pollGamepad) window.__pollGamepad(dt);
   G.aiT = (G.aiT || 0) + dt;
   for (const ai of aiTrains) ai.update(dt);
+  /* AI 车停靠玩家所在车站、且玩家在步行（可能透过车窗看进去）时，
+     把它的轻量内饰升级成完整内饰（座椅 + 乘客）。只做一次，之后保持。 */
+  if (G.walk && G.walk.active && G._interiorTick !== Math.floor(G.clock / 2)) {
+    G._interiorTick = Math.floor(G.clock / 2);
+    const wst = path.stations[G.walk.station];
+    if (wst) {
+      for (const ai of aiTrains) {
+        if (!ai || ai.dead || !ai.train) continue;
+        if (Math.abs(ai.s - wst.stopS) > 90) continue;
+        if (typeof ai.train.ensureFullInterior === 'function') ai.train.ensureFullInterior();
+      }
+    }
+  }
   updateAiPsd();
+  if (G.walk && G.walk.active) clampWalk();
   updateCamera(dt);
   updateHUD();
   if (train && train.cabDisplay) {
@@ -452,7 +479,13 @@ function updateGame(dt) {
         .addScaledVector(ns.frame.right, off[0])
         .addScaledVector(ns.frame.tan, off[2])
         .addScaledVector(ns.frame.up, off[1]);
-      L.intensity = 620 * near;
+      /* 620 是「为了让地下站台亮起来」拍脑袋定的，实际 4 盏灯挂在 4.6 m 高处、
+         离站台只有几米，反平方衰减后地面被推到接近纯白（实测站台截图 p90=222）。
+         降到 260，配合已经调低的材质自发光，站台恢复明暗层次。 */
+      /* 260 仍然偏亮：4 盏灯在 4.6 m 高处、距站台中心 8 m，反平方后地面照度很高。
+         再降到 150，并把衰减指数交给 PointLight 的 distance=85 / decay=2（已是物理值），
+         站台就能看出「灯下亮、远处暗」的层次，而不是整片均匀发白。 */
+      L.intensity = 210 * near;
     });
   }
   if (skyMesh) skyMesh.position.copy(camera.position);
@@ -496,8 +529,8 @@ function updateGame(dt) {
       const so = stationObjs[i];
       if (!so || !so.group) continue;
       const d = Math.abs((so.s || 0) - G.s);
-      /* 本务所在站与下一站永远显示（停站、开门、PIS 需要） */
-      const mustShow = i === G.targetIdx || i === G.targetIdx + 1;
+      /* 本务所在站、下一站及玩家当前步行所在站永远显示（停站、开门、PIS、换乘需要） */
+      const mustShow = i === G.targetIdx || i === G.targetIdx + 1 || (G.walk && G.walk.active && i === G.walk.station);
       const vis = mustShow || d < NEAR ? true : d > FAR ? false : so.group.visible;
       if (so.group.visible !== vis) so.group.visible = vis;
       if (!so.group.visible) hidden++;
@@ -505,7 +538,7 @@ function updateGame(dt) {
     G.culledCount = hidden;
   }
 
-  // 乘客乘降
+  // 乘客乘降与换乘通道客流
   G._crowdT = (G._crowdT || 0) + dt;
   if (G._crowdT > 1 / 30) {
     const h = Math.min(0.12, G._crowdT);
@@ -519,6 +552,13 @@ function updateGame(dt) {
     const tgtSt = path.stations[G.targetIdx];
     if (tgtSt && tgtSt.synthetic) best = stationObjFor(G.targetIdx) || best;
     if (best && best.crowd) best.crowd.update(h, G.doorT);
+    if (G.walk && G.walk.active && G.walk.station != null) {
+      const wso = stationObjFor(G.walk.station);
+      if (wso && wso !== best && wso.crowd) {
+        const wDoorT = (wso._psd && wso._psd.t > 0) ? wso._psd.t : 0;
+        wso.crowd.update(h, wDoorT);
+      }
+    }
   }
   // 速度曲线采样（每 1.5 秒）
   G._logT = (G._logT || 0) + dt;
@@ -573,27 +613,28 @@ function sampleFrame(dt) {
   updatePerfBadge();
   /* 每满一个采样窗口尝试调一次渲染缩放（内部有死区与步长限制） */
   if (G._fpsBuf.length >= FPS_SAMPLE) tuneDRS(avg);
-  /* 自适应：连续 2 个窗口超过 60fps 预算 1.3 倍才降档，避免误判 */
-  if (G.autoQuality !== false && avg > FPS_TARGET_MS * 1.3) {
+  /* 自适应降档（最后手段）：
+     1) 必须先让动态分辨率（DRS）缩到下限仍然跑不动，才允许降档 —— 以前 DRS 与降档
+        同时起作用，分辨率被缩、档位又被降，叠加后画质惨不忍睹；
+     2) 最低只降到「标准」，绝不自动降到「流畅」（流畅档会拆掉泛光/抗锯齿后期链路）；
+     3) 只影响本次游戏，不写入存档 —— 以前一次卡顿就把「流畅」永久存进设置，
+        之后每次启动都是最低画质。 */
+  const rsNow = G.renderScale == null ? 1 : G.renderScale;
+  if (G.autoQuality !== false && G.quality === 'high' && rsNow <= DRS_MIN + 0.011 && avg > FPS_TARGET_MS * 1.3) {
     G._slowStreak = (G._slowStreak || 0) + 1;
-    if (G._slowStreak >= 2) {
+    if (G._slowStreak >= 3) {
       G._slowStreak = 0;
-      const order = ['high', 'medium', 'low'];
-      const i = order.indexOf(G.quality);
-      if (i >= 0 && i < order.length - 1) {
-        G.quality = order[i + 1];
-        saveSettings({ quality: G.quality });
-        if (typeof applyRenderScale === 'function') applyRenderScale();
-        if (typeof rebuildPostChain === 'function') rebuildPostChain();
-        /* 冷却 2.5 秒，跳过切换引起的编译尖峰 */
-        G._fpsCooldown = 2.5;
-        G._fpsBuf = null;
-        G._fpsSum = 0;
-        G.fps = 0;
-        G._slowStreak = 0;
-        const names = { high: '精细', medium: '标准', low: '流畅' };
-        toast(`帧率偏低（${G.fps.toFixed(0)} fps）· 已自动降到「${names[G.quality]}」`, 'warn', 4200);
-      }
+      const fpsBefore = G.fps;
+      G.quality = 'medium';
+      G.renderScale = 1.0;
+      if (typeof applyRenderScale === 'function') applyRenderScale();
+      if (typeof rebuildPostChain === 'function') rebuildPostChain();
+      /* 冷却 2.5 秒，跳过切换引起的编译尖峰 */
+      G._fpsCooldown = 2.5;
+      G._fpsBuf = null;
+      G._fpsSum = 0;
+      G.fps = 0;
+      toast(`帧率偏低（${fpsBefore.toFixed(0)} fps）· 本次游戏临时降到「标准」`, 'warn', 4200);
     }
   } else {
     G._slowStreak = 0;
@@ -659,11 +700,6 @@ function loop() {
   }
   if (G.mode === 'loading') {
     if (hero) renderer.render(hero.scene, camera);
-    return;
-  }
-  if (G.mode === 'hsr') {
-    updateHsrMain(dt);
-    renderer.render(scene, camera);
     return;
   }
   if (G.mode === 'turnback') {

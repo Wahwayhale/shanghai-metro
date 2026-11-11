@@ -51,6 +51,8 @@ function stationObjFor(idx) {
   return (st && st.synthetic) ? stationObjs[0] : null;
 }
 function physics(dt) {
+  if (typeof updateWalkTimer === 'function') updateWalkTimer(dt);
+  if (G.aiTakeover && G.fault) clearFault();
   const st = path.stations[G.targetIdx];
   const v = G.v;
   const speedKmh = v * 3.6;
@@ -74,16 +76,22 @@ function physics(dt) {
   G.limit = limit;
   const overBy = speedKmh - limit;
   G.atpWarn = overBy > 3.0;
-  if (overBy > 12 && !G.eb) {
-    triggerEB('ATP 超速防护动作');
-  } else if (overBy > 6.5) {
-    if (!G.atpBrake) {
-      toast('ATP 实施常用制动 · 请注意限速', 'warn', 3200);
-      if (G.exam) examEvent('atp', false);
+  /* 自动限速开关（设置 → 自动限速，默认关闭）：
+     关闭时只保留「超速提示」（HUD 变红、G.atpWarn 置位），不再施加 ATP 常用制动、
+     也不会因超速触发紧急制动 —— 限速值仍然照常算出来显示，玩家自己决定怎么开。
+     开启时行为与原来完全一致。 */
+  if (G.autoLimit !== false) {
+    if (overBy > 12 && !G.eb) {
+      triggerEB('ATP 超速防护动作');
+    } else if (overBy > 6.5) {
+      if (!G.atpBrake) {
+        toast('ATP 实施常用制动 · 请注意限速', 'warn', 3200);
+        if (G.exam) examEvent('atp', false);
+      }
+      G.atpBrake = true;
     }
-    G.atpBrake = true;
   }
-  if (G.atpBrake && overBy < 1.2) G.atpBrake = false;
+  if (G.atpBrake && (overBy < 1.2 || G.autoLimit === false)) G.atpBrake = false;
 
   if (G.ato) { atoStep(dt); G.lever = atoCommand(); }
 
@@ -316,9 +324,9 @@ function atoStep(dt) {
          提前 5 s 关门（关门动画约 3 s + 出发确认 1.5 s）。 */
       const plan = planStopOf(G.targetIdx);
       const closeAt = plan && plan.dep != null ? plan.dep - 5 : null;
-      const wantClose = closeAt != null
-        ? (G.atoTimer > 8 && G.clock >= closeAt)
-        : G.atoTimer > (routeDef.dwell || 30);
+      const wantClose = G.aiTakeover
+        ? (G.atoTimer > 9)
+        : (closeAt != null ? (G.atoTimer > 8 && G.clock >= closeAt) : G.atoTimer > (routeDef.dwell || 30));
       if (!G.doorsOpen && G.doorT < 0.02) { G.atoState = 'waitdepart'; G.atoTimer = 0; }
       else if (wantClose) { closeDoors(); G.atoTimer = 0; }
       break;
